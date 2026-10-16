@@ -6,20 +6,20 @@ export type StoredSignal = Signal & { id: number; emailed: boolean }
 
 export function SignalHistory({ signals }: { signals: StoredSignal[] }) {
   return (
-    <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
+    <section className="rounded-2xl border border-line bg-surface p-6">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
         Signal history
       </h2>
 
       {signals.length === 0 ? (
-        <p className="mt-4 text-sm text-slate-500">
+        <p className="mt-4 text-sm text-subtle">
           No signals stored yet. Run an analysis to create the first one.
         </p>
       ) : (
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
+              <tr className="text-left text-xs uppercase tracking-wide text-subtle">
                 <th className="py-2 pr-4 font-medium">Time</th>
                 <th className="py-2 pr-4 font-medium">Direction</th>
                 <th className="py-2 pr-4 text-right font-medium">Score</th>
@@ -28,10 +28,10 @@ export function SignalHistory({ signals }: { signals: StoredSignal[] }) {
                 <th className="py-2 text-right font-medium">Emailed</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-line-soft">
               {signals.map((signal) => (
-                <tr key={signal.id} className="text-slate-300">
-                  <td className="py-2 pr-4 whitespace-nowrap text-slate-400">
+                <tr key={signal.id} className="text-muted">
+                  <td className="py-2 pr-4 whitespace-nowrap text-subtle">
                     {formatTime(signal.timestamp)}
                   </td>
                   <td className="py-2 pr-4">
@@ -39,10 +39,10 @@ export function SignalHistory({ signals }: { signals: StoredSignal[] }) {
                   </td>
                   <td className="py-2 pr-4 text-right font-medium">{formatScore(signal.score)}</td>
                   <td className="py-2 pr-4 text-right">{formatPrice(signal.price)}</td>
-                  <td className="py-2 pr-4 text-right text-slate-400">
+                  <td className="py-2 pr-4 text-right text-subtle">
                     {formatPrice(signal.chainlinkPrice)}
                   </td>
-                  <td className="py-2 text-right text-slate-400">{signal.emailed ? '✓' : '—'}</td>
+                  <td className="py-2 text-right text-subtle">{signal.emailed ? '✓' : '—'}</td>
                 </tr>
               ))}
             </tbody>

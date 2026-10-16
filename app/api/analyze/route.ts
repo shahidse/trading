@@ -3,7 +3,7 @@ import { runAnalysis } from '@/lib/pipeline'
 
 export const dynamic = 'force-dynamic'
 
-/** Run the pipeline once: fetch → score → persist → email on change. */
+/** Run the pipeline once: fetch → score → persist → alert (email/Telegram) on change. */
 export async function POST() {
   try {
     const result = await runAnalysis()

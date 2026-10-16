@@ -11,6 +11,11 @@ function num(value: string | undefined, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback
 }
 
+function bool(value: string | undefined, fallback: boolean): boolean {
+  if (value === undefined || value === '') return fallback
+  return value === 'true' || value === '1'
+}
+
 export const config = {
   symbol: process.env.BINANCE_SYMBOL ?? 'ETH/USDT',
   timeframe: process.env.CANDLE_INTERVAL ?? '15m',
@@ -131,6 +136,38 @@ export const config = {
     apiKey: process.env.RESEND_API_KEY ?? '',
     from: process.env.ALERT_EMAIL_FROM ?? 'onboarding@resend.dev',
     to: process.env.ALERT_EMAIL_TO ?? '',
+  },
+
+  telegram: {
+    /** Bot token from @BotFather. */
+    botToken: process.env.TELEGRAM_BOT_TOKEN ?? '',
+    /** Target chat / channel / group id. */
+    chatId: process.env.TELEGRAM_CHAT_ID ?? '',
+  },
+
+  /**
+   * Automatic order placement.
+   *
+   * Every switch defaults to the safe side — trading OFF, dry-run ON, testnet ON
+   * — so the app sends nothing until it is deliberately armed from /settings.
+   */
+  exchange: {
+    /** Master arm switch. */
+    enabled: bool(process.env.TRADING_ENABLED, false),
+    /** Immediate halt, checked before every order. */
+    killSwitch: bool(process.env.TRADING_KILL_SWITCH, false),
+    /** Log the intended order instead of sending it. */
+    dryRun: bool(process.env.TRADING_DRY_RUN, true),
+    /** Binance Spot Testnet (fake funds) rather than mainnet. */
+    testnet: bool(process.env.EXCHANGE_TESTNET, true),
+    apiKey: process.env.BINANCE_API_KEY ?? '',
+    secret: process.env.BINANCE_SECRET ?? '',
+    /** Fixed notional per entry, in quote currency. */
+    notionalUsd: num(process.env.TRADE_NOTIONAL_USD, 100),
+    /** Hard cap — refuse any single order above this. */
+    maxNotionalUsd: num(process.env.MAX_NOTIONAL_USD, 100),
+    /** Rolling 24h realised-loss limit; breaching it pauses trading. */
+    dailyLossLimitUsd: num(process.env.DAILY_LOSS_LIMIT_USD, 50),
   },
 
   db: {

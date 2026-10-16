@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import Database from 'better-sqlite3'
-import { desc, eq } from 'drizzle-orm'
+import { and, desc, eq, gt } from 'drizzle-orm'
 import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import { config } from '@/lib/config'
 import type {
@@ -13,7 +13,14 @@ import type {
   TradePlan,
 } from '@/lib/types'
 import * as schema from './schema'
-import { signals, type SignalRow } from './schema'
+import {
+  settings as settingsTable,
+  signals,
+  tradeOrders,
+  type SignalRow,
+  type TradeOrderRow,
+  type NewTradeOrderRow,
+} from './schema'
 
 type DB = BetterSQLite3Database<typeof schema>
 
@@ -47,6 +54,30 @@ CREATE TABLE IF NOT EXISTS signals (
   emailed          INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_signals_created_at ON signals (created_at DESC);
+
+CREATE TABLE IF NOT EXISTS settings (
+  key        TEXT PRIMARY KEY,
+  value      TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS trade_orders (
+  id               INTEGER PRIMARY KEY AUTOINCREMENT,
+  created_at       INTEGER NOT NULL,
+  symbol           TEXT    NOT NULL,
+  side             TEXT    NOT NULL,
+  type             TEXT    NOT NULL,
+  quantity         REAL    NOT NULL,
+  price            REAL,
+  notional_usd     REAL    NOT NULL,
+  status           TEXT    NOT NULL,
+  reason           TEXT,
+  environment      TEXT    NOT NULL,
+  realised_pnl_usd REAL,
+  response         TEXT,
+  signal_id        INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_trade_orders_created_at ON trade_orders (created_at DESC);
 `
 
 /**
@@ -195,4 +226,93 @@ export function getLastSignal(): StoredSignal | null {
 
 export function markEmailed(id: number): void {
   getDb().update(signals).set({ emailed: 1 }).where(eq(signals.id, id)).run()
+}
+
+/** Read a settings value by key, or null when unset. */
+export function getSetting(key: string): string | null {
+  const row = getDb().select().from(settingsTable).where(eq(settingsTable.key, key)).get()
+  return row?.value ?? null
+}
+
+/** Upsert a settings value. Values are strings; JSON-encode structured data. */
+export function setSetting(key: string, value: string): void {
+  const updatedAt = Date.now()
+  getDb()
+    .insert(settingsTable)
+    .values({ key, value, updatedAt })
+    .onConflictDoUpdate({ target: settingsTable.key, set: { value, updatedAt } })
+    .run()
+}
+
+/** A stored trade order. */
+export type StoredTradeOrder = TradeOrderRow
+
+/** Append an order attempt to the audit log and return its id. */
+export function recordTradeOrder(order: Omit<NewTradeOrderRow, 'createdAt'>): number {
+  const row = getDb()
+    .insert(tradeOrders)
+    .values({ ...order, createdAt: Date.now() })
+    .returning({ id: tradeOrders.id })
+    .get()
+
+  return row?.id ?? 0
+}
+
+/** Most recent order attempts, newest first. */
+export function getRecentTradeOrders(limit = 50): StoredTradeOrder[] {
+  return getDb().select().from(tradeOrders).orderBy(desc(tradeOrders.id)).limit(limit).all()
+}
+
+/** Sum of realised P&L recorded at or after `since` (Unix ms). */
+export function realisedPnlSince(since: number): number {
+  const rows = getDb()
+    .select({ pnl: tradeOrders.realisedPnlUsd })
+    .from(tradeOrders)
+    .where(gt(tradeOrders.createdAt, since))
+    .all()
+
+  return rows.reduce((sum, row) => sum + (row.pnl ?? 0), 0)
+}
+
+/**
+ * The position *we* opened and have not yet closed.
+ *
+ * Only orders with status `placed` count, so dry runs and refusals never look
+ * like a live position. Used to size a SELL — the bot never sells ETH it did
+ * not buy.
+ */
+export function getOpenBuyPosition(symbol: string): StoredTradeOrder | null {
+  const db = getDb()
+
+  const lastBuy = db
+    .select()
+    .from(tradeOrders)
+    .where(
+      and(
+        eq(tradeOrders.symbol, symbol),
+        eq(tradeOrders.side, 'BUY'),
+        eq(tradeOrders.status, 'placed'),
+      ),
+    )
+    .orderBy(desc(tradeOrders.id))
+    .limit(1)
+    .get()
+
+  if (!lastBuy) return null
+
+  const closingSell = db
+    .select({ id: tradeOrders.id })
+    .from(tradeOrders)
+    .where(
+      and(
+        eq(tradeOrders.symbol, symbol),
+        eq(tradeOrders.side, 'SELL'),
+        eq(tradeOrders.status, 'placed'),
+        gt(tradeOrders.id, lastBuy.id),
+      ),
+    )
+    .limit(1)
+    .get()
+
+  return closingSell ? null : lastBuy
 }

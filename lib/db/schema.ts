@@ -25,3 +25,53 @@ export const signals = sqliteTable('signals', {
 
 export type SignalRow = typeof signals.$inferSelect
 export type NewSignalRow = typeof signals.$inferInsert
+
+/**
+ * Key/value store for runtime-editable settings.
+ *
+ * Notification configuration (channel modes, recipients, keys) is saved here by
+ * the `/settings` page so it can change without editing `.env.local` or
+ * restarting the process. Values are JSON-encoded by the caller.
+ */
+export const settings = sqliteTable('settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+})
+
+export type SettingRow = typeof settings.$inferSelect
+
+/**
+ * Audit log of every order the trader attempted.
+ *
+ * `status` records intent as well as outcome — `placed` | `dry-run` |
+ * `refused` | `error` | `skipped` — so guard rejections are visible after the
+ * fact instead of vanishing into a console line.
+ */
+export const tradeOrders = sqliteTable('trade_orders', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  createdAt: integer('created_at').notNull(),
+  symbol: text('symbol').notNull(),
+  /** 'BUY' | 'SELL' */
+  side: text('side').notNull(),
+  /** Order type, e.g. 'market'. */
+  type: text('type').notNull(),
+  quantity: real('quantity').notNull(),
+  price: real('price'),
+  notionalUsd: real('notional_usd').notNull(),
+  /** 'placed' | 'dry-run' | 'refused' | 'error' | 'skipped' */
+  status: text('status').notNull(),
+  /** Why it was refused / skipped, or how it was executed. */
+  reason: text('reason'),
+  /** 'testnet' | 'live' | 'dry-run' */
+  environment: text('environment').notNull(),
+  /** Realised P&L in USD, set on the closing (SELL) order. */
+  realisedPnlUsd: real('realised_pnl_usd'),
+  /** Raw exchange response, JSON-encoded. */
+  response: text('response'),
+  /** The signal that triggered this order, when there was one. */
+  signalId: integer('signal_id'),
+})
+
+export type TradeOrderRow = typeof tradeOrders.$inferSelect
+export type NewTradeOrderRow = typeof tradeOrders.$inferInsert

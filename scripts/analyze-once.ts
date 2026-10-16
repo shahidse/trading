@@ -60,8 +60,16 @@ async function main(): Promise<void> {
       `  ·  changed: ${result.directionChanged}`,
   )
   console.log(
-    `Email sent  : ${result.emailSent}${
-      result.emailSent ? '' : ' (no action change, or email not configured)'
+    `Email       : ${result.emailSent ? 'sent' : 'not sent'}  (mode: ${result.emailMode})`,
+  )
+  console.log(
+    `Telegram    : ${result.telegramSent ? 'sent' : 'not sent'}  (mode: ${result.telegramMode})`,
+  )
+  console.log(
+    `Trade       : ${
+      result.trade
+        ? `${result.trade.status} — ${result.trade.reason}`
+        : 'not armed (see /settings)'
     }`,
   )
   console.log(`Stored id   : ${result.id}`)

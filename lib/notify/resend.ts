@@ -1,9 +1,15 @@
 import { Resend } from 'resend'
-import { config } from '@/lib/config'
+import { getNotifySettings } from '@/lib/notify/settings'
 import type { Signal } from '@/lib/types'
 
 export function isEmailConfigured(): boolean {
-  return Boolean(config.email.apiKey && config.email.to)
+  const { email } = getNotifySettings()
+  return Boolean(email.enabled && email.apiKey && email.to)
+}
+
+/** Recipients parsed from the comma-separated `to` field. */
+function recipients(to: string): string[] {
+  return to.split(',').map((s) => s.trim()).filter(Boolean)
 }
 
 function accentColor(direction: Signal['direction']): string {
@@ -150,18 +156,39 @@ function renderHtml(signal: Signal): string {
 export async function sendSignalEmail(signal: Signal): Promise<boolean> {
   if (!isEmailConfigured()) return false
 
-  const resend = new Resend(config.email.apiKey)
+  const { email } = getNotifySettings()
+  const resend = new Resend(email.apiKey)
   const subject = `[${signal.symbol} ${signal.timeframe}] ${signal.plan.action} · score ${
     signal.score > 0 ? '+' : ''
   }${signal.score} · $${signal.price.toLocaleString()}`
 
   const { error } = await resend.emails.send({
-    from: config.email.from,
-    to: config.email.to.split(',').map((s) => s.trim()).filter(Boolean),
+    from: email.from,
+    to: recipients(email.to),
     subject,
     html: renderHtml(signal),
   })
 
   if (error) throw new Error(`Resend error: ${error.message}`)
   return true
+}
+
+/** Send a one-line test email to verify the configured credentials. */
+export async function sendTestEmail(): Promise<void> {
+  if (!isEmailConfigured()) throw new Error('Email is not configured')
+
+  const { email } = getNotifySettings()
+  const resend = new Resend(email.apiKey)
+
+  const { error } = await resend.emails.send({
+    from: email.from,
+    to: recipients(email.to),
+    subject: 'ETH Signal — test email',
+    html: `<div style="font-family:sans-serif;padding:16px;">
+      <h2 style="margin:0 0 8px;">✅ Email alerts are working</h2>
+      <p style="color:#555;margin:0;">This is a test message from your ETH Signal dashboard.</p>
+    </div>`,
+  })
+
+  if (error) throw new Error(`Resend error: ${error.message}`)
 }

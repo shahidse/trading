@@ -13,6 +13,8 @@
     "analyze": "tsx scripts/analyze-once.ts",
     "backtest": "tsx scripts/backtest.ts",
     "check-oracle": "tsx scripts/check-oracle.ts",
+    "check-telegram": "tsx scripts/check-telegram.ts",
+    "check-exchange": "tsx scripts/check-exchange.ts",
     "scheduler": "tsx scripts/scheduler.ts",
     "contracts:install": "npm --prefix contracts install",
     "contracts:test": "npm --prefix contracts test"

@@ -65,10 +65,6 @@ Weighted composite score in `[-100, +100]`:
 Send only on **plan-action change** (deduplicated against the last stored signal) to avoid
 one email every 15 minutes.
 
-> **Changed in v3:** the trigger was originally the raw direction. It is now the plan
-action, so an alert mirrors what the plan actually tells you to do. A bullish direction
-that the trend gate refuses stays `STAY_OUT` and no longer emails a misleading "LONG".
-With no previous signal, only an actionable plan (`BUY` / `SELL`) alerts.
 
 ## Project layout
 
@@ -192,3 +188,51 @@ indicators buy dips in a downtrend" — was fixed by the regime tilt, not by the
 
 The gate is retained as a cheap safety net. **No further indicator or gate work is
 proposed; the remaining gap is strategy design, not signal generation.**
+
+## v4 — Configurable notifications + Telegram (2026-10-16)
+
+Alerts are no longer hard-wired to plan-action change. Each channel (email via Resend,
+Telegram via the Bot API) resolves its own config and trigger mode, editable live from a new
+**`/settings`** page rather than only through `.env.local`.
+
+- **Storage** — a `settings` key/value table (SQLite). Values saved there override the env
+  defaults; resolution is `stored → env → defaults`.
+- **Trigger modes** (`lib/signal/plan.ts` → `shouldNotify`) — `action-change` (default),
+  `direction-change`, `every`, chosen per channel.
+- **Secrets in the UI** — the bot token and Resend key are editable, but the API returns only
+  set/unset flags. Saving without retyping a secret leaves it untouched; sending `""` clears it.
+- **Surfaces** — `GET/PUT /api/settings`, `POST /api/settings/test` (per-channel test message),
+  `app/settings/page.tsx`. The CLI (`npm run analyze`) prints the effective mode per channel.
+
+The alert decision is now: `shouldNotify(mode, previous, next) && isChannelConfigured()`.
+Failures are logged and never abort the analysis run.
+
+## v5 — Automatic order placement (2026-10-16)
+
+Optional execution against Binance, driven by the plan action. `runAnalysis()` calls
+`runAutoTrade()` after persisting each signal.
+
+Design principles:
+
+- **Off by default, three times over.** `enabled` (false), `dryRun` (true) and `testnet` (true) all
+  ship on the quiet side, so nothing is sent until deliberately armed.
+- **Pure decision layer.** `decideTrade(previous, next, hasPosition, notional)` and
+  `checkGuards(settings, notional, realisedPnl24h)` perform no I/O, so the whole risk policy is
+  unit-tested (17 tests) and displayable in the UI.
+- **One signed write.** `executeTrade()` is the only function that touches the exchange.
+- **Guards before network.** Kill switch → enabled → credentials → hard cap → rolling 24h loss
+  limit → **withdrawal-permission check** → balance → order. The permission check **fails closed**
+  on mainnet (unverifiable ⇒ refuse) and is tolerated on testnet, where the endpoint is absent.
+- **Never sells your ETH.** A `SELL` is sized from the position the bot itself opened (the last
+  `placed` BUY with no later `placed` SELL); with no such position it does nothing.
+- **Nothing silent.** Every attempt is written to `trade_orders` with status
+  `placed` | `dry-run` | `refused` | `skipped` | `error` and a reason, and listed on `/settings`.
+- **Surface area.** `GET/PUT/POST /api/trades`, a `/settings` card, a dashboard status pill, and
+  `npm run check-exchange` (read-only diagnostic that never places an order).
+
+New table: `trade_orders`. New module: `lib/exchange/{settings,client,trader}.ts`.
+
+**Not a strategy change.** The v2/v3 measurements still stand — this adds execution plumbing, not
+edge. Spot-only: `SHORT` closes, it never shorts.
+
+

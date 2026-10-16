@@ -2,6 +2,7 @@ import { config } from '@/lib/config'
 import type { IndicatorBundle } from '@/lib/indicators'
 import type {
   ConfluenceInfo,
+  NotifyMode,
   RegimeInfo,
   SignalDirection,
   TradeAction,
@@ -28,6 +29,34 @@ export function shouldAlert(
   nextAction: TradeAction,
 ): boolean {
   return previousAction === null ? isActionable(nextAction) : previousAction !== nextAction
+}
+
+/** Minimal signal state needed to decide whether an alert is due. */
+export type NotifyState = { action: TradeAction; direction: SignalDirection }
+
+/**
+ * Mode-aware notification decision, applied per channel.
+ *
+ *  - `action-change`    — a plan transition worth acting on (see `shouldAlert`)
+ *  - `direction-change` — LONG/SHORT/NEUTRAL flipped
+ *  - `every`            — every run alerts, no dedupe
+ *
+ * With no previous signal, `direction-change` alerts only on a non-neutral
+ * reading and `action-change` only on an actionable plan, so a fresh
+ * STAY_OUT/NEUTRAL stays quiet.
+ */
+export function shouldNotify(
+  mode: NotifyMode,
+  previous: NotifyState | null,
+  next: NotifyState,
+): boolean {
+  if (mode === 'every') return true
+
+  if (mode === 'direction-change') {
+    return previous ? previous.direction !== next.direction : next.direction !== 'NEUTRAL'
+  }
+
+  return shouldAlert(previous?.action ?? null, next.action)
 }
 
 export type TrendRead = {

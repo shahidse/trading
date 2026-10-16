@@ -30,9 +30,10 @@ Three layers then shape the composite:
 The composite lands in `[-100, +100]`; `>= +25` (scaled) is **LONG**, `<= -25` (scaled) is
 **SHORT**, anything between is **NEUTRAL**.
 
-Signals appear on a live dashboard, are stored in SQLite, and trigger an **email via Resend
-only when the plan action changes** (`BUY` → `STAY_OUT`, `BUY` → `SELL`, …). So you don't get
-an email every 15 minutes — and an alert always matches what the plan tells you to do.
+Signals appear on a live dashboard, are stored in SQLite, and trigger an alert — an **email via
+Resend** and/or a **Telegram message via the Bot API** — only when the plan action changes
+(`BUY` → `STAY_OUT`, `BUY` → `SELL`, …). So you don't get an email every 15 minutes — and an
+alert always matches what the plan tells you to do.
 
 ---
 
@@ -119,13 +120,40 @@ Everything is optional — the app runs with sensible defaults. See `.env.local.
 | `ETH_RPC_URL` | Ethereum RPC for the Chainlink read |
 | `CHAINLINK_ETH_USD_FEED` | Aggregator address (mainnet default built in) |
 | `RESEND_API_KEY` / `ALERT_EMAIL_FROM` / `ALERT_EMAIL_TO` | Email alerts — **left blank, no email is sent** |
+| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | Telegram alerts — **left blank, no message is sent**; verify with `npm run check-telegram` |
 | `LONG_THRESHOLD` / `SHORT_THRESHOLD` | Signal sensitivity (default `25` / `-25`) |
+| `EMAIL_NOTIFY_MODE` / `TELEGRAM_NOTIFY_MODE` | Trigger per channel (default `action-change`); overridden by the `/settings` page |
+| `TRADING_ENABLED` / `TRADING_KILL_SWITCH` / `TRADING_DRY_RUN` | Automatic trading switches — all default to the safe side (off / off / dry-run on) |
+| `EXCHANGE_TESTNET` | `true` (default) targets the Binance Spot Testnet |
+| `TRADE_NOTIONAL_USD` / `MAX_NOTIONAL_USD` / `DAILY_LOSS_LIMIT_USD` | Order size, hard per-order cap, rolling 24h loss limit |
 | `DATABASE_URL` | SQLite file (default `file:./data/signals.db`) |
 | `CRON_SCHEDULE` | Scheduler cron (default `*/15 * * * *`) |
 
 > **Note:** the widely-copied public endpoint `eth.llamarpc.com` currently fails with a
 > Cloudflare 525 SSL error. The default is `ethereum-rpc.publicnode.com`. Verify with
 > `npm run check-oracle`, and use Alchemy/Infura for anything beyond local use.
+
+### Notifications
+
+Both channels are configured from the **`/settings`** page (link in the dashboard header) and
+stored in the local SQLite database, so they take effect immediately for the dashboard, the CLI
+and the scheduler — no restart. Anything saved there overrides the matching `.env.local` value.
+Secrets are never sent back to the browser: the inputs show a *saved* placeholder and only change
+when you type a new value (or press **Clear**). Each card has a **Send test** button.
+
+Each channel picks its own trigger:
+
+| Mode | Fires when |
+| --- | --- |
+| `action-change` *(default)* | the plan action changes — `BUY` → `STAY_OUT`, `BUY` → `SELL`, … |
+| `direction-change` | the signal direction flips — `LONG` / `SHORT` / `NEUTRAL` |
+| `every` | on every analysis run, no dedupe |
+
+With no previous signal, `action-change` alerts only on an actionable plan (`BUY` / `SELL`) and
+`direction-change` only on a non-neutral reading, so a fresh `STAY_OUT`/`NEUTRAL` stays quiet.
+
+If a channel is disabled, or its credentials are missing, it is silently skipped. Alert failures
+are logged and never break the analysis run.
 
 ---
 
@@ -138,6 +166,8 @@ Everything is optional — the app runs with sensible defaults. See `.env.local.
 | `npm run scheduler` | Local 15-minute cron |
 | `npm run backtest [-- N]` | Replay the strategy on `N` candles (default 1000) |
 | `npm run check-oracle` | Diagnose the Chainlink price feed |
+| `npm run check-telegram` | Verify the Telegram bot token and send a test message |
+| `npm run check-exchange` | Verify the Binance trading key, permissions and order sizing (never places an order) |
 | `npm test` | Vitest suite (indicators, patterns, engine) |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run build` | Production build |
@@ -150,7 +180,7 @@ Everything is optional — the app runs with sensible defaults. See `.env.local.
 Binance (ccxt)  ─┐
                  ├─→ aggregate ─→ indicators ─→ scoring ─→ Signal ─→ SQLite
 Chainlink (viem) ┘                                              ├─→ dashboard
-                                                                └─→ Resend (on change)
+                                                                └─→ Resend / Telegram (on change)
 ```
 
 ```
@@ -160,12 +190,29 @@ lib/
                volume · patterns  (+ adx, atr = context, not scored)
   signal/      scoring.ts (weights, regime tilt, confluence) · engine.ts (decision)
   backtest/    replay.ts
-  notify/      resend.ts
+  exchange/    settings.ts · client.ts (ccxt) · trader.ts (guards + orders)
+  notify/      resend.ts · telegram.ts · settings.ts
   db/          schema.ts · client.ts
 ```
 
 `generateSignal(candles)` is a **pure function**, which is why the backtester can reuse the
 exact same logic that runs live.
+
+### Theming (light / dark)
+
+A theme toggle sits in every page header. The choice is stored in `localStorage`
+(`eth-signal-theme`) and applied **before first paint** by an inline script in `app/layout.tsx`,
+so there is no flash of the wrong theme. With nothing stored it follows the OS preference.
+
+Colours are **semantic CSS variables** in `app/globals.css` (`--canvas`, `--ink`, `--muted`,
+`--surface`, `--line`, `--up`, `--down`, …) exposed to Tailwind via `@theme inline`, giving
+utilities like `bg-surface`, `text-muted`, `border-line`, `text-up`. Components never hardcode a
+palette — adding a theme means editing one block. Interactive elements get `cursor: pointer` from
+a base rule, since Tailwind v4 no longer sets it on buttons.
+
+The chart is the one exception: `lightweight-charts` paints to a canvas and cannot read CSS
+variables, so `components/CandleChart.tsx` keeps its own `PALETTES` map keyed by theme and rebuilds
+when the theme changes.
 
 ### API routes
 
@@ -175,6 +222,64 @@ exact same logic that runs live.
 | `/api/signals?limit=50` | GET | Stored signal history |
 | `/api/analyze` | POST/GET | Runs the pipeline and persists the result |
 | `/api/backtest?limit=1000` | GET | Backtest metrics |
+
+---
+
+## Automatic trading (optional, off by default)
+
+The app can place **real market orders on Binance** when the plan action changes. It is off by
+default and ships pointed at the **Spot Testnet**.
+
+> **Read this before arming it.** The signal has **no demonstrated edge** (see *Tuning* below):
+> every measured configuration matches or trails buy & hold, and profit factors are 0.11–0.33 —
+> far below break-even. Automating execution does not add edge; it removes the human filter and
+> places losing trades unattended every 15 minutes. Treat this as plumbing for a strategy you have
+> already validated, not as a money printer.
+
+### How an order happens
+
+`runAnalysis()` calls `runAutoTrade()` after persisting the signal. Nothing is sent unless trading
+is armed **and** every guard passes:
+
+```
+kill switch → enabled → credentials → hard cap → daily loss limit
+            → withdrawal-permission check → balance → order
+```
+
+The decision (`decideTrade`) and the guards (`checkGuards`) are **pure functions**, unit-tested and
+surfaced in the UI.
+
+| Plan transition | Action |
+| --- | --- |
+| → `BUY` (from anything else) | open a position at the configured notional |
+| → `SELL` while holding | close **the position we opened** (never your other ETH) |
+| `HOLD` / `STAY_OUT` | nothing |
+
+### Three layers, all defaulting to safe
+
+| Layer | Default | Meaning |
+| --- | --- | --- |
+| `enabled` | **false** | master arm switch |
+| `dryRun` | **true** | log the intended order, send nothing |
+| `testnet` | **true** | Binance Spot Testnet, not mainnet |
+
+Plus a **kill switch** (halts immediately, one click from the dashboard header), a **hard cap** per
+order, a **rolling 24h realised-loss limit** that pauses trading, and a **refusal to trade on
+mainnet** if the API key is permitted to withdraw funds.
+
+Every attempt — placed, dry-run, refused, skipped or errored — is written to the `trade_orders`
+audit table and listed on `/settings`. Nothing fails silently.
+
+### Setup
+
+1. Create a Binance key with **Spot Trading enabled** and **Withdrawals DISABLED**; IP-allowlist it.
+2. Enter the key/secret on `/settings` (or in `.env.local`).
+3. `npm run check-exchange` — verifies auth, permissions and what your order size would buy.
+4. Leave **dry run on**, arm trading, and watch the audit log for a few signals.
+5. Only then turn dry run off — and only against the testnet with testnet funds.
+
+**On spot there is no short.** `SHORT` means "exit / avoid long"; the trader only ever sells what
+it bought itself.
 
 ---
 

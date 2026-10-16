@@ -27,3 +27,6 @@ typechain-types/
 # os / editor
 .DS_Store
 *.log
+
+#lock file
+package-lock.json

@@ -18,13 +18,13 @@ export function WalletConnect() {
     return (
       <div className="flex items-center gap-3">
         <div className="text-right text-xs leading-tight">
-          <p className="font-medium text-slate-200">{shorten(address)}</p>
-          <p className="text-slate-500">{chain?.name ?? 'unknown chain'}</p>
+          <p className="font-medium text-ink">{shorten(address)}</p>
+          <p className="text-subtle">{chain?.name ?? 'unknown chain'}</p>
         </div>
         <button
           type="button"
           onClick={() => disconnect()}
-          className="rounded-lg border border-white/15 px-3 py-1.5 text-sm text-slate-300 transition hover:bg-white/5"
+          className="rounded-lg border border-line px-3 py-1.5 text-sm text-muted transition hover:bg-surface-2 hover:text-ink"
         >
           Disconnect
         </button>

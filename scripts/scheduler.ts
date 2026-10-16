@@ -2,6 +2,7 @@ import cron from 'node-cron'
 import { config } from '@/lib/config'
 import { runAnalysis } from '@/lib/pipeline'
 import { isEmailConfigured } from '@/lib/notify/resend'
+import { isTelegramConfigured } from '@/lib/notify/telegram'
 
 /**
  * Local 15-minute scheduler.
@@ -21,7 +22,9 @@ async function tick(): Promise<void> {
     console.log(
       `[${at}] ${s.plan.action} (${s.direction}) · score ${s.score} · $${s.price.toLocaleString()}` +
         `${result.actionChanged ? ' · ACTION CHANGED' : ''}` +
-        `${result.emailSent ? ' · email sent' : ''}`,
+        `${result.emailSent ? ' · email sent' : ''}` +
+        `${result.telegramSent ? ' · telegram sent' : ''}` +
+        `${result.trade ? ` · trade ${result.trade.status}` : ''}`,
     )
   } catch (error) {
     console.error(`[${at}] analysis failed:`, error instanceof Error ? error.message : error)
@@ -30,7 +33,10 @@ async function tick(): Promise<void> {
 
 async function main(): Promise<void> {
   console.log(`ETH signal scheduler — ${config.symbol} ${config.timeframe}`)
-  console.log(`Schedule: ${SCHEDULE}   Email: ${isEmailConfigured() ? 'configured' : 'not configured'}`)
+  console.log(
+    `Schedule: ${SCHEDULE}   Email: ${isEmailConfigured() ? 'configured' : 'not configured'}` +
+      `   Telegram: ${isTelegramConfigured() ? 'configured' : 'not configured'}`,
+  )
   console.log('Running an initial pass…')
 
   await tick()

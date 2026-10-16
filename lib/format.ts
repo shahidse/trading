@@ -34,7 +34,7 @@ export function formatAge(from: number, now = Date.now()): string {
 
 export const directionStyles = {
   LONG: {
-    text: 'text-emerald-400',
+    text: 'text-up',
     bg: 'bg-emerald-500/10',
     border: 'border-emerald-500/40',
     solid: 'bg-emerald-500',
@@ -42,7 +42,7 @@ export const directionStyles = {
     spotAction: 'Buy / hold spot',
   },
   SHORT: {
-    text: 'text-rose-400',
+    text: 'text-down',
     bg: 'bg-rose-500/10',
     border: 'border-rose-500/40',
     solid: 'bg-rose-500',
@@ -50,7 +50,7 @@ export const directionStyles = {
     spotAction: 'Exit / avoid long (spot cannot short)',
   },
   NEUTRAL: {
-    text: 'text-slate-400',
+    text: 'text-muted',
     bg: 'bg-slate-500/10',
     border: 'border-slate-500/40',
     solid: 'bg-slate-500',

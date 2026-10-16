@@ -1,9 +1,12 @@
 import { getMarketSnapshot, type SnapshotOptions } from '@/lib/data/aggregate'
 import { getLastSignal, markEmailed, saveSignal } from '@/lib/db/client'
+import { runAutoTrade, type TradeOutcome } from '@/lib/exchange/trader'
+import { getNotifySettings } from '@/lib/notify/settings'
 import { isEmailConfigured, sendSignalEmail } from '@/lib/notify/resend'
+import { isTelegramConfigured, sendSignalTelegram } from '@/lib/notify/telegram'
 import { generateSignal } from '@/lib/signal/engine'
-import { shouldAlert } from '@/lib/signal/plan'
-import type { Signal, SignalDirection, TradeAction } from '@/lib/types'
+import { shouldAlert, shouldNotify, type NotifyState } from '@/lib/signal/plan'
+import type { NotifyMode, Signal, SignalDirection, TradeAction } from '@/lib/types'
 
 export type AnalysisResult = {
   signal: Signal
@@ -14,20 +17,27 @@ export type AnalysisResult = {
   actionChanged: boolean
   previousDirection: SignalDirection | null
   directionChanged: boolean
+  /** Effective trigger mode per channel. */
+  emailMode: NotifyMode
+  telegramMode: NotifyMode
   emailSent: boolean
+  telegramSent: boolean
+  /** Automatic order placement result, or null when trading is not armed. */
+  trade: TradeOutcome | null
 }
 
 /**
  * The full analysis run:
  *
- *   fetch market data → score indicators → persist → email on plan-action change
+ *   fetch market data → score indicators → persist → alert on the configured trigger
  *
  * Shared by the CLI one-shot script, the scheduler, and the API route.
  *
- * The alert trigger is the **plan action**, not the raw direction: an email
- * should mirror what the plan tells you to do. A LONG direction that the trend
- * gate blocks stays STAY_OUT, so it no longer produces a misleading alert.
- * Deduplicated against the previously stored signal.
+ * Each channel has its own trigger mode (`action-change`, `direction-change`,
+ * `every` — configured on the /settings page), so email and Telegram can be
+ * tuned independently. With `action-change`, an alert mirrors what the plan
+ * tells you to do: a LONG direction that the trend gate blocks stays STAY_OUT,
+ * so it never produces a misleading alert.
  */
 export async function runAnalysis(options: SnapshotOptions = {}): Promise<AnalysisResult> {
   const snapshot = await getMarketSnapshot(options)
@@ -42,6 +52,7 @@ export async function runAnalysis(options: SnapshotOptions = {}): Promise<Analys
   })
 
   const previous = getLastSignal()
+  const settings = getNotifySettings()
 
   const previousAction = previous?.plan.action ?? null
   const actionChanged = shouldAlert(previousAction, signal.plan.action)
@@ -50,15 +61,33 @@ export async function runAnalysis(options: SnapshotOptions = {}): Promise<Analys
     ? previous.direction !== signal.direction
     : signal.direction !== 'NEUTRAL'
 
+  const previousState: NotifyState | null = previous
+    ? { action: previous.plan.action, direction: previous.direction }
+    : null
+  const nextState: NotifyState = { action: signal.plan.action, direction: signal.direction }
+
   const id = saveSignal(signal)
 
+  // Automatic order placement. A no-op unless trading is armed in /settings,
+  // and every guard runs inside `runAutoTrade` before any signed request.
+  const trade = await runAutoTrade(previousAction, signal.plan.action, id)
+
   let emailSent = false
-  if (actionChanged && isEmailConfigured()) {
+  if (shouldNotify(settings.email.mode, previousState, nextState) && isEmailConfigured()) {
     try {
       emailSent = await sendSignalEmail(signal)
       if (emailSent) markEmailed(id)
     } catch (error) {
       console.error('[notify] failed to send email:', error)
+    }
+  }
+
+  let telegramSent = false
+  if (shouldNotify(settings.telegram.mode, previousState, nextState) && isTelegramConfigured()) {
+    try {
+      telegramSent = await sendSignalTelegram(signal)
+    } catch (error) {
+      console.error('[notify] failed to send Telegram message:', error)
     }
   }
 
@@ -69,6 +98,10 @@ export async function runAnalysis(options: SnapshotOptions = {}): Promise<Analys
     actionChanged,
     previousDirection: previous?.direction ?? null,
     directionChanged,
+    emailMode: settings.email.mode,
+    telegramMode: settings.telegram.mode,
     emailSent,
+    telegramSent,
+    trade,
   }
 }

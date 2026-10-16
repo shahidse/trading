@@ -6,8 +6,8 @@ function Bar({ value }: { value: number }) {
   const positive = value >= 0
 
   return (
-    <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-slate-700/50">
-      <div className="absolute left-1/2 top-0 h-full w-px bg-slate-500/60" />
+    <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-line-soft">
+      <div className="absolute left-1/2 top-0 h-full w-px bg-line" />
       <div
         className={`absolute top-0 h-full ${positive ? 'bg-emerald-500/80' : 'bg-rose-500/80'}`}
         style={{
@@ -36,15 +36,15 @@ function weightLabel(indicator: IndicatorScore): string {
 export function IndicatorPanel({ indicators }: { indicators: IndicatorScore[] }) {
   if (indicators.length === 0) {
     return (
-      <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 text-sm text-slate-400">
+      <section className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">
         Not enough candle data to compute indicators yet.
       </section>
     )
   }
 
   return (
-    <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
+    <section className="rounded-2xl border border-line bg-surface p-6">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
         Indicator breakdown
       </h2>
 
@@ -52,16 +52,16 @@ export function IndicatorPanel({ indicators }: { indicators: IndicatorScore[] })
         {indicators.map((indicator) => (
           <div key={indicator.key}>
             <div className="flex items-baseline justify-between gap-3">
-              <span className="text-sm font-medium text-slate-200">
+              <span className="text-sm font-medium text-ink">
                 {indicator.label}
-                <span className="ml-2 rounded border border-white/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-slate-500">
+                <span className="ml-2 rounded border border-line px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-subtle">
                   {GROUP_LABEL[indicator.group]}
                 </span>
               </span>
-              <span className="text-xs text-slate-500">{weightLabel(indicator)}</span>
+              <span className="text-xs text-subtle">{weightLabel(indicator)}</span>
               <span
                 className={`w-24 text-right text-sm font-semibold ${
-                  indicator.raw >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                  indicator.raw >= 0 ? 'text-up' : 'text-down'
                 }`}
               >
                 {indicator.raw > 0 ? '+' : ''}
@@ -74,15 +74,15 @@ export function IndicatorPanel({ indicators }: { indicators: IndicatorScore[] })
             </div>
 
             <div className="mt-2 flex items-start justify-between gap-4 text-xs">
-              <span className="text-slate-400">{indicator.detail}</span>
-              <span className="whitespace-nowrap text-slate-500">
+              <span className="text-muted">{indicator.detail}</span>
+              <span className="whitespace-nowrap text-subtle">
                 contributes {indicator.contribution > 0 ? '+' : ''}
                 {indicator.contribution}
               </span>
             </div>
 
             {indicator.key === 'pattern' && Array.isArray(indicator.meta?.detected) ? (
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-subtle">
                 detected: {(indicator.meta?.detected as string[]).join(', ') || 'none'}
               </p>
             ) : null}

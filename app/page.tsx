@@ -1,13 +1,18 @@
 'use client'
 
+import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { BacktestPanel } from '@/components/BacktestPanel'
+import { CandleChart } from '@/components/CandleChart'
 import { IndicatorPanel } from '@/components/IndicatorPanel'
 import { SignalCard } from '@/components/SignalCard'
 import { SignalHistory, type StoredSignal } from '@/components/SignalHistory'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import { TradePlanCard } from '@/components/TradePlanCard'
+import { TradingControls } from '@/components/TradingControls'
 import { WalletConnect } from '@/components/WalletConnect'
 import { formatAge, formatPrice } from '@/lib/format'
+import { readJson } from '@/lib/utils'
 
 type PriceResponse = {
   symbol: string
@@ -34,14 +39,11 @@ export default function Page() {
         fetch('/api/price'),
       ])
 
-      const signalsJson = await signalsResponse.json()
-      const priceJson = await priceResponse.json()
-
-      if (!signalsResponse.ok) throw new Error(signalsJson.error ?? 'Failed to load signals')
-      if (!priceResponse.ok) throw new Error(priceJson.error ?? 'Failed to load price')
+      const signalsJson = await readJson<{ signals?: StoredSignal[] }>(signalsResponse)
+      const priceJson = await readJson<PriceResponse>(priceResponse)
 
       setSignals(signalsJson.signals ?? [])
-      setPrice(priceJson as PriceResponse)
+      setPrice(priceJson)
       setUpdatedAt(Date.now())
       setError(null)
     } catch (err) {
@@ -79,12 +81,22 @@ export default function Page() {
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">ETH Signal</h1>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 text-sm text-muted">
             {price ? `${price.symbol} · ${price.timeframe}` : 'ETH/USDT · 15m'} — Bollinger Bands,
             Ichimoku, RSI &amp; candlestick patterns
           </p>
         </div>
-        <WalletConnect />
+        <div className="flex items-center gap-2">
+          <Link
+            href="/settings"
+            className="rounded-lg border border-line px-3 py-2 text-sm text-muted transition hover:bg-surface-2 hover:text-ink"
+          >
+            Notifications
+          </Link>
+          <TradingControls />
+          <ThemeToggle />
+          <WalletConnect />
+        </div>
       </header>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
@@ -99,34 +111,34 @@ export default function Page() {
         <button
           type="button"
           onClick={() => void load()}
-          className="rounded-lg border border-white/15 px-4 py-2 text-sm text-slate-300 transition hover:bg-white/5"
+          className="rounded-lg border border-line px-4 py-2 text-sm text-muted transition hover:bg-surface-2 hover:text-ink"
         >
           Refresh
         </button>
         {updatedAt ? (
-          <span className="text-xs text-slate-500">updated {formatAge(updatedAt)}</span>
+          <span className="text-xs text-subtle">updated {formatAge(updatedAt)}</span>
         ) : null}
       </div>
 
       {error ? (
-        <p className="mt-4 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
+        <p className="mt-4 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-down">
           {error}
         </p>
       ) : null}
 
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
-        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-          <p className="text-xs uppercase tracking-wide text-slate-500">Binance ETH/USDT</p>
+        <div className="rounded-xl border border-line bg-surface p-4">
+          <p className="text-xs uppercase tracking-wide text-subtle">Binance ETH/USDT</p>
           <p className="mt-1 text-xl font-semibold">{formatPrice(price?.price ?? null)}</p>
         </div>
-        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-          <p className="text-xs uppercase tracking-wide text-slate-500">Chainlink ETH/USD</p>
+        <div className="rounded-xl border border-line bg-surface p-4">
+          <p className="text-xs uppercase tracking-wide text-subtle">Chainlink ETH/USD</p>
           <p className="mt-1 text-xl font-semibold">
             {formatPrice(price?.chainlink?.price ?? null)}
           </p>
         </div>
-        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-          <p className="text-xs uppercase tracking-wide text-slate-500">Oracle divergence</p>
+        <div className="rounded-xl border border-line bg-surface p-4">
+          <p className="text-xs uppercase tracking-wide text-subtle">Oracle divergence</p>
           <p className="mt-1 text-xl font-semibold">
             {price?.divergencePct != null ? `${price.divergencePct}%` : '—'}
           </p>
@@ -134,8 +146,10 @@ export default function Page() {
       </div>
 
       <div className="mt-6 space-y-6">
+        <CandleChart limit={500} />
+
         {loading ? (
-          <p className="text-sm text-slate-500">Loading…</p>
+          <p className="text-sm text-subtle">Loading…</p>
         ) : latest ? (
           <>
             <TradePlanCard plan={latest.plan} />
@@ -143,8 +157,8 @@ export default function Page() {
             <IndicatorPanel indicators={latest.indicators} />
           </>
         ) : (
-          <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
-            <p className="text-sm text-slate-400">
+          <section className="rounded-2xl border border-line bg-surface p-6">
+            <p className="text-sm text-muted">
               No signals stored yet. Click <strong>Run analysis now</strong> to fetch market data
               and generate the first signal.
             </p>
@@ -155,11 +169,11 @@ export default function Page() {
         <BacktestPanel />
       </div>
 
-      <footer className="mt-10 border-t border-white/5 pt-5 text-xs text-slate-500">
+      <footer className="mt-10 border-t border-line-soft pt-5 text-xs text-subtle">
         Automated technical analysis for research only — not financial advice. Spot signals cannot
         short: a SHORT reading means exit or avoid going long. Configure{' '}
-        <code className="text-slate-400">ALERT_EMAIL_TO</code> and{' '}
-        <code className="text-slate-400">RESEND_API_KEY</code> for email alerts.
+        <code className="text-muted">ALERT_EMAIL_TO</code> and{' '}
+        <code className="text-muted">RESEND_API_KEY</code> for email alerts.
       </footer>
     </main>
   )

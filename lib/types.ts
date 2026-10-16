@@ -144,3 +144,51 @@ export type Signal = {
   indicators: IndicatorScore[]
   reasons: string[]
 }
+
+/** A single plotted point on the chart. `time` is Unix milliseconds. */
+export type LinePoint = { time: number; value: number }
+
+/** Every overlay / oscillator series the chart renders, aligned to candle time. */
+export type ChartSeries = {
+  candles: Candle[]
+  bollinger: { upper: LinePoint[]; middle: LinePoint[]; lower: LinePoint[] }
+  ema: { fast: LinePoint[]; mid: LinePoint[]; slow: LinePoint[] }
+  vwap: LinePoint[]
+  ichimoku: { conversion: LinePoint[]; base: LinePoint[]; spanA: LinePoint[]; spanB: LinePoint[] }
+  rsi: LinePoint[]
+  macd: { macd: LinePoint[]; signal: LinePoint[]; histogram: LinePoint[] }
+}
+
+/** A stored signal reduced to what the chart's markers need. */
+export type ChartMarker = {
+  time: number
+  direction: SignalDirection
+  score: number
+  action: TradeAction
+}
+
+/** Trade plan levels drawn as price lines on the latest bar. */
+export type ChartPlanLevels = {
+  action: TradeAction
+  levels: TradeLevels | null
+  protectiveStop: number | null
+}
+
+/** Payload returned by `/api/chart`. */
+export type ChartPayload = {
+  symbol: string
+  timeframe: string
+  limit: number
+  generatedAt: number
+  series: ChartSeries
+  markers: ChartMarker[]
+  plan: ChartPlanLevels | null
+}
+
+/**
+ * When a notification channel should fire:
+ *  - `action-change`    — only when the plan action changes (default)
+ *  - `direction-change` — whenever LONG/SHORT/NEUTRAL flips
+ *  - `every`            — on every analysis run, no dedupe
+ */
+export type NotifyMode = 'action-change' | 'direction-change' | 'every'
