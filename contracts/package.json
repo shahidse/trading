@@ -1,0 +1,17 @@
+{
+  "name": "eth-signal-contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Optional on-chain layer: signal registry + Chainlink ETH/USD consumer",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "node": "hardhat node",
+    "deploy:local": "hardhat run scripts/deploy.ts --network localhost",
+    "deploy:sepolia": "hardhat run scripts/deploy.ts --network sepolia"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.17"
+  }
+}

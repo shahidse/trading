@@ -1,0 +1,198 @@
+import fs from 'node:fs'
+import path from 'node:path'
+import Database from 'better-sqlite3'
+import { desc, eq } from 'drizzle-orm'
+import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
+import { config } from '@/lib/config'
+import type {
+  ConfluenceInfo,
+  IndicatorScore,
+  RegimeInfo,
+  Signal,
+  SignalDirection,
+  TradePlan,
+} from '@/lib/types'
+import * as schema from './schema'
+import { signals, type SignalRow } from './schema'
+
+type DB = BetterSQLite3Database<typeof schema>
+
+export type StoredSignal = Signal & { id: number; emailed: boolean }
+
+let db: DB | null = null
+
+function resolveDbFile(url: string): string {
+  const raw = url.startsWith('file:') ? url.slice('file:'.length) : url
+  return path.isAbsolute(raw) ? raw : path.join(process.cwd(), raw)
+}
+
+const CREATE_TABLE = `
+CREATE TABLE IF NOT EXISTS signals (
+  id               INTEGER PRIMARY KEY AUTOINCREMENT,
+  created_at       INTEGER NOT NULL,
+  symbol           TEXT    NOT NULL,
+  timeframe        TEXT    NOT NULL,
+  direction        TEXT    NOT NULL,
+  score            REAL    NOT NULL,
+  confidence       REAL    NOT NULL,
+  price            REAL    NOT NULL,
+  chainlink_price  REAL,
+  divergence_pct   REAL,
+  indicators       TEXT    NOT NULL,
+  reasons          TEXT    NOT NULL,
+  regime           TEXT,
+  confluence       TEXT,
+  thresholds       TEXT,
+  plan             TEXT,
+  emailed          INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_signals_created_at ON signals (created_at DESC);
+`
+
+/**
+ * Add columns introduced after the first release, so an existing local
+ * database keeps working instead of erroring on a missing column.
+ */
+function ensureColumns(sqlite: Database.Database): void {
+  const existing = new Set(
+    (sqlite.prepare('PRAGMA table_info(signals)').all() as { name: string }[]).map((r) => r.name),
+  )
+  const additions: [string, string][] = [
+    ['regime', 'TEXT'],
+    ['confluence', 'TEXT'],
+    ['thresholds', 'TEXT'],
+    ['plan', 'TEXT'],
+  ]
+  for (const [name, type] of additions) {
+    if (!existing.has(name)) {
+      sqlite.exec(`ALTER TABLE signals ADD COLUMN ${name} ${type}`)
+    }
+  }
+}
+
+/**
+ * Lazily open (and initialise) the SQLite database.
+ *
+ * The table is created on first use so local development needs no migration
+ * step. Use `drizzle-kit` later if you move to a versioned schema.
+ */
+export function getDb(): DB {
+  if (db) return db
+
+  const file = resolveDbFile(config.db.url)
+  fs.mkdirSync(path.dirname(file), { recursive: true })
+
+  const sqlite = new Database(file)
+  sqlite.pragma('journal_mode = WAL')
+  sqlite.exec(CREATE_TABLE)
+  ensureColumns(sqlite)
+
+  db = drizzle(sqlite, { schema })
+  return db
+}
+
+function toStored(row: SignalRow): StoredSignal {
+  return {
+    id: row.id,
+    symbol: row.symbol,
+    timeframe: row.timeframe,
+    direction: row.direction as SignalDirection,
+    score: row.score,
+    confidence: row.confidence,
+    price: row.price,
+    chainlinkPrice: row.chainlinkPrice ?? null,
+    divergencePct: row.divergencePct ?? null,
+    timestamp: row.createdAt,
+    // Rows written before the regime/confluence columns existed fall back to
+    // a neutral placeholder rather than throwing.
+    regime: row.regime
+      ? (JSON.parse(row.regime) as RegimeInfo)
+      : {
+          adx: null,
+          regime: 'unknown',
+          direction: 'unknown',
+          atrPct: null,
+          atrValue: null,
+          volatilityRatio: null,
+          thresholdMultiplier: 1,
+          tilt: 'neutral',
+          detail: 'not recorded (legacy row)',
+        },
+    confluence: row.confluence
+      ? (JSON.parse(row.confluence) as ConfluenceInfo)
+      : {
+          bullish: 0,
+          bearish: 0,
+          agreeing: 0,
+          conflicting: 0,
+          multiplier: 1,
+          verdict: 'mixed',
+          detail: 'not recorded (legacy row)',
+        },
+    thresholdsUsed: row.thresholds
+      ? (JSON.parse(row.thresholds) as { long: number; short: number })
+      : { long: config.thresholds.long, short: config.thresholds.short },
+    plan: row.plan
+      ? (JSON.parse(row.plan) as TradePlan)
+      : {
+          action: 'STAY_OUT',
+          headline: 'No trade plan recorded (legacy row)',
+          forFlat: '—',
+          forHolder: '—',
+          gate: 'no-edge',
+          levels: null,
+          protectiveStop: null,
+          rationale: [],
+        },
+    indicators: JSON.parse(row.indicators) as IndicatorScore[],
+    reasons: JSON.parse(row.reasons) as string[],
+    emailed: row.emailed === 1,
+  }
+}
+
+/** Persist a signal and return its row id. */
+export function saveSignal(signal: Signal): number {
+  const row = getDb()
+    .insert(signals)
+    .values({
+      createdAt: signal.timestamp,
+      symbol: signal.symbol,
+      timeframe: signal.timeframe,
+      direction: signal.direction,
+      score: signal.score,
+      confidence: signal.confidence,
+      price: signal.price,
+      chainlinkPrice: signal.chainlinkPrice,
+      divergencePct: signal.divergencePct,
+      indicators: JSON.stringify(signal.indicators),
+      reasons: JSON.stringify(signal.reasons),
+      regime: JSON.stringify(signal.regime),
+      confluence: JSON.stringify(signal.confluence),
+      thresholds: JSON.stringify(signal.thresholdsUsed),
+      plan: JSON.stringify(signal.plan),
+      emailed: 0,
+    })
+    .returning({ id: signals.id })
+    .get()
+
+  return row?.id ?? 0
+}
+
+export function getRecentSignals(limit = 50): StoredSignal[] {
+  return getDb()
+    .select()
+    .from(signals)
+    .orderBy(desc(signals.id))
+    .limit(limit)
+    .all()
+    .map(toStored)
+}
+
+export function getLastSignal(): StoredSignal | null {
+  const row = getDb().select().from(signals).orderBy(desc(signals.id)).limit(1).get()
+  return row ? toStored(row) : null
+}
+
+export function markEmailed(id: number): void {
+  getDb().update(signals).set({ emailed: 1 }).where(eq(signals.id, id)).run()
+}

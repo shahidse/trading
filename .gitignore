@@ -1,0 +1,29 @@
+node_modules/
+.next/
+out/
+build/
+dist/
+
+# env
+.env
+.env.local
+.env*.local
+
+# local database
+data/
+*.db
+*.db-journal
+
+# tests / tooling
+coverage/
+*.tsbuildinfo
+.eslintcache
+
+# hardhat
+artifacts/
+cache/
+typechain-types/
+
+# os / editor
+.DS_Store
+*.log
