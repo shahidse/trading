@@ -17,7 +17,11 @@
     "check-exchange": "tsx scripts/check-exchange.ts",
     "scheduler": "tsx scripts/scheduler.ts",
     "contracts:install": "npm --prefix contracts install",
-    "contracts:test": "npm --prefix contracts test"
+    "contracts:test": "npm --prefix contracts test",
+    "mobile:start": "npm --prefix mobile run start",
+    "mobile:android": "npm --prefix mobile run android",
+    "mobile:ios": "npm --prefix mobile run ios",
+    "mobile:typecheck": "npm --prefix mobile run typecheck"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.59.16",
