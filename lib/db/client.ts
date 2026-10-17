@@ -29,6 +29,24 @@ export type StoredSignal = Signal & { id: number; emailed: boolean }
 let db: DB | null = null
 
 function resolveDbFile(url: string): string {
+  // If explicitly provided via environment
+  if (process.env.DATABASE_URL) {
+    const raw = process.env.DATABASE_URL.startsWith('file:')
+      ? process.env.DATABASE_URL.slice('file:'.length)
+      : process.env.DATABASE_URL
+    return path.isAbsolute(raw) ? raw : path.join(process.cwd(), raw)
+  }
+
+  // Detect serverless environments (Netlify, AWS Lambda, Vercel) where filesystem is read-only except /tmp
+  const isServerless =
+    Boolean(process.env.NETLIFY) ||
+    Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME) ||
+    Boolean(process.env.VERCEL)
+
+  if (isServerless) {
+    return path.join('/tmp', 'signals.db')
+  }
+
   const raw = url.startsWith('file:') ? url.slice('file:'.length) : url
   return path.isAbsolute(raw) ? raw : path.join(process.cwd(), raw)
 }
@@ -114,7 +132,11 @@ export function getDb(): DB {
   fs.mkdirSync(path.dirname(file), { recursive: true })
 
   const sqlite = new Database(file)
-  sqlite.pragma('journal_mode = WAL')
+  try {
+    sqlite.pragma('journal_mode = WAL')
+  } catch {
+    sqlite.pragma('journal_mode = DELETE')
+  }
   sqlite.exec(CREATE_TABLE)
   ensureColumns(sqlite)
 
@@ -272,6 +294,22 @@ export function realisedPnlSince(since: number): number {
     .all()
 
   return rows.reduce((sum, row) => sum + (row.pnl ?? 0), 0)
+}
+
+/** Number of buy trade entries placed (or dry-run simulated) since `since` (Unix ms). */
+export function countTradesSince(since: number): number {
+  const rows = getDb()
+    .select({ id: tradeOrders.id })
+    .from(tradeOrders)
+    .where(
+      and(
+        gt(tradeOrders.createdAt, since),
+        eq(tradeOrders.side, 'BUY'),
+      ),
+    )
+    .all()
+
+  return rows.length
 }
 
 /**

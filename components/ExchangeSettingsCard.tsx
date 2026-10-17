@@ -13,6 +13,8 @@ type PublicExchangeSettings = {
   notionalUsd: number
   maxNotionalUsd: number
   dailyLossLimitUsd: number
+  maxDailyTrades: number
+  useOcoBracket: boolean
   apiKeySet: boolean
   secretSet: boolean
 }
@@ -59,6 +61,8 @@ export function ExchangeSettingsCard() {
   const [notionalUsd, setNotionalUsd] = useState('100')
   const [maxNotionalUsd, setMaxNotionalUsd] = useState('100')
   const [dailyLossLimitUsd, setDailyLossLimitUsd] = useState('50')
+  const [maxDailyTrades, setMaxDailyTrades] = useState('5')
+  const [useOcoBracket, setUseOcoBracket] = useState(true)
   const [apiKey, setApiKey] = useState('')
   const [apiKeyTouched, setApiKeyTouched] = useState(false)
   const [apiKeySet, setApiKeySet] = useState(false)
@@ -74,6 +78,8 @@ export function ExchangeSettingsCard() {
     setNotionalUsd(String(settings.notionalUsd))
     setMaxNotionalUsd(String(settings.maxNotionalUsd))
     setDailyLossLimitUsd(String(settings.dailyLossLimitUsd))
+    setMaxDailyTrades(String(settings.maxDailyTrades ?? 5))
+    setUseOcoBracket(settings.useOcoBracket ?? true)
     setApiKey('')
     setApiKeyTouched(false)
     setApiKeySet(settings.apiKeySet)
@@ -117,6 +123,8 @@ export function ExchangeSettingsCard() {
           notionalUsd: Number(notionalUsd),
           maxNotionalUsd: Number(maxNotionalUsd),
           dailyLossLimitUsd: Number(dailyLossLimitUsd),
+          maxDailyTrades: Number(maxDailyTrades),
+          useOcoBracket,
           ...(apiKeyTouched ? { apiKey } : {}),
           ...(secretTouched ? { secret } : {}),
         }),
@@ -256,6 +264,29 @@ export function ExchangeSettingsCard() {
                 onChange={(event) => setDailyLossLimitUsd(event.target.value)}
                 className={inputClass}
               />
+            </label>
+            <label>
+              <span className={labelClass}>Max trades / 24h</span>
+              <input
+                type="number"
+                min={1}
+                max={50}
+                value={maxDailyTrades}
+                onChange={(event) => setMaxDailyTrades(event.target.value)}
+                className={inputClass}
+              />
+            </label>
+
+            <label className="flex items-center gap-2.5 sm:col-span-2 mt-4 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={useOcoBracket}
+                onChange={(event) => setUseOcoBracket(event.target.checked)}
+                className="h-4 w-4 rounded border-line bg-surface-2 text-accent focus:ring-accent"
+              />
+              <span className="text-xs text-ink">
+                <strong>Native Binance OCO Bracket Orders</strong> (Auto-attach SL & TP to Binance order book on BUY)
+              </span>
             </label>
 
             <label className="sm:col-span-3">

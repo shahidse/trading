@@ -27,6 +27,10 @@ export type ExchangeSettings = {
   maxNotionalUsd: number
   /** Rolling 24h realised-loss limit; breaching it pauses trading. */
   dailyLossLimitUsd: number
+  /** Max trades allowed per 24h window (default 5). */
+  maxDailyTrades: number
+  /** Automatically attach Binance native OCO bracket (SL + TP) on BUY orders. */
+  useOcoBracket: boolean
 }
 
 /** What the browser may see: credentials become set/unset flags. */
@@ -38,6 +42,8 @@ export type PublicExchangeSettings = {
   notionalUsd: number
   maxNotionalUsd: number
   dailyLossLimitUsd: number
+  maxDailyTrades: number
+  useOcoBracket: boolean
   apiKeySet: boolean
   secretSet: boolean
 }
@@ -55,6 +61,8 @@ function envDefaults(): ExchangeSettings {
     notionalUsd: config.exchange.notionalUsd,
     maxNotionalUsd: config.exchange.maxNotionalUsd,
     dailyLossLimitUsd: config.exchange.dailyLossLimitUsd,
+    maxDailyTrades: config.exchange.maxDailyTrades,
+    useOcoBracket: config.exchange.useOcoBracket,
   }
 }
 
@@ -82,6 +90,8 @@ function mergeStored(raw: unknown, base: ExchangeSettings): ExchangeSettings {
     notionalUsd: num(r.notionalUsd, base.notionalUsd),
     maxNotionalUsd: num(r.maxNotionalUsd, base.maxNotionalUsd),
     dailyLossLimitUsd: num(r.dailyLossLimitUsd, base.dailyLossLimitUsd),
+    maxDailyTrades: num(r.maxDailyTrades, base.maxDailyTrades),
+    useOcoBracket: bool(r.useOcoBracket, base.useOcoBracket),
   }
 }
 
@@ -124,6 +134,8 @@ export function publicExchangeSettings(
     notionalUsd: settings.notionalUsd,
     maxNotionalUsd: settings.maxNotionalUsd,
     dailyLossLimitUsd: settings.dailyLossLimitUsd,
+    maxDailyTrades: settings.maxDailyTrades,
+    useOcoBracket: settings.useOcoBracket,
     apiKeySet: Boolean(settings.apiKey),
     secretSet: Boolean(settings.secret),
   }

@@ -12,6 +12,8 @@ const base: ExchangeSettings = {
   notionalUsd: 100,
   maxNotionalUsd: 100,
   dailyLossLimitUsd: 50,
+  maxDailyTrades: 5,
+  useOcoBracket: true,
 }
 
 describe('decideTrade', () => {
@@ -108,5 +110,22 @@ describe('checkGuards', () => {
       settings: { ...base, killSwitch: true, maxNotionalUsd: 10 },
     })
     expect(result.ok === false && result.reason).toContain('Kill switch')
+  })
+
+  it('refuses when daily trades limit is reached', () => {
+    const result = checkGuards({
+      ...ok,
+      tradesCount24h: 5,
+    })
+    expect(result.ok).toBe(false)
+    expect(result.ok === false && result.reason).toContain('Daily trade limit reached')
+  })
+
+  it('allows order when below daily trades limit', () => {
+    const result = checkGuards({
+      ...ok,
+      tradesCount24h: 4,
+    })
+    expect(result.ok).toBe(true)
   })
 })

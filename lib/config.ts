@@ -168,6 +168,10 @@ export const config = {
     maxNotionalUsd: num(process.env.MAX_NOTIONAL_USD, 100),
     /** Rolling 24h realised-loss limit; breaching it pauses trading. */
     dailyLossLimitUsd: num(process.env.DAILY_LOSS_LIMIT_USD, 50),
+    /** Max trades allowed per 24h window (default 5 for active day trading). */
+    maxDailyTrades: num(process.env.MAX_DAILY_TRADES, 5),
+    /** Automatically attach Binance native OCO bracket (SL + TP) on BUY orders. */
+    useOcoBracket: bool(process.env.USE_OCO_BRACKET, true),
   },
 
   db: {

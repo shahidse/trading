@@ -1,17 +1,23 @@
 import { config } from '@/lib/config'
-import { getOpenBuyPosition, realisedPnlSince, recordTradeOrder } from '@/lib/db/client'
+import {
+  countTradesSince,
+  getOpenBuyPosition,
+  realisedPnlSince,
+  recordTradeOrder,
+} from '@/lib/db/client'
 import {
   assertWithdrawalsDisabled,
   getTradingExchange,
   minimumNotional,
   normaliseQuantity,
+  placeOcoOrder,
 } from '@/lib/exchange/client'
 import {
   getExchangeSettings,
   isTradingArmed,
   type ExchangeSettings,
 } from '@/lib/exchange/settings'
-import type { TradeAction } from '@/lib/types'
+import type { TradeAction, TradeLevels } from '@/lib/types'
 
 /**
  * Automatic order placement.
@@ -99,8 +105,9 @@ export function checkGuards(params: {
   settings: ExchangeSettings
   notionalUsd: number
   realisedPnl24h: number
+  tradesCount24h?: number
 }): GuardResult {
-  const { settings, notionalUsd, realisedPnl24h } = params
+  const { settings, notionalUsd, realisedPnl24h, tradesCount24h } = params
 
   if (settings.killSwitch) return { ok: false, reason: 'Kill switch is on' }
   if (!settings.enabled) return { ok: false, reason: 'Automatic trading is disabled' }
@@ -126,6 +133,16 @@ export function checkGuards(params: {
       )} vs limit -$${settings.dailyLossLimitUsd.toFixed(2)})`,
     }
   }
+  if (
+    settings.maxDailyTrades > 0 &&
+    tradesCount24h !== undefined &&
+    tradesCount24h >= settings.maxDailyTrades
+  ) {
+    return {
+      ok: false,
+      reason: `Daily trade limit reached (${tradesCount24h}/${settings.maxDailyTrades} trades in the last 24h)`,
+    }
+  }
 
   return { ok: true }
 }
@@ -139,6 +156,7 @@ export function environmentLabel(settings: ExchangeSettings): string {
 export async function executeTrade(
   intent: TradeIntent,
   signalId: number | null = null,
+  levels?: TradeLevels | null,
 ): Promise<TradeOutcome> {
   const settings = getExchangeSettings()
   const environment = environmentLabel(settings)
@@ -153,10 +171,13 @@ export async function executeTrade(
     settings,
     notionalUsd,
     realisedPnl24h: realisedPnlSince(Date.now() - DAY_MS),
+    tradesCount24h: countTradesSince(Date.now() - DAY_MS),
   })
 
   const log = (fields: {
     status: TradeStatus
+    side?: 'BUY' | 'SELL'
+    type?: string
     quantity?: number
     price?: number | null
     notionalUsd?: number
@@ -166,8 +187,8 @@ export async function executeTrade(
   }) =>
     recordTradeOrder({
       symbol: intent.symbol,
-      side: intent.side,
-      type: 'market',
+      side: fields.side ?? intent.side,
+      type: fields.type ?? 'market',
       quantity: fields.quantity ?? 0,
       price: fields.price ?? null,
       notionalUsd: fields.notionalUsd ?? notionalUsd,
@@ -261,6 +282,28 @@ export async function executeTrade(
         notionalUsd: estimatedCost,
         reason,
       })
+
+      // Simulate OCO bracket placement for dry-run
+      if (
+        settings.useOcoBracket &&
+        intent.side === 'BUY' &&
+        levels &&
+        levels.takeProfit > 0 &&
+        levels.stopLoss > 0
+      ) {
+        log({
+          status: 'dry-run',
+          side: 'SELL',
+          type: 'oco',
+          quantity,
+          price: levels.takeProfit,
+          notionalUsd: quantity * levels.takeProfit,
+          reason: `Dry run Binance OCO bracket — TP: $${levels.takeProfit.toFixed(
+            2,
+          )}, SL: $${levels.stopLoss.toFixed(2)}`,
+        })
+      }
+
       return outcome('dry-run', reason, {
         quantity,
         price: marketPrice,
@@ -294,6 +337,38 @@ export async function executeTrade(
       response: order,
     })
 
+    // Automatically attach Binance native OCO bracket orders for BUY positions
+    if (
+      settings.useOcoBracket &&
+      intent.side === 'BUY' &&
+      levels &&
+      levels.takeProfit > 0 &&
+      levels.stopLoss > 0
+    ) {
+      try {
+        const ocoRes = await placeOcoOrder(exchange, {
+          symbol: intent.symbol,
+          quantity: filledQuantity,
+          takeProfitPrice: levels.takeProfit,
+          stopLossPrice: levels.stopLoss,
+        })
+        log({
+          status: 'placed',
+          side: 'SELL',
+          type: 'oco',
+          quantity: filledQuantity,
+          price: levels.takeProfit,
+          notionalUsd: filledQuantity * levels.takeProfit,
+          reason: `Binance native OCO bracket placed: TP $${levels.takeProfit.toFixed(
+            2,
+          )}, SL $${levels.stopLoss.toFixed(2)} (List #${ocoRes.orderListId})`,
+          response: ocoRes,
+        })
+      } catch (ocoErr) {
+        console.error('[trader] Warning: Failed to attach native Binance OCO order:', ocoErr)
+      }
+    }
+
     return outcome('placed', intent.reason, {
       quantity: filledQuantity,
       price: fillPrice,
@@ -317,6 +392,7 @@ export async function runAutoTrade(
   previousAction: TradeAction | null,
   nextAction: TradeAction,
   signalId: number | null,
+  levels?: TradeLevels | null,
 ): Promise<TradeOutcome | null> {
   const settings = getExchangeSettings()
   if (!isTradingArmed(settings)) return null
@@ -331,5 +407,5 @@ export async function runAutoTrade(
   )
 
   if (!intent) return null
-  return executeTrade(intent, signalId)
+  return executeTrade(intent, signalId, levels)
 }

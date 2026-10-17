@@ -48,6 +48,56 @@ export function minimumNotional(exchange: Exchange, symbol: string): number {
   return Number(market?.limits?.cost?.min ?? 0)
 }
 
+export type OcoOrderParams = {
+  symbol: string
+  quantity: number
+  takeProfitPrice: number
+  stopLossPrice: number
+  stopLimitPrice?: number
+}
+
+export type OcoOrderResponse = {
+  orderListId: number
+  contingencyType: string
+  listStatusType: string
+  listOrderStatus: string
+  orders: Array<{ symbol: string; orderId: number; clientOrderId: string }>
+}
+
+/**
+ * Places a native Binance Spot OCO (One-Cancels-the-Other) bracket order.
+ * Automatically ties Take-Profit and Stop-Loss orders directly on Binance's order book.
+ */
+export async function placeOcoOrder(
+  exchange: Exchange,
+  params: OcoOrderParams,
+): Promise<OcoOrderResponse> {
+  const { symbol, quantity, takeProfitPrice, stopLossPrice, stopLimitPrice } = params
+  const market = exchange.market(symbol)
+  const normQty = normaliseQuantity(exchange, symbol, quantity)
+  const normTpPrice = exchange.priceToPrecision(symbol, takeProfitPrice)
+  const normSlPrice = exchange.priceToPrecision(symbol, stopLossPrice)
+  const slLimit = stopLimitPrice ?? stopLossPrice * 0.998
+  const normSlLimitPrice = exchange.priceToPrecision(symbol, slLimit)
+
+  const fn = (exchange as unknown as Record<string, Function>)['private_post_order_oco']
+  if (typeof fn !== 'function') {
+    throw new Error('Exchange client does not support private_post_order_oco')
+  }
+
+  const res = (await fn.call(exchange, {
+    symbol: market.id,
+    side: 'SELL',
+    quantity: normQty,
+    price: normTpPrice,
+    stopPrice: normSlPrice,
+    stopLimitPrice: normSlLimitPrice,
+    stopLimitTimeInForce: 'GTC',
+  })) as OcoOrderResponse
+
+  return res
+}
+
 /**
  * Refuse to trade if the API key is allowed to withdraw funds.
  *

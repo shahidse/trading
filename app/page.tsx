@@ -91,7 +91,7 @@ export default function Page() {
             href="/settings"
             className="rounded-lg border border-line px-3 py-2 text-sm text-muted transition hover:bg-surface-2 hover:text-ink"
           >
-            Notifications
+            Settings
           </Link>
           <TradingControls />
           <ThemeToggle />

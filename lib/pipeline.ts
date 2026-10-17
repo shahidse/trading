@@ -70,7 +70,7 @@ export async function runAnalysis(options: SnapshotOptions = {}): Promise<Analys
 
   // Automatic order placement. A no-op unless trading is armed in /settings,
   // and every guard runs inside `runAutoTrade` before any signed request.
-  const trade = await runAutoTrade(previousAction, signal.plan.action, id)
+  const trade = await runAutoTrade(previousAction, signal.plan.action, id, signal.plan.levels)
 
   let emailSent = false
   if (shouldNotify(settings.email.mode, previousState, nextState) && isEmailConfigured()) {
