@@ -9,10 +9,8 @@ import {
   Switch,
   Alert,
   ActivityIndicator,
-  SafeAreaView,
-  Platform,
-  StatusBar,
 } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { useTheme } from '../theme'
 import { api } from '../services/api'
 import { NotifySettings, TradingStateResponse } from '../types'
@@ -466,7 +464,6 @@ export const SettingsModal: React.FC<Props> = ({ onClose }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 0,
   },
   header: {
     flexDirection: 'row',

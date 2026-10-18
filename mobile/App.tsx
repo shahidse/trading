@@ -6,13 +6,13 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
-  SafeAreaView,
   StatusBar,
   Modal,
   ActivityIndicator,
   Alert,
   Platform,
 } from 'react-native'
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { api } from './src/services/api'
 import { Candle, ChartPayload, PriceResponse, Signal, TradingStateResponse } from './src/types'
 import {
@@ -498,16 +498,17 @@ function MainScreen() {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <MainScreen />
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <MainScreen />
+      </ThemeProvider>
+    </SafeAreaProvider>
   )
 }
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 0,
   },
   navBar: {
     flexDirection: 'row',
