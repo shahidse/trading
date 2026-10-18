@@ -158,6 +158,7 @@ export type TradingStateResponse = {
     stopLossAtrMultiplier: number
     takeProfitRiskMultiplier: number
     useOcoBracket: boolean
+    reversalScalpMode?: boolean
     hasApiKey: boolean
     hasSecret: boolean
   }

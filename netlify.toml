@@ -1,9 +1,21 @@
 [build]
   command = "npm install && npm run build"
   publish = ".next"
+  functions = "netlify/functions"
 
 [build.environment]
   NODE_VERSION = "20"
+  REVERSAL_SCALP_MODE = "true"
+  TRADING_ENABLED = "true"
+  TRADING_DRY_RUN = "true"
+
+[context.production.environment]
+  REVERSAL_SCALP_MODE = "true"
+  TRADING_ENABLED = "true"
+  TRADING_DRY_RUN = "true"
+
+[functions."analyze-cron"]
+  schedule = "*/15 * * * *"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"

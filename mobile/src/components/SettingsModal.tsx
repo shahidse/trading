@@ -32,6 +32,7 @@ export const SettingsModal: React.FC<Props> = ({ onClose }) => {
   const [maxNotionalUsd, setMaxNotionalUsd] = useState('250')
   const [dailyLossLimitUsd, setDailyLossLimitUsd] = useState('100')
   const [useOcoBracket, setUseOcoBracket] = useState(true)
+  const [reversalScalpMode, setReversalScalpMode] = useState(true)
 
   // Notification settings
   const [tgEnabled, setTgEnabled] = useState(false)
@@ -55,6 +56,7 @@ export const SettingsModal: React.FC<Props> = ({ onClose }) => {
           setMaxNotionalUsd(String(tradesRes.settings.maxNotionalUsd))
           setDailyLossLimitUsd(String(tradesRes.settings.dailyLossLimitUsd))
           setUseOcoBracket(tradesRes.settings.useOcoBracket)
+          setReversalScalpMode(tradesRes.settings.reversalScalpMode ?? true)
         }
 
         if (notifyRes?.settings) {
@@ -86,6 +88,7 @@ export const SettingsModal: React.FC<Props> = ({ onClose }) => {
           maxNotionalUsd: parseFloat(maxNotionalUsd) || 250,
           dailyLossLimitUsd: parseFloat(dailyLossLimitUsd) || 100,
           useOcoBracket,
+          reversalScalpMode,
         }),
         api.updateSettings({
           telegram: { enabled: tgEnabled, chatId: tgChatId },
@@ -255,6 +258,20 @@ export const SettingsModal: React.FC<Props> = ({ onClose }) => {
               <Switch
                 value={useOcoBracket}
                 onValueChange={setUseOcoBracket}
+                trackColor={{ false: colors.surface3, true: colors.bullish }}
+              />
+            </View>
+
+            <View style={[styles.switchRow, { borderBottomColor: colors.borderSubtle }]}>
+              <View style={{ flex: 1, paddingRight: 12 }}>
+                <Text style={[styles.switchLabel, { color: colors.text }]}>Reversal Scalping Mode</Text>
+                <Text style={[styles.switchHint, { color: colors.textMuted }]}>
+                  Earn daily by taking BUY scalps on bullish candle bounces in downtrends
+                </Text>
+              </View>
+              <Switch
+                value={reversalScalpMode}
+                onValueChange={setReversalScalpMode}
                 trackColor={{ false: colors.surface3, true: colors.bullish }}
               />
             </View>

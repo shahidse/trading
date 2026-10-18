@@ -173,7 +173,7 @@ export const config = {
     /** Automatically attach Binance native OCO bracket (SL + TP) on BUY orders. */
     useOcoBracket: bool(process.env.USE_OCO_BRACKET, true),
     /** Reversal scalping mode: allows BUY on strong bullish candle patterns / oversold bounce even in downtrends. */
-    reversalScalpMode: bool(process.env.REVERSAL_SCALP_MODE, false),
+    reversalScalpMode: bool(process.env.REVERSAL_SCALP_MODE, true),
   },
 
   /** Reversal Scalper parameters for intraday candle bounces */
