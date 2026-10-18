@@ -1,4 +1,5 @@
 import { config } from '@/lib/config'
+import { getExchangeSettings, isTradingArmed } from '@/lib/exchange/settings'
 import { runAnalysis } from '@/lib/pipeline'
 
 /**
@@ -65,13 +66,15 @@ async function main(): Promise<void> {
   console.log(
     `Telegram    : ${result.telegramSent ? 'sent' : 'not sent'}  (mode: ${result.telegramMode})`,
   )
-  console.log(
-    `Trade       : ${
-      result.trade
-        ? `${result.trade.status} — ${result.trade.reason}`
-        : 'not armed (see /settings)'
-    }`,
-  )
+  const exSettings = getExchangeSettings()
+  const armed = isTradingArmed(exSettings)
+  const tradeDesc = result.trade
+    ? `${result.trade.status} — ${result.trade.reason}`
+    : armed
+      ? `armed (${exSettings.dryRun ? 'dry-run' : 'live'}) — no transition on this candle`
+      : 'not armed (see /settings)'
+
+  console.log(`Trade       : ${tradeDesc}`)
   console.log(`Stored id   : ${result.id}`)
   console.log(`Elapsed     : ${Date.now() - started} ms`)
 }

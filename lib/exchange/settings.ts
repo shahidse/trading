@@ -31,6 +31,8 @@ export type ExchangeSettings = {
   maxDailyTrades: number
   /** Automatically attach Binance native OCO bracket (SL + TP) on BUY orders. */
   useOcoBracket: boolean
+  /** Reversal scalping mode: capture intraday bullish candle bounces in downtrends. */
+  reversalScalpMode: boolean
 }
 
 /** What the browser may see: credentials become set/unset flags. */
@@ -44,6 +46,7 @@ export type PublicExchangeSettings = {
   dailyLossLimitUsd: number
   maxDailyTrades: number
   useOcoBracket: boolean
+  reversalScalpMode: boolean
   apiKeySet: boolean
   secretSet: boolean
 }
@@ -63,6 +66,7 @@ function envDefaults(): ExchangeSettings {
     dailyLossLimitUsd: config.exchange.dailyLossLimitUsd,
     maxDailyTrades: config.exchange.maxDailyTrades,
     useOcoBracket: config.exchange.useOcoBracket,
+    reversalScalpMode: config.exchange.reversalScalpMode,
   }
 }
 
@@ -92,6 +96,7 @@ function mergeStored(raw: unknown, base: ExchangeSettings): ExchangeSettings {
     dailyLossLimitUsd: num(r.dailyLossLimitUsd, base.dailyLossLimitUsd),
     maxDailyTrades: num(r.maxDailyTrades, base.maxDailyTrades),
     useOcoBracket: bool(r.useOcoBracket, base.useOcoBracket),
+    reversalScalpMode: bool(r.reversalScalpMode, base.reversalScalpMode),
   }
 }
 
@@ -136,6 +141,7 @@ export function publicExchangeSettings(
     dailyLossLimitUsd: settings.dailyLossLimitUsd,
     maxDailyTrades: settings.maxDailyTrades,
     useOcoBracket: settings.useOcoBracket,
+    reversalScalpMode: settings.reversalScalpMode,
     apiKeySet: Boolean(settings.apiKey),
     secretSet: Boolean(settings.secret),
   }

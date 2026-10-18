@@ -1,5 +1,6 @@
 import { getMarketSnapshot, type SnapshotOptions } from '@/lib/data/aggregate'
 import { getLastSignal, markEmailed, saveSignal } from '@/lib/db/client'
+import { getExchangeSettings } from '@/lib/exchange/settings'
 import { runAutoTrade, type TradeOutcome } from '@/lib/exchange/trader'
 import { getNotifySettings } from '@/lib/notify/settings'
 import { isEmailConfigured, sendSignalEmail } from '@/lib/notify/resend'
@@ -41,6 +42,7 @@ export type AnalysisResult = {
  */
 export async function runAnalysis(options: SnapshotOptions = {}): Promise<AnalysisResult> {
   const snapshot = await getMarketSnapshot(options)
+  const exchangeSettings = getExchangeSettings()
 
   const signal = generateSignal(snapshot.candles, {
     symbol: snapshot.symbol,
@@ -49,6 +51,7 @@ export async function runAnalysis(options: SnapshotOptions = {}): Promise<Analys
     chainlinkPrice: snapshot.chainlink?.price ?? null,
     divergencePct: snapshot.divergencePct,
     timestamp: Date.now(),
+    reversalScalpMode: exchangeSettings.reversalScalpMode,
   })
 
   const previous = getLastSignal()

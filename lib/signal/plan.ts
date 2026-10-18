@@ -146,6 +146,29 @@ export type TradePlanInput = {
   regime: RegimeInfo
   confluence: ConfluenceInfo
   trend: TrendRead
+  patternScore?: number
+  patternNames?: string[]
+  rsiValue?: number | null
+  reversalScalpMode?: boolean
+}
+
+/** Tight scalp levels (~0.8% stop, ~1.2% profit target for quick intraday gains). */
+function buildScalpLevels(price: number): TradeLevels | null {
+  if (price <= 0) return null
+  const stopDistancePct = config.scalp.stopDistancePct
+  const targetDistancePct = config.scalp.targetDistancePct
+  const stopLoss = round(price * (1 - stopDistancePct / 100), 2)
+  const takeProfit = round(price * (1 + targetDistancePct / 100), 2)
+  const riskReward = round(targetDistancePct / stopDistancePct, 2)
+
+  return {
+    entry: round(price, 2),
+    stopLoss,
+    takeProfit,
+    riskReward,
+    stopDistancePct,
+    targetDistancePct,
+  }
 }
 
 /**
@@ -153,7 +176,18 @@ export type TradePlanInput = {
  * enter / hold / sell, plus the price levels that define the risk.
  */
 export function buildTradePlan(input: TradePlanInput): TradePlan {
-  const { direction, price, score, regime, confluence, trend } = input
+  const {
+    direction,
+    price,
+    score,
+    regime,
+    confluence,
+    trend,
+    patternScore = 0,
+    patternNames = [],
+    rsiValue = null,
+    reversalScalpMode = false,
+  } = input
   const atrValue = regime.atrValue
 
   const protectiveStop =
@@ -163,16 +197,22 @@ export function buildTradePlan(input: TradePlanInput): TradePlan {
 
   const context: string[] = [regime.detail, confluence.detail]
 
+  // Check if there is an active bullish candle pattern or oversold bounce setup
+  const hasBullishPattern =
+    patternScore >= config.scalp.minBullishPatternStrength ||
+    patternNames.some(
+      (p) =>
+        p.toLowerCase().includes('bullish') ||
+        p.toLowerCase().includes('hammer') ||
+        p.toLowerCase().includes('morning') ||
+        p.toLowerCase().includes('piercing') ||
+        p.toLowerCase().includes('soldiers'),
+    )
+  const isOversold = rsiValue !== null && rsiValue <= config.scalp.oversoldRsiThreshold
+  const scalpTriggered = reversalScalpMode && (hasBullishPattern || (isOversold && score > -15))
+
   // ---------- LONG ----------
   if (direction === 'LONG') {
-    /**
-     * Safety net, not the main defence. Measured: this fired 0 times across
-     * 1790 backtested bars, even when broadened to include ADX-confirmed
-     * downside pressure. The reason is structural — the ADX regime tilt already
-     * halves mean-reversion weights in a trend, so a composite rarely reaches
-     * LONG while the trend group points down. Kept because it costs nothing and
-     * guards the residual case.
-     */
     const counterTrend =
       config.trade.blockCounterTrend &&
       regime.regime !== 'ranging' &&
@@ -180,19 +220,50 @@ export function buildTradePlan(input: TradePlanInput): TradePlan {
         (regime.regime === 'trending' && regime.direction === 'bearish'))
 
     if (counterTrend) {
+      // If Reversal Scalping Mode is active and bullish candle confirms, execute scalp BUY
+      if (reversalScalpMode && (hasBullishPattern || score >= 20)) {
+        const scalpLevels = buildScalpLevels(price)
+        return {
+          action: 'BUY',
+          gate: 'scalp-open',
+          headline: scalpLevels
+            ? `Reversal Scalp Long ~${money(scalpLevels.entry)} · tight stop ${money(
+                scalpLevels.stopLoss,
+              )} · target ${money(scalpLevels.takeProfit)} (+${scalpLevels.targetDistancePct}%)`
+            : 'Reversal Scalp Long at market',
+          forFlat: scalpLevels
+            ? `Scalp bullish bounce. Buy near ${money(scalpLevels.entry)} with tight stop ${money(
+                scalpLevels.stopLoss,
+              )} (−${scalpLevels.stopDistancePct}%) and target ${money(scalpLevels.takeProfit)} (+${
+                scalpLevels.targetDistancePct
+              }%).`
+            : 'Scalp bullish candle at market.',
+          forHolder: 'Take quick profit at target — counter-trend scalp.',
+          levels: scalpLevels,
+          protectiveStop,
+          rationale: [
+            ...context,
+            `Reversal Scalping Mode active: bullish candle setup detected (${
+              patternNames.join(', ') || `composite ${score}`
+            }) during downtrend.`,
+            'Executing quick-profit scalp order with tight risk controls.',
+          ],
+        }
+      }
+
       return {
         action: 'STAY_OUT',
         gate: 'blocked-by-trend',
         headline: 'Do not buy — bullish score blocked by a bearish trend',
         forFlat:
-          'Stay out. Wait for the trend group (EMA stack / cloud / MACD) to stop pointing down.',
+          'Stay out. Wait for the trend group (EMA stack / cloud / MACD) to stop pointing down, or enable Reversal Scalp Mode.',
         forHolder: 'Consider trimming. Do not add to this position.',
         levels: null,
         protectiveStop,
         rationale: [
           ...context,
           `Composite is bullish (${score}) but the trend gate is closed: ${trend.evidence.join(', ')}.`,
-          'This is the exact situation that produced the low backtest win rate — mean-reversion indicators calling a bottom in a downtrend.',
+          'Trend filter active — to trade intraday bounces, enable Reversal Scalping Mode in Settings.',
         ],
       }
     }
@@ -228,6 +299,35 @@ export function buildTradePlan(input: TradePlanInput): TradePlan {
 
   // ---------- SHORT ----------
   if (direction === 'SHORT') {
+    // Even during SHORT reading, if user enabled Reversal Scalp Mode and strong bullish reversal candle triggers
+    if (scalpTriggered && hasBullishPattern) {
+      const scalpLevels = buildScalpLevels(price)
+      return {
+        action: 'BUY',
+        gate: 'scalp-open',
+        headline: scalpLevels
+          ? `Intraday Scalp Bounce ~${money(scalpLevels.entry)} · tight stop ${money(
+              scalpLevels.stopLoss,
+            )} · target ${money(scalpLevels.takeProfit)} (+${scalpLevels.targetDistancePct}%)`
+          : 'Intraday Scalp Long at market',
+        forFlat: scalpLevels
+          ? `Quick scalp: Bullish candle pattern (${patternNames.join(
+              ', ',
+            )}) detected. Buy near ${money(scalpLevels.entry)}, target ${money(
+              scalpLevels.takeProfit,
+            )} (+${scalpLevels.targetDistancePct}%).`
+          : 'Quick scalp on bullish reversal pattern.',
+        forHolder: 'Take fast profit at target; overall macro trend is still downward.',
+        levels: scalpLevels,
+        protectiveStop,
+        rationale: [
+          ...context,
+          `Reversal Scalping Mode: Bullish reversal candle detected (${patternNames.join(', ')}) despite negative composite ${score}.`,
+          `Targeting quick +${config.scalp.targetDistancePct}% profit with tight stop −${config.scalp.stopDistancePct}%.`,
+        ],
+      }
+    }
+
     return {
       action: 'SELL',
       gate: 'open',
@@ -249,6 +349,36 @@ export function buildTradePlan(input: TradePlanInput): TradePlan {
   }
 
   // ---------- NEUTRAL ----------
+  if (scalpTriggered) {
+    const scalpLevels = buildScalpLevels(price)
+    return {
+      action: 'BUY',
+      gate: 'scalp-open',
+      headline: scalpLevels
+        ? `Intraday Scalp Long ~${money(scalpLevels.entry)} · stop ${money(
+            scalpLevels.stopLoss,
+          )} · target ${money(scalpLevels.takeProfit)} (+${scalpLevels.targetDistancePct}%)`
+        : 'Intraday Scalp Long at market',
+      forFlat: scalpLevels
+        ? `Scalp bounce: ${
+            patternNames.length > 0 ? `Bullish pattern (${patternNames.join(', ')})` : 'Oversold bounce'
+          } in neutral range. Enter near ${money(scalpLevels.entry)}, stop ${money(
+            scalpLevels.stopLoss,
+          )}, target ${money(scalpLevels.takeProfit)} (+${scalpLevels.targetDistancePct}%).`
+        : 'Enter scalp long on bullish candle bounce.',
+      forHolder: 'Hold and take profit at scalp target.',
+      levels: scalpLevels,
+      protectiveStop,
+      rationale: [
+        ...context,
+        `Reversal Scalp triggered in neutral market: ${
+          patternNames.join(', ') || (isOversold ? `RSI oversold (${rsiValue})` : 'Bullish candle momentum')
+        }.`,
+        `Aiming for intraday gain of +${config.scalp.targetDistancePct}%.`,
+      ],
+    }
+  }
+
   const waiting = trend.verdict === 'up' ? 'Trend is still constructive' : 'No directional edge'
 
   return {

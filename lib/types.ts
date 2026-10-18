@@ -108,10 +108,11 @@ export type TradePlan = {
   forHolder: string
   /**
    * 'open'          — the setup passed the trend gate
+   * 'scalp-open'    — counter-trend bullish candle bounce executed under reversal scalping mode
    * 'blocked-by-trend' — bullish score refused because the trend is bearish
    * 'no-edge'       — composite is inside the neutral band
    */
-  gate: 'open' | 'blocked-by-trend' | 'no-edge'
+  gate: 'open' | 'scalp-open' | 'blocked-by-trend' | 'no-edge'
   levels: TradeLevels | null
   /** Protective stop for an existing position, even when no entry is advised. */
   protectiveStop: number | null

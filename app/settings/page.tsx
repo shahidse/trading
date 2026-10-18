@@ -3,8 +3,74 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { ExchangeSettingsCard } from '@/components/ExchangeSettingsCard'
-import { ThemeToggle } from '@/components/ThemeToggle'
+import { ThemeToggle, useTheme } from '@/components/ThemeToggle'
+import { LAYOUT_OPTIONS, type LayoutType } from '@/lib/theme'
 import { readJson } from '@/lib/utils'
+
+/** Interactive layout selection card */
+function LayoutCardItem({
+  item,
+}: {
+  item: (typeof LAYOUT_OPTIONS)[number]
+}) {
+  const { layoutType, setLayoutType } = useTheme()
+  const active = layoutType === item.id
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => setLayoutType(item.id)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          setLayoutType(item.id)
+        }
+      }}
+      className={`group cursor-pointer rounded-2xl border p-4 text-xs transition-all relative flex flex-col justify-between ${
+        active
+          ? 'border-accent bg-accent/5 shadow-md ring-2 ring-accent/30'
+          : 'border-line bg-surface hover:border-line-soft hover:bg-surface-2/60 hover:shadow-xs'
+      }`}
+    >
+      <div>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xl p-1.5 rounded-xl bg-surface-2 border border-line-soft">{item.icon}</span>
+            <div>
+              <span className="font-bold text-sm text-ink group-hover:text-accent transition">
+                {item.label}
+              </span>
+              <span
+                className={`ml-2 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                  active ? 'bg-accent text-white' : 'bg-surface-2 text-subtle'
+                }`}
+              >
+                {active ? 'Active' : 'Select'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <p className="mt-3 text-subtle leading-relaxed font-medium">
+          {item.uxFocus}
+        </p>
+      </div>
+
+      <div className="mt-4 pt-3 border-t border-line-soft space-y-1.5 text-[11px]">
+        <div className="flex items-center justify-between">
+          <span className="text-subtle font-medium">Data Density</span>
+          <span className="font-semibold text-ink">{item.density}</span>
+        </div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+          <span className="text-subtle font-medium">Mobile Adaptation</span>
+          <span className="font-semibold text-accent sm:text-ink text-left sm:text-right" title={item.mobileAdaptability}>
+            {item.mobileAdaptability}
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 /**
  * Notification settings — trigger mode, recipients and credentials for the
@@ -207,13 +273,12 @@ export default function SettingsPage() {
     <main className="mx-auto max-w-3xl px-5 py-10">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Notification settings</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">App & Notification Settings</h1>
           <p className="mt-1 text-sm text-muted">
-            Configure when and where alerts are sent. Both channels are independent.
+            Configure layout mode, visual design archetype, automated trading, and alert channels.
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <ThemeToggle />
           <Link
             href="/"
             className="rounded-lg border border-line px-4 py-2 text-sm text-muted transition hover:bg-surface-2 hover:text-ink"
@@ -227,15 +292,37 @@ export default function SettingsPage() {
         <p className="mt-8 text-sm text-subtle">Loading…</p>
       ) : (
         <div className="mt-6 space-y-6">
-          {/* ---- Design Archetype & Theme ---- */}
+          {/* ---- Workspace Layout Architecture ---- */}
+          <section className="rounded-2xl border border-line bg-surface p-6 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
+                  Workspace Layout Architecture
+                </h2>
+                <p className="mt-1 text-xs text-subtle">
+                  Select your optimal layout paradigm. Changing this reorganizes your live trading cockpit across all devices.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {LAYOUT_OPTIONS.map((item) => {
+                return (
+                  <LayoutCardItem key={item.id} item={item} />
+                )
+              })}
+            </div>
+          </section>
+
+          {/* ---- Design Archetype & Theme (Only once here) ---- */}
           <section className="rounded-2xl border border-line bg-surface p-6 shadow-xs">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
                 <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
-                  Design Archetype & Theme
+                  Design Archetype & Color Theme
                 </h2>
                 <p className="mt-1 text-xs text-subtle">
-                  Toggle between the 4 custom layout structures and light/dark mode.
+                  Toggle between the 4 custom aesthetic styling systems and light/dark mode.
                 </p>
               </div>
               <ThemeToggle />

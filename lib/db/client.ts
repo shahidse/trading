@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import Database from 'better-sqlite3'
-import { and, desc, eq, gt } from 'drizzle-orm'
+import { and, asc, desc, eq, gt, ne } from 'drizzle-orm'
 import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import { config } from '@/lib/config'
 import type {
@@ -353,4 +353,42 @@ export function getOpenBuyPosition(symbol: string): StoredTradeOrder | null {
     .get()
 
   return closingSell ? null : lastBuy
+}
+
+/**
+ * The current simulated position in dry-run mode (BUY or SELL).
+ * In dry-run mode, both long (BUY first) and short (SELL first) positions are tracked.
+ */
+export function getOpenDryRunPosition(
+  symbol: string,
+): { side: 'BUY' | 'SELL'; order: StoredTradeOrder } | null {
+  const db = getDb()
+
+  const orders = db
+    .select()
+    .from(tradeOrders)
+    .where(
+      and(
+        eq(tradeOrders.symbol, symbol),
+        eq(tradeOrders.status, 'dry-run'),
+        ne(tradeOrders.type, 'oco'),
+      ),
+    )
+    .orderBy(asc(tradeOrders.id))
+    .all()
+
+  let current: { side: 'BUY' | 'SELL'; order: StoredTradeOrder } | null = null
+
+  for (const order of orders) {
+    if (!current) {
+      current = { side: order.side as 'BUY' | 'SELL', order }
+    } else if (current.side !== order.side) {
+      // Opposite side closes the position
+      current = null
+    } else {
+      current = { side: order.side as 'BUY' | 'SELL', order }
+    }
+  }
+
+  return current
 }

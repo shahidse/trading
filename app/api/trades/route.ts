@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server'
-import { getOpenBuyPosition, getRecentTradeOrders, realisedPnlSince } from '@/lib/db/client'
+import {
+  getOpenBuyPosition,
+  getOpenDryRunPosition,
+  getRecentTradeOrders,
+  realisedPnlSince,
+} from '@/lib/db/client'
 import { config } from '@/lib/config'
 import {
   getExchangeSettings,
@@ -27,10 +32,14 @@ export function GET() {
     const settings = getExchangeSettings()
     const realisedPnl24h = realisedPnlSince(Date.now() - DAY_MS)
 
+    const openPosition = settings.dryRun
+      ? (getOpenDryRunPosition(config.symbol)?.order ?? null)
+      : getOpenBuyPosition(config.symbol)
+
     return NextResponse.json({
       settings: publicExchangeSettings(settings),
       orders: getRecentTradeOrders(50),
-      openPosition: getOpenBuyPosition(config.symbol),
+      openPosition,
       realisedPnl24h,
       symbol: config.symbol,
     })

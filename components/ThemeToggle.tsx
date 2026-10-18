@@ -3,11 +3,15 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   COLOR_MODE_KEY,
+  DEFAULT_LAYOUT,
   DEFAULT_MODE,
   DEFAULT_STYLE,
+  LAYOUT_OPTIONS,
+  LAYOUT_TYPE_KEY,
   THEME_STYLE_KEY,
   THEME_STYLES,
   type ColorMode,
+  type LayoutType,
   type ThemeStyle,
 } from '@/lib/theme'
 
@@ -18,32 +22,42 @@ function readStyle(): ThemeStyle {
   return (document.documentElement.getAttribute('data-style') as ThemeStyle) || DEFAULT_STYLE
 }
 
+function readLayout(): LayoutType {
+  if (typeof document === 'undefined') return DEFAULT_LAYOUT
+  return (document.documentElement.getAttribute('data-layout') as LayoutType) || DEFAULT_LAYOUT
+}
+
 function readMode(): ColorMode {
   if (typeof document === 'undefined') return DEFAULT_MODE
   return document.documentElement.classList.contains('dark') ? 'dark' : 'light'
 }
 
 /**
- * Hook providing the active archetype themeStyle and colorMode (dark/light),
- * along with setters and togglers that broadcast changes to Canvas charts.
+ * Hook providing the active archetype themeStyle, layoutType, and colorMode (dark/light),
+ * along with setters and togglers that broadcast changes across the app.
  */
 export function useTheme(): {
   theme: ColorMode
   themeStyle: ThemeStyle
+  layoutType: LayoutType
   colorMode: ColorMode
   toggle: () => void
   setTheme: (theme: ColorMode) => void
   setThemeStyle: (style: ThemeStyle) => void
+  setLayoutType: (layout: LayoutType) => void
 } {
   const [style, setStyleState] = useState<ThemeStyle>(DEFAULT_STYLE)
+  const [layout, setLayoutState] = useState<LayoutType>(DEFAULT_LAYOUT)
   const [mode, setModeState] = useState<ColorMode>(DEFAULT_MODE)
 
   useEffect(() => {
     setStyleState(readStyle())
+    setLayoutState(readLayout())
     setModeState(readMode())
 
     const sync = () => {
       setStyleState(readStyle())
+      setLayoutState(readLayout())
       setModeState(readMode())
     }
 
@@ -71,6 +85,15 @@ export function useTheme(): {
     window.dispatchEvent(new Event('themechange'))
   }, [])
 
+  const setLayoutType = useCallback((nextLayout: LayoutType) => {
+    const root = document.documentElement
+    root.setAttribute('data-layout', nextLayout)
+    try {
+      localStorage.setItem(LAYOUT_TYPE_KEY, nextLayout)
+    } catch {}
+    window.dispatchEvent(new Event('themechange'))
+  }, [])
+
   const toggle = useCallback(() => {
     setTheme(readMode() === 'dark' ? 'light' : 'dark')
   }, [setTheme])
@@ -78,10 +101,12 @@ export function useTheme(): {
   return {
     theme: mode,
     themeStyle: style,
+    layoutType: layout,
     colorMode: mode,
     toggle,
     setTheme,
     setThemeStyle,
+    setLayoutType,
   }
 }
 
@@ -127,6 +152,35 @@ export function ThemeToggle() {
         <span aria-hidden>{isDark ? '☀️' : '🌙'}</span>
         <span className="hidden sm:inline">{isDark ? 'Light' : 'Dark'}</span>
       </button>
+    </div>
+  )
+}
+
+/** Layout Switcher Bar for the 5 Core Layouts */
+export function LayoutSelector() {
+  const { layoutType, setLayoutType } = useTheme()
+
+  return (
+    <div className="flex flex-wrap items-center gap-1 rounded-xl border border-line bg-surface p-1 shadow-xs">
+      {LAYOUT_OPTIONS.map((layout) => {
+        const active = layout.id === layoutType
+        return (
+          <button
+            key={layout.id}
+            type="button"
+            onClick={() => setLayoutType(layout.id)}
+            className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${
+              active
+                ? 'bg-accent text-white shadow-xs'
+                : 'text-muted hover:bg-surface-2 hover:text-ink'
+            }`}
+            title={`${layout.label} · ${layout.uxFocus}`}
+          >
+            <span>{layout.icon}</span>
+            <span>{layout.label}</span>
+          </button>
+        )
+      })}
     </div>
   )
 }

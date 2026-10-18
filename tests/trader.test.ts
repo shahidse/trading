@@ -14,6 +14,7 @@ const base: ExchangeSettings = {
   dailyLossLimitUsd: 50,
   maxDailyTrades: 5,
   useOcoBracket: true,
+  reversalScalpMode: false,
 }
 
 describe('decideTrade', () => {
@@ -47,6 +48,24 @@ describe('decideTrade', () => {
   it('ignores a fresh neutral signal', () => {
     expect(decideTrade(null, 'STAY_OUT', false, 100)).toBeNull()
   })
+
+  it('allows an initial SELL in dry-run mode without prior BUY', () => {
+    const intent = decideTrade('STAY_OUT', 'SELL', false, 100, 'ETH/USDT', true)
+    expect(intent?.side).toBe('SELL')
+    expect(intent?.notionalUsd).toBe(100)
+    expect(intent?.reason).toContain('dry-run initial SELL')
+  })
+
+  it('does not duplicate dry-run initial SELL when previousAction was already SELL', () => {
+    expect(decideTrade('SELL', 'SELL', false, 100, 'ETH/USDT', true)).toBeNull()
+  })
+
+  it('closes an open dry-run SELL with a BUY transition', () => {
+    const intent = decideTrade('SELL', 'BUY', true, 100, 'ETH/USDT', true, 'SELL')
+    expect(intent?.side).toBe('BUY')
+    expect(intent?.notionalUsd).toBe(100)
+    expect(intent?.reason).toContain('closing dry-run SELL')
+  })
 })
 
 describe('checkGuards', () => {
@@ -68,9 +87,13 @@ describe('checkGuards', () => {
     expect(result.ok === false && result.reason).toContain('disabled')
   })
 
-  it('refuses without credentials', () => {
-    expect(checkGuards({ ...ok, settings: { ...base, apiKey: '' } }).ok).toBe(false)
-    expect(checkGuards({ ...ok, settings: { ...base, secret: '' } }).ok).toBe(false)
+  it('refuses without credentials in live or testnet mode', () => {
+    expect(checkGuards({ ...ok, settings: { ...base, dryRun: false, apiKey: '' } }).ok).toBe(false)
+    expect(checkGuards({ ...ok, settings: { ...base, dryRun: false, secret: '' } }).ok).toBe(false)
+  })
+
+  it('permits dry-run paper trading without credentials', () => {
+    expect(checkGuards({ ...ok, settings: { ...base, dryRun: true, apiKey: '', secret: '' } }).ok).toBe(true)
   })
 
   it('refuses an order above the hard cap', () => {

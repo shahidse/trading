@@ -35,24 +35,24 @@ export function SignalCard({ signal }: { signal: Signal & { emailed?: boolean } 
         </div>
       </div>
 
-      <dl className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <div>
-          <dt className="text-xs uppercase tracking-wide text-subtle">Binance</dt>
-          <dd className="mt-1 text-lg font-semibold">{formatPrice(signal.price)}</dd>
+      <dl className="mt-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <div className="min-w-0">
+          <dt className="text-xs uppercase tracking-wide text-subtle truncate">Binance</dt>
+          <dd className="mt-1 text-base xl:text-lg font-semibold truncate">{formatPrice(signal.price)}</dd>
         </div>
-        <div>
-          <dt className="text-xs uppercase tracking-wide text-subtle">Chainlink</dt>
-          <dd className="mt-1 text-lg font-semibold">{formatPrice(signal.chainlinkPrice)}</dd>
+        <div className="min-w-0">
+          <dt className="text-xs uppercase tracking-wide text-subtle truncate">Chainlink</dt>
+          <dd className="mt-1 text-base xl:text-lg font-semibold truncate">{formatPrice(signal.chainlinkPrice)}</dd>
         </div>
-        <div>
-          <dt className="text-xs uppercase tracking-wide text-subtle">Divergence</dt>
-          <dd className="mt-1 text-lg font-semibold">
+        <div className="min-w-0">
+          <dt className="text-xs uppercase tracking-wide text-subtle truncate">Divergence</dt>
+          <dd className="mt-1 text-base xl:text-lg font-semibold truncate">
             {signal.divergencePct != null ? `${signal.divergencePct}%` : '—'}
           </dd>
         </div>
-        <div>
-          <dt className="text-xs uppercase tracking-wide text-subtle">Emailed</dt>
-          <dd className="mt-1 text-lg font-semibold">{signal.emailed ? 'Yes' : 'No'}</dd>
+        <div className="min-w-0">
+          <dt className="text-xs uppercase tracking-wide text-subtle truncate">Emailed</dt>
+          <dd className="mt-1 text-base xl:text-lg font-semibold truncate">{signal.emailed ? 'Yes' : 'No'}</dd>
         </div>
       </dl>
 

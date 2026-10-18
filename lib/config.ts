@@ -172,6 +172,16 @@ export const config = {
     maxDailyTrades: num(process.env.MAX_DAILY_TRADES, 5),
     /** Automatically attach Binance native OCO bracket (SL + TP) on BUY orders. */
     useOcoBracket: bool(process.env.USE_OCO_BRACKET, true),
+    /** Reversal scalping mode: allows BUY on strong bullish candle patterns / oversold bounce even in downtrends. */
+    reversalScalpMode: bool(process.env.REVERSAL_SCALP_MODE, false),
+  },
+
+  /** Reversal Scalper parameters for intraday candle bounces */
+  scalp: {
+    targetDistancePct: num(process.env.SCALP_TARGET_PCT, 1.2), // 1.2% quick take profit
+    stopDistancePct: num(process.env.SCALP_STOP_PCT, 0.8), // 0.8% tight protective stop
+    minBullishPatternStrength: 60,
+    oversoldRsiThreshold: 35,
   },
 
   db: {

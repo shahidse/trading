@@ -178,7 +178,9 @@ export function CandleChart({ limit = 500 }: { limit?: number }) {
 
     // -- main chart: candles + price overlays -----------------------------
     const palette = PALETTES[theme]
-    const main = createChart(mainEl, baseOptions(mainEl, MAIN_HEIGHT, palette))
+    const initialWidth = mainEl.clientWidth || 600
+    const initialHeight = initialWidth < 640 ? 320 : MAIN_HEIGHT
+    const main = createChart(mainEl, baseOptions(mainEl, initialHeight, palette))
     mainRef.current = main
 
     const candle = main.addCandlestickSeries({
@@ -336,11 +338,14 @@ export function CandleChart({ limit = 500 }: { limit?: number }) {
       handlers.push({ chart: source, handler })
     }
 
-    // -- responsive width -------------------------------------------------
+    // -- responsive width & mobile height ---------------------------------
     const observer = new ResizeObserver(() => {
       const width = wrapperRef.current?.clientWidth ?? 0
       if (width <= 0) return
-      for (const chart of charts) chart.applyOptions({ width })
+      const targetMainHeight = width < 640 ? 320 : MAIN_HEIGHT
+      main.applyOptions({ width, height: targetMainHeight })
+      rsiChart.applyOptions({ width })
+      macdChart.applyOptions({ width })
     })
     if (wrapperRef.current) observer.observe(wrapperRef.current)
 
@@ -468,7 +473,7 @@ export function CandleChart({ limit = 500 }: { limit?: number }) {
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
           Price chart
         </h2>
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5 max-w-full overflow-x-auto pb-1">
           {TOGGLE_LABELS.map(({ key, label }) => (
             <button
               key={key}

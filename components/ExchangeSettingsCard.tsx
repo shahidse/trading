@@ -15,6 +15,7 @@ type PublicExchangeSettings = {
   dailyLossLimitUsd: number
   maxDailyTrades: number
   useOcoBracket: boolean
+  reversalScalpMode: boolean
   apiKeySet: boolean
   secretSet: boolean
 }
@@ -31,14 +32,6 @@ const inputClass =
   'mt-1 w-full rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-ink placeholder:text-subtle focus:border-accent focus:outline-none'
 const labelClass = 'block text-xs uppercase tracking-wide text-subtle'
 
-const STATUS_TONE: Record<string, string> = {
-  placed: 'text-up',
-  'dry-run': 'text-info',
-  refused: 'text-warn',
-  skipped: 'text-subtle',
-  error: 'text-down',
-}
-
 /**
  * Automatic-trading configuration and audit trail.
  *
@@ -52,7 +45,6 @@ export function ExchangeSettingsCard() {
   const [status, setStatus] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)
 
   const [data, setData] = useState<TradesResponse | null>(null)
-  const [orders, setOrders] = useState<StoredTradeOrder[]>([])
 
   const [enabled, setEnabled] = useState(false)
   const [killSwitch, setKillSwitch] = useState(false)
@@ -63,6 +55,7 @@ export function ExchangeSettingsCard() {
   const [dailyLossLimitUsd, setDailyLossLimitUsd] = useState('50')
   const [maxDailyTrades, setMaxDailyTrades] = useState('5')
   const [useOcoBracket, setUseOcoBracket] = useState(true)
+  const [reversalScalpMode, setReversalScalpMode] = useState(false)
   const [apiKey, setApiKey] = useState('')
   const [apiKeyTouched, setApiKeyTouched] = useState(false)
   const [apiKeySet, setApiKeySet] = useState(false)
@@ -70,7 +63,7 @@ export function ExchangeSettingsCard() {
   const [secretTouched, setSecretTouched] = useState(false)
   const [secretSet, setSecretSet] = useState(false)
 
-  const apply = useCallback((settings: PublicExchangeSettings, orderList: StoredTradeOrder[]) => {
+  const apply = useCallback((settings: PublicExchangeSettings) => {
     setEnabled(settings.enabled)
     setKillSwitch(settings.killSwitch)
     setDryRun(settings.dryRun)
@@ -80,13 +73,13 @@ export function ExchangeSettingsCard() {
     setDailyLossLimitUsd(String(settings.dailyLossLimitUsd))
     setMaxDailyTrades(String(settings.maxDailyTrades ?? 5))
     setUseOcoBracket(settings.useOcoBracket ?? true)
+    setReversalScalpMode(settings.reversalScalpMode ?? false)
     setApiKey('')
     setApiKeyTouched(false)
     setApiKeySet(settings.apiKeySet)
     setSecret('')
     setSecretTouched(false)
     setSecretSet(settings.secretSet)
-    setOrders(orderList)
   }, [])
 
   const load = useCallback(async () => {
@@ -94,7 +87,7 @@ export function ExchangeSettingsCard() {
       const response = await fetch('/api/trades')
       const json = await readJson<TradesResponse>(response)
       setData(json)
-      apply(json.settings, json.orders ?? [])
+      apply(json.settings)
     } catch (error) {
       setStatus({
         kind: 'error',
@@ -125,6 +118,7 @@ export function ExchangeSettingsCard() {
           dailyLossLimitUsd: Number(dailyLossLimitUsd),
           maxDailyTrades: Number(maxDailyTrades),
           useOcoBracket,
+          reversalScalpMode,
           ...(apiKeyTouched ? { apiKey } : {}),
           ...(secretTouched ? { secret } : {}),
         }),
@@ -289,6 +283,24 @@ export function ExchangeSettingsCard() {
               </span>
             </label>
 
+            <label className="flex items-start gap-3 sm:col-span-3 rounded-2xl border border-line-soft bg-surface-2/70 p-4 cursor-pointer transition hover:bg-surface-2">
+              <input
+                type="checkbox"
+                checked={reversalScalpMode}
+                onChange={(event) => setReversalScalpMode(event.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-line bg-surface text-accent focus:ring-accent"
+              />
+              <div>
+                <p className="text-xs font-bold text-ink flex items-center gap-1.5">
+                  <span>⚡</span>
+                  <span>Reversal Scalping Mode (Earn Daily from Bullish Candle Bounces)</span>
+                </p>
+                <p className="mt-1 text-xs text-subtle leading-relaxed">
+                  When enabled, the engine will NOT sit out on strong bullish candlestick patterns (Bullish Engulfing, Hammer, Morning Star, Three White Soldiers) or oversold RSI bounces even when the macro trend is downward. Executes scalp orders with tight protective stop (~0.8%) and quick profit target (~1.2%) so you can profit from intraday candle fluctuations.
+                </p>
+              </div>
+            </label>
+
             <label className="sm:col-span-3">
               <span className={labelClass}>
                 Binance API key {apiKeySet ? '· saved' : '· not set'} — trade only, no withdrawals
@@ -358,7 +370,7 @@ export function ExchangeSettingsCard() {
                   Open position:{' '}
                   <strong className="text-ink">
                     {data.openPosition
-                      ? `${data.openPosition.quantity} @ ${formatPrice(data.openPosition.price)}`
+                      ? `${data.openPosition.side} ${data.openPosition.quantity} @ ${formatPrice(data.openPosition.price)}`
                       : 'none'}
                   </strong>
                 </span>
@@ -403,52 +415,10 @@ export function ExchangeSettingsCard() {
             ) : null}
           </div>
 
-          {orders.length > 0 ? (
-            <div className="mt-6">
-              <p className="text-xs uppercase tracking-wide text-subtle">Recent order attempts</p>
-              <div className="mt-2 overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="text-left uppercase tracking-wide text-subtle">
-                      <th className="py-1.5 pr-4 font-medium">When</th>
-                      <th className="py-1.5 pr-4 font-medium">Side</th>
-                      <th className="py-1.5 pr-4 text-right font-medium">Qty</th>
-                      <th className="py-1.5 pr-4 text-right font-medium">Price</th>
-                      <th className="py-1.5 pr-4 text-right font-medium">Notional</th>
-                      <th className="py-1.5 pr-4 font-medium">Status</th>
-                      <th className="py-1.5 font-medium">Reason</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-line-soft">
-                    {orders.slice(0, 8).map((order) => (
-                      <tr key={order.id} className="text-muted">
-                        <td className="py-1.5 pr-4 whitespace-nowrap text-subtle">
-                          {new Date(order.createdAt).toLocaleTimeString('en-US', { hour12: false })}
-                        </td>
-                        <td className="py-1.5 pr-4">{order.side}</td>
-                        <td className="py-1.5 pr-4 text-right">{order.quantity || '—'}</td>
-                        <td className="py-1.5 pr-4 text-right">{formatPrice(order.price)}</td>
-                        <td className="py-1.5 pr-4 text-right">
-                          {order.notionalUsd ? `$${order.notionalUsd.toFixed(2)}` : '—'}
-                        </td>
-                        <td
-                          className={`py-1.5 pr-4 font-medium ${STATUS_TONE[order.status] ?? 'text-muted'}`}
-                        >
-                          {order.status}
-                        </td>
-                        <td className="py-1.5 text-subtle">{order.reason ?? '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ) : null}
-
           <p className="mt-5 text-xs text-subtle">
             Guard order: kill switch → enabled → credentials → hard cap → daily loss limit →
-            withdrawal-permission check → balance. Any refusal is written to the audit log above, so
-            nothing is silent. A dry run never sends an order.
+            withdrawal-permission check → balance. Any refusal is recorded to the execution log on the
+            dashboard, so nothing is silent. A dry run never sends real orders to Binance.
           </p>
         </>
       )}

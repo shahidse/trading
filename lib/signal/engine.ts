@@ -13,6 +13,7 @@ export type SignalContext = {
   chainlinkPrice?: number | null
   divergencePct?: number | null
   timestamp?: number
+  reversalScalpMode?: boolean
 }
 
 /** Thresholds scaled by the ATR volatility multiplier. */
@@ -51,7 +52,7 @@ export function generateSignal(candles: Candle[], ctx: SignalContext = {}): Sign
   const direction = decideDirection(composite, thresholdsUsed)
 
   // Concrete, actionable levels — including the trend gate that refuses to buy
-  // into a confirmed downtrend.
+  // into a confirmed downtrend, and the Reversal Scalper for bullish candle bounces.
   const plan = buildTradePlan({
     direction,
     price,
@@ -59,6 +60,10 @@ export function generateSignal(candles: Candle[], ctx: SignalContext = {}): Sign
     regime,
     confluence,
     trend: trendRead(bundle),
+    patternScore: bundle.patterns?.score,
+    patternNames: bundle.patterns?.patterns.map((p) => p.label) ?? [],
+    rsiValue: bundle.rsi?.value ?? null,
+    reversalScalpMode: ctx.reversalScalpMode ?? config.exchange.reversalScalpMode,
   })
 
   const summary: string[] = []

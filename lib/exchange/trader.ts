@@ -2,6 +2,7 @@ import { config } from '@/lib/config'
 import {
   countTradesSince,
   getOpenBuyPosition,
+  getOpenDryRunPosition,
   realisedPnlSince,
   recordTradeOrder,
 } from '@/lib/db/client'
@@ -67,9 +68,14 @@ export function pairCurrencies(symbol: string = config.symbol): { base: string; 
 /**
  * What (if anything) to do about a plan transition. Pure.
  *
+ * In live mode:
  * `SELL` closes the position *we* opened, `BUY` opens one, and `HOLD` /
  * `STAY_OUT` do nothing. It never sells without a recorded position of our own,
  * so it cannot touch ETH you already hold in the account.
+ *
+ * In dry-run mode:
+ * It is not required to first BUY before placing a SELL. If a SELL condition is met
+ * (e.g. bearish signal or breakdown), dry-run mode simulates a SELL order directly.
  */
 export function decideTrade(
   previousAction: TradeAction | null,
@@ -77,17 +83,35 @@ export function decideTrade(
   hasOpenPosition: boolean,
   notionalUsd: number,
   symbol: string = config.symbol,
+  dryRun: boolean = false,
+  openPositionSide: TradeSide | null = hasOpenPosition ? 'BUY' : null,
 ): TradeIntent | null {
   if (nextAction === 'SELL') {
-    return hasOpenPosition
-      ? { side: 'SELL', symbol, notionalUsd, reason: 'plan action SELL — closing position' }
-      : null
+    if (hasOpenPosition) {
+      if (openPositionSide === 'BUY') {
+        return { side: 'SELL', symbol, notionalUsd, reason: 'plan action SELL — closing position' }
+      }
+      return null
+    }
+
+    // In dry-run mode, an initial SELL is allowed if we don't have an open position
+    if (dryRun && previousAction !== 'SELL') {
+      return { side: 'SELL', symbol, notionalUsd, reason: 'plan action SELL — dry-run initial SELL' }
+    }
+
+    return null
   }
 
   if (nextAction === 'BUY' && previousAction !== 'BUY') {
-    return hasOpenPosition
-      ? null
-      : { side: 'BUY', symbol, notionalUsd, reason: 'plan action BUY — opening position' }
+    if (hasOpenPosition) {
+      // In dry-run mode, if an open SELL position exists, BUY closes it
+      if (dryRun && openPositionSide === 'SELL') {
+        return { side: 'BUY', symbol, notionalUsd, reason: 'plan action BUY — closing dry-run SELL' }
+      }
+      return null
+    }
+
+    return { side: 'BUY', symbol, notionalUsd, reason: 'plan action BUY — opening position' }
   }
 
   return null
@@ -111,7 +135,7 @@ export function checkGuards(params: {
 
   if (settings.killSwitch) return { ok: false, reason: 'Kill switch is on' }
   if (!settings.enabled) return { ok: false, reason: 'Automatic trading is disabled' }
-  if (!settings.apiKey || !settings.secret) {
+  if (!settings.dryRun && (!settings.apiKey || !settings.secret)) {
     return { ok: false, reason: 'Binance API key / secret not configured' }
   }
   if (!Number.isFinite(notionalUsd) || notionalUsd <= 0) {
@@ -162,10 +186,20 @@ export async function executeTrade(
   const environment = environmentLabel(settings)
 
   const openPosition = getOpenBuyPosition(intent.symbol)
+  const openDryRun = settings.dryRun ? getOpenDryRunPosition(intent.symbol) : null
 
   // A SELL is sized from the position we actually hold, not the configured notional.
-  const notionalUsd =
-    intent.side === 'SELL' ? (openPosition?.notionalUsd ?? 0) : intent.notionalUsd
+  // In dry run mode, if closing an open position it uses that position's size; otherwise the configured notional.
+  let notionalUsd = intent.notionalUsd
+  if (!settings.dryRun) {
+    if (intent.side === 'SELL') {
+      notionalUsd = openPosition?.notionalUsd ?? 0
+    }
+  } else {
+    if (openDryRun) {
+      notionalUsd = openDryRun.order.notionalUsd
+    }
+  }
 
   const guard = checkGuards({
     settings,
@@ -222,7 +256,7 @@ export async function executeTrade(
     return outcome('refused', guard.reason, { notionalUsd })
   }
 
-  if (intent.side === 'SELL' && !openPosition) {
+  if (!settings.dryRun && intent.side === 'SELL' && !openPosition) {
     const reason = 'No open position of ours to close'
     log({ status: 'skipped', reason })
     return outcome('skipped', reason)
@@ -230,7 +264,9 @@ export async function executeTrade(
 
   try {
     const exchange = await getTradingExchange()
-    await assertWithdrawalsDisabled(exchange)
+    if (!settings.dryRun) {
+      await assertWithdrawalsDisabled(exchange)
+    }
 
     const ticker = await exchange.fetchTicker(intent.symbol)
     const marketPrice = Number(ticker.last ?? ticker.close)
@@ -238,8 +274,18 @@ export async function executeTrade(
       throw new Error('No market price available')
     }
 
-    const rawQuantity =
-      intent.side === 'BUY' ? intent.notionalUsd / marketPrice : openPosition!.quantity
+    let rawQuantity: number
+    if (!settings.dryRun) {
+      rawQuantity =
+        intent.side === 'BUY' ? intent.notionalUsd / marketPrice : openPosition!.quantity
+    } else {
+      if (openDryRun) {
+        rawQuantity = openDryRun.order.quantity
+      } else {
+        rawQuantity = notionalUsd / marketPrice
+      }
+    }
+
     const quantity = normaliseQuantity(exchange, intent.symbol, rawQuantity)
     if (!(quantity > 0)) throw new Error('Order quantity rounds to zero')
 
@@ -251,36 +297,51 @@ export async function executeTrade(
       )
     }
 
-    // Balance check, so the exchange never has to reject for funds.
-    const balance = await exchange.fetchBalance()
-    const free = balance.free as unknown as Record<string, number>
+    // Balance check, so the exchange never has to reject for funds (live/testnet only).
+    if (!settings.dryRun) {
+      const balance = await exchange.fetchBalance()
+      const free = balance.free as unknown as Record<string, number>
 
-    if (intent.side === 'BUY') {
-      const { quote } = pairCurrencies(intent.symbol)
-      const available = Number(free[quote] ?? 0)
-      if (available < estimatedCost) {
-        throw new Error(
-          `Insufficient ${quote}: $${available.toFixed(2)} available, $${estimatedCost.toFixed(
-            2,
-          )} needed`,
-        )
-      }
-    } else {
-      const { base } = pairCurrencies(intent.symbol)
-      const available = Number(free[base] ?? 0)
-      if (available < quantity) {
-        throw new Error(`Insufficient ${base}: ${available} available, ${quantity} needed`)
+      if (intent.side === 'BUY') {
+        const { quote } = pairCurrencies(intent.symbol)
+        const available = Number(free[quote] ?? 0)
+        if (available < estimatedCost) {
+          throw new Error(
+            `Insufficient ${quote}: $${available.toFixed(2)} available, $${estimatedCost.toFixed(
+              2,
+            )} needed`,
+          )
+        }
+      } else {
+        const { base } = pairCurrencies(intent.symbol)
+        const available = Number(free[base] ?? 0)
+        if (available < quantity) {
+          throw new Error(`Insufficient ${base}: ${available} available, ${quantity} needed`)
+        }
       }
     }
 
     if (settings.dryRun) {
-      const reason = `Dry run — would ${intent.side} ${quantity} ${intent.symbol} (~$${estimatedCost.toFixed(2)})`
+      let realisedPnlUsd: number | null = null
+      if (openDryRun) {
+        if (intent.side === 'SELL' && openDryRun.side === 'BUY' && openDryRun.order.price) {
+          realisedPnlUsd = quantity * (marketPrice - openDryRun.order.price)
+        } else if (intent.side === 'BUY' && openDryRun.side === 'SELL' && openDryRun.order.price) {
+          realisedPnlUsd = quantity * (openDryRun.order.price - marketPrice)
+        }
+      }
+
+      const isFirstSell = intent.side === 'SELL' && (!openDryRun || openDryRun.side !== 'BUY')
+      const reason = `Dry run — would ${intent.side} ${quantity} ${intent.symbol} (~$${estimatedCost.toFixed(2)})${
+        isFirstSell ? ' (initial SELL)' : ''
+      }`
       log({
         status: 'dry-run',
         quantity,
         price: marketPrice,
         notionalUsd: estimatedCost,
         reason,
+        realisedPnlUsd,
       })
 
       // Simulate OCO bracket placement for dry-run
@@ -308,6 +369,7 @@ export async function executeTrade(
         quantity,
         price: marketPrice,
         notionalUsd: estimatedCost,
+        realisedPnlUsd,
       })
     }
 
@@ -352,6 +414,7 @@ export async function executeTrade(
           takeProfitPrice: levels.takeProfit,
           stopLossPrice: levels.stopLoss,
         })
+
         log({
           status: 'placed',
           side: 'SELL',
@@ -397,13 +460,23 @@ export async function runAutoTrade(
   const settings = getExchangeSettings()
   if (!isTradingArmed(settings)) return null
 
-  const openPosition = getOpenBuyPosition(config.symbol)
+  const isDryRun = settings.dryRun
+  const openBuy = getOpenBuyPosition(config.symbol)
+  const openDryRun = isDryRun ? getOpenDryRunPosition(config.symbol) : null
+
+  const hasOpenPosition = isDryRun ? openDryRun !== null : openBuy !== null
+  const openPositionSide = isDryRun
+    ? (openDryRun?.side ?? null)
+    : (openBuy !== null ? 'BUY' : null)
+
   const intent = decideTrade(
     previousAction,
     nextAction,
-    openPosition !== null,
+    hasOpenPosition,
     settings.notionalUsd,
     config.symbol,
+    isDryRun,
+    openPositionSide,
   )
 
   if (!intent) return null

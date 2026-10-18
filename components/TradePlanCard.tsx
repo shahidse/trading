@@ -79,11 +79,16 @@ export function TradePlanCard({ plan }: { plan: TradePlan }) {
           <span className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-warn">
             Trend gate closed
           </span>
+        ) : plan.gate === 'scalp-open' ? (
+          <span className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-up flex items-center gap-1.5">
+            <span>⚡</span>
+            <span>Reversal Scalp Active</span>
+          </span>
         ) : null}
       </div>
 
       {plan.levels ? (
-        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="mt-5 grid grid-cols-2 gap-3 xl:grid-cols-4">
           <Level label="Entry" value={formatPrice(plan.levels.entry)} hint="buy here" />
           <Level
             label="Stop loss"
@@ -104,13 +109,15 @@ export function TradePlanCard({ plan }: { plan: TradePlan }) {
           />
         </div>
       ) : plan.protectiveStop != null ? (
-        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Level
-            label="Protective stop"
-            value={formatPrice(plan.protectiveStop)}
-            hint="if you already hold"
-            tone="down"
-          />
+        <div className="mt-5 flex flex-wrap gap-3">
+          <div className="w-full sm:w-auto sm:min-w-[200px]">
+            <Level
+              label="Protective stop"
+              value={formatPrice(plan.protectiveStop)}
+              hint="if you already hold"
+              tone="down"
+            />
+          </div>
         </div>
       ) : null}
 
