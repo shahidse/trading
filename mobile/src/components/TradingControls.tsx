@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native'
 import { TradingStateResponse } from '../types'
-import { colors, formatPrice } from '../theme'
+import { useTheme, formatPrice } from '../theme'
 import { api } from '../services/api'
 
 interface Props {
@@ -10,6 +10,7 @@ interface Props {
 }
 
 export const TradingControls: React.FC<Props> = ({ state, onRefresh }) => {
+  const { colors } = useTheme()
   const [loadingAction, setLoadingAction] = useState<string | null>(null)
 
   if (!state) return null
@@ -56,38 +57,104 @@ export const TradingControls: React.FC<Props> = ({ state, onRefresh }) => {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>TRADING ENGINE & FINANCIAL SAFETY</Text>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: colors.surface,
+          borderColor: colors.border,
+          borderWidth: colors.borderWidth,
+          borderRadius: colors.borderRadiusCard,
+        },
+      ]}
+    >
+      <Text style={[styles.title, { color: colors.textSubtle }]}>
+        FINANCIAL SAFETY & BOT ENGINE
+      </Text>
 
       {/* Safety Status Grid */}
       <View style={styles.statusGrid}>
-        <View style={styles.statusBox}>
-          <Text style={styles.statusLabel}>Mode</Text>
-          <Text style={[styles.statusVal, { color: settings.dryRun ? colors.warning : colors.bullish }]}>
+        <View
+          style={[
+            styles.statusBox,
+            {
+              backgroundColor: colors.surface2,
+              borderRadius: colors.borderRadius,
+              borderColor: colors.borderSubtle,
+              borderWidth: colors.borderWidth,
+            },
+          ]}
+        >
+          <Text style={[styles.statusLabel, { color: colors.textSubtle }]}>Mode</Text>
+          <Text
+            style={[
+              styles.statusVal,
+              { color: settings.dryRun ? colors.warning : colors.bullish },
+            ]}
+          >
             {settings.dryRun ? 'DRY-RUN' : 'LIVE'}
           </Text>
         </View>
 
-        <View style={styles.statusBox}>
-          <Text style={styles.statusLabel}>Network</Text>
-          <Text style={styles.statusVal}>{settings.testnet ? 'TESTNET' : 'MAINNET'}</Text>
+        <View
+          style={[
+            styles.statusBox,
+            {
+              backgroundColor: colors.surface2,
+              borderRadius: colors.borderRadius,
+              borderColor: colors.borderSubtle,
+              borderWidth: colors.borderWidth,
+            },
+          ]}
+        >
+          <Text style={[styles.statusLabel, { color: colors.textSubtle }]}>Network</Text>
+          <Text style={[styles.statusVal, { color: colors.text }]}>
+            {settings.testnet ? 'TESTNET' : 'MAINNET'}
+          </Text>
         </View>
 
-        <View style={styles.statusBox}>
-          <Text style={styles.statusLabel}>24h P&L</Text>
+        <View
+          style={[
+            styles.statusBox,
+            {
+              backgroundColor: colors.surface2,
+              borderRadius: colors.borderRadius,
+              borderColor: colors.borderSubtle,
+              borderWidth: colors.borderWidth,
+            },
+          ]}
+        >
+          <Text style={[styles.statusLabel, { color: colors.textSubtle }]}>24h P&L</Text>
           <Text
             style={[
               styles.statusVal,
               { color: realisedPnl24h >= 0 ? colors.bullish : colors.bearish },
             ]}
           >
-            {realisedPnl24h >= 0 ? `+$${realisedPnl24h.toFixed(2)}` : `-$${Math.abs(realisedPnl24h).toFixed(2)}`}
+            {realisedPnl24h >= 0
+              ? `+$${realisedPnl24h.toFixed(2)}`
+              : `-$${Math.abs(realisedPnl24h).toFixed(2)}`}
           </Text>
         </View>
 
-        <View style={styles.statusBox}>
-          <Text style={styles.statusLabel}>Position</Text>
-          <Text style={[styles.statusVal, { color: openPosition ? colors.bullish : colors.textMuted }]}>
+        <View
+          style={[
+            styles.statusBox,
+            {
+              backgroundColor: colors.surface2,
+              borderRadius: colors.borderRadius,
+              borderColor: colors.borderSubtle,
+              borderWidth: colors.borderWidth,
+            },
+          ]}
+        >
+          <Text style={[styles.statusLabel, { color: colors.textSubtle }]}>Position</Text>
+          <Text
+            style={[
+              styles.statusVal,
+              { color: openPosition ? colors.bullish : colors.textMuted },
+            ]}
+          >
             {openPosition ? `${openPosition.quantity.toFixed(4)} ETH` : 'FLAT'}
           </Text>
         </View>
@@ -95,13 +162,23 @@ export const TradingControls: React.FC<Props> = ({ state, onRefresh }) => {
 
       {/* Open Position details if active */}
       {openPosition && (
-        <View style={styles.positionBanner}>
-          <Text style={styles.posTitle}>ACTIVE LONG POSITION</Text>
-          <Text style={styles.posText}>
+        <View
+          style={[
+            styles.positionBanner,
+            {
+              backgroundColor: colors.bullishBg,
+              borderColor: colors.bullishBorder,
+              borderWidth: colors.borderWidth,
+              borderRadius: colors.borderRadius,
+            },
+          ]}
+        >
+          <Text style={[styles.posTitle, { color: colors.bullish }]}>ACTIVE LONG POSITION</Text>
+          <Text style={[styles.posText, { color: colors.text }]}>
             Filled at {formatPrice(openPosition.price)} · Size: {formatPrice(openPosition.notionalUsd)}
           </Text>
           {openPosition.stopLossPrice && (
-            <Text style={styles.posSub}>
+            <Text style={[styles.posSub, { color: colors.textMuted }]}>
               SL: {formatPrice(openPosition.stopLossPrice)} | TP: {formatPrice(openPosition.takeProfitPrice)}
             </Text>
           )}
@@ -110,9 +187,16 @@ export const TradingControls: React.FC<Props> = ({ state, onRefresh }) => {
 
       {/* Controls Button Row */}
       <View style={styles.buttonsRow}>
-        {/* Emergency Kill Switch */}
         <TouchableOpacity
-          style={[styles.btn, isKilled ? styles.btnResume : styles.btnHalt]}
+          style={[
+            styles.btn,
+            {
+              backgroundColor: isKilled ? colors.warning : colors.bearish,
+              borderRadius: colors.borderRadius,
+              borderWidth: colors.borderWidth,
+              borderColor: isKilled ? colors.warningBorder : colors.bearishBorder,
+            },
+          ]}
           onPress={() => handleAction(isKilled ? 'resume' : 'halt')}
           disabled={loadingAction !== null}
         >
@@ -125,9 +209,16 @@ export const TradingControls: React.FC<Props> = ({ state, onRefresh }) => {
           )}
         </TouchableOpacity>
 
-        {/* Arm / Disarm */}
         <TouchableOpacity
-          style={[styles.btn, isArmed ? styles.btnDisarm : styles.btnArm]}
+          style={[
+            styles.btn,
+            {
+              backgroundColor: isArmed ? colors.surface3 : colors.bullish,
+              borderRadius: colors.borderRadius,
+              borderWidth: colors.borderWidth,
+              borderColor: isArmed ? colors.border : colors.bullishBorder,
+            },
+          ]}
           onPress={() => handleAction(isArmed ? 'disarm' : 'arm')}
           disabled={loadingAction !== null || isKilled}
         >
@@ -144,17 +235,12 @@ export const TradingControls: React.FC<Props> = ({ state, onRefresh }) => {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
     padding: 16,
     marginBottom: 16,
   },
   title: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.textSubtle,
+    fontSize: 10,
+    fontWeight: '800',
     letterSpacing: 0.8,
     marginBottom: 12,
   },
@@ -166,45 +252,34 @@ const styles = StyleSheet.create({
   },
   statusBox: {
     width: '48%',
-    backgroundColor: colors.surface2,
-    borderRadius: 10,
     padding: 10,
   },
   statusLabel: {
     fontSize: 10,
-    color: colors.textSubtle,
     textTransform: 'uppercase',
-    fontWeight: '600',
+    fontWeight: '700',
   },
   statusVal: {
     fontSize: 13,
     fontWeight: '800',
     marginTop: 2,
-    color: colors.text,
   },
   positionBanner: {
-    backgroundColor: colors.bullishBg,
-    borderColor: colors.bullishBorder,
-    borderWidth: 1,
-    borderRadius: 10,
     padding: 10,
     marginBottom: 12,
   },
   posTitle: {
     fontSize: 10,
-    fontWeight: '700',
-    color: colors.bullish,
+    fontWeight: '800',
     letterSpacing: 0.6,
   },
   posText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: colors.text,
+    fontWeight: '700',
     marginTop: 2,
   },
   posSub: {
     fontSize: 11,
-    color: colors.textMuted,
     marginTop: 2,
   },
   buttonsRow: {
@@ -214,23 +289,8 @@ const styles = StyleSheet.create({
   btn: {
     flex: 1,
     paddingVertical: 12,
-    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  btnHalt: {
-    backgroundColor: colors.bearish,
-  },
-  btnResume: {
-    backgroundColor: colors.warning,
-  },
-  btnArm: {
-    backgroundColor: colors.bullish,
-  },
-  btnDisarm: {
-    backgroundColor: colors.surface3,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
   btnText: {
     color: '#ffffff',

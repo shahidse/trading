@@ -227,6 +227,21 @@ export default function SettingsPage() {
         <p className="mt-8 text-sm text-subtle">Loading…</p>
       ) : (
         <div className="mt-6 space-y-6">
+          {/* ---- Design Archetype & Theme ---- */}
+          <section className="rounded-2xl border border-line bg-surface p-6 shadow-xs">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
+                  Design Archetype & Theme
+                </h2>
+                <p className="mt-1 text-xs text-subtle">
+                  Toggle between the 4 custom layout structures and light/dark mode.
+                </p>
+              </div>
+              <ThemeToggle />
+            </div>
+          </section>
+
           {/* ---- Email ---- */}
           <section className="rounded-2xl border border-line bg-surface p-6">
             <div className="flex items-center justify-between gap-4">

@@ -10,15 +10,17 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native'
-import { colors } from '../theme'
+import { useTheme } from '../theme'
 import { api } from '../services/api'
 import { NotifySettings, TradingStateResponse } from '../types'
+import { ThemeSelector } from './ThemeSelector'
 
 interface Props {
   onClose: () => void
 }
 
 export const SettingsModal: React.FC<Props> = ({ onClose }) => {
+  const { colors } = useTheme()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [backendUrl, setBackendUrl] = useState(api.getBaseUrl())
@@ -101,32 +103,98 @@ export const SettingsModal: React.FC<Props> = ({ onClose }) => {
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>SETTINGS & CONFIGURATION</Text>
-        <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-          <Text style={styles.closeText}>Done</Text>
+    <View style={[styles.container, { backgroundColor: colors.bg }]}>
+      <View
+        style={[
+          styles.header,
+          {
+            backgroundColor: colors.surface,
+            borderBottomColor: colors.border,
+            borderBottomWidth: colors.borderWidth,
+          },
+        ]}
+      >
+        <Text style={[styles.headerTitle, { color: colors.text }]}>
+          SETTINGS & FINANCIAL LIMITS
+        </Text>
+        <TouchableOpacity
+          onPress={onClose}
+          style={[
+            styles.closeBtn,
+            {
+              backgroundColor: colors.surface2,
+              borderRadius: colors.borderRadiusSm,
+              borderWidth: colors.borderWidth,
+              borderColor: colors.border,
+            },
+          ]}
+        >
+          <Text style={[styles.closeText, { color: colors.primary }]}>Done</Text>
         </TouchableOpacity>
       </View>
 
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Reading server configuration…</Text>
+          <Text style={[styles.loadingText, { color: colors.textMuted }]}>
+            Reading server configuration…
+          </Text>
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scroll}>
+          {/* Design Archetype & Theme Mode */}
+          <View
+            style={[
+              styles.section,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+                borderWidth: colors.borderWidth,
+                borderRadius: colors.borderRadiusCard,
+              },
+            ]}
+          >
+            <Text style={[styles.sectionTitle, { color: colors.textSubtle }]}>
+              DESIGN ARCHETYPE & THEME
+            </Text>
+            <Text style={[styles.sectionHint, { color: colors.textMuted }]}>
+              Switch between 4 layouts and light/dark color palettes.
+            </Text>
+            <ThemeSelector />
+          </View>
+
           {/* Server Connection */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>NEXT.JS BACKEND ENDPOINT</Text>
-            <Text style={styles.sectionHint}>
-              Physical device: Use LAN IP (e.g. http://10.211.232.112:3000). Emulator: http://10.0.2.2:3000
+          <View
+            style={[
+              styles.section,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+                borderWidth: colors.borderWidth,
+                borderRadius: colors.borderRadiusCard,
+              },
+            ]}
+          >
+            <Text style={[styles.sectionTitle, { color: colors.textSubtle }]}>
+              BACKEND ENDPOINT (NETLIFY / LOCAL)
+            </Text>
+            <Text style={[styles.sectionHint, { color: colors.textMuted }]}>
+              Default is your deployed Netlify production app.
             </Text>
             <TextInput
-              style={styles.input}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.surface2,
+                  borderColor: colors.border,
+                  borderWidth: colors.borderWidth,
+                  borderRadius: colors.borderRadius,
+                  color: colors.text,
+                },
+              ]}
               value={backendUrl}
               onChangeText={setBackendUrl}
-              placeholder="http://localhost:3000"
+              placeholder="https://jade-pavlova-ba20a5.netlify.app"
               placeholderTextColor={colors.textDisabled}
               autoCapitalize="none"
               autoCorrect={false}
@@ -134,13 +202,27 @@ export const SettingsModal: React.FC<Props> = ({ onClose }) => {
           </View>
 
           {/* Risk & Execution */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>EXECUTION & RISK GUARDS</Text>
+          <View
+            style={[
+              styles.section,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+                borderWidth: colors.borderWidth,
+                borderRadius: colors.borderRadiusCard,
+              },
+            ]}
+          >
+            <Text style={[styles.sectionTitle, { color: colors.textSubtle }]}>
+              EXECUTION & RISK GUARDS
+            </Text>
 
-            <View style={styles.switchRow}>
+            <View style={[styles.switchRow, { borderBottomColor: colors.borderSubtle }]}>
               <View>
-                <Text style={styles.switchLabel}>Dry-Run Mode</Text>
-                <Text style={styles.switchHint}>Simulate fills without exchange balance</Text>
+                <Text style={[styles.switchLabel, { color: colors.text }]}>Dry-Run Mode</Text>
+                <Text style={[styles.switchHint, { color: colors.textMuted }]}>
+                  Simulate fills without exchange balance
+                </Text>
               </View>
               <Switch
                 value={dryRun}
@@ -149,10 +231,12 @@ export const SettingsModal: React.FC<Props> = ({ onClose }) => {
               />
             </View>
 
-            <View style={styles.switchRow}>
+            <View style={[styles.switchRow, { borderBottomColor: colors.borderSubtle }]}>
               <View>
-                <Text style={styles.switchLabel}>Binance Testnet</Text>
-                <Text style={styles.switchHint}>Use Binance Spot testnet environment</Text>
+                <Text style={[styles.switchLabel, { color: colors.text }]}>Binance Testnet</Text>
+                <Text style={[styles.switchHint, { color: colors.textMuted }]}>
+                  Use Binance Spot testnet environment
+                </Text>
               </View>
               <Switch
                 value={testnet}
@@ -161,10 +245,12 @@ export const SettingsModal: React.FC<Props> = ({ onClose }) => {
               />
             </View>
 
-            <View style={styles.switchRow}>
+            <View style={[styles.switchRow, { borderBottomColor: colors.borderSubtle }]}>
               <View>
-                <Text style={styles.switchLabel}>Native OCO Bracket</Text>
-                <Text style={styles.switchHint}>Simultaneous TP limit & SL on exchange</Text>
+                <Text style={[styles.switchLabel, { color: colors.text }]}>Native OCO Bracket</Text>
+                <Text style={[styles.switchHint, { color: colors.textMuted }]}>
+                  Simultaneous TP limit & SL on exchange
+                </Text>
               </View>
               <Switch
                 value={useOcoBracket}
@@ -174,9 +260,20 @@ export const SettingsModal: React.FC<Props> = ({ onClose }) => {
             </View>
 
             <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Per-Trade Size (USD)</Text>
+              <Text style={[styles.fieldLabel, { color: colors.textSubtle }]}>
+                Per-Trade Size (USD)
+              </Text>
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: colors.surface2,
+                    borderColor: colors.border,
+                    borderWidth: colors.borderWidth,
+                    borderRadius: colors.borderRadius,
+                    color: colors.text,
+                  },
+                ]}
                 value={notionalUsd}
                 onChangeText={setNotionalUsd}
                 keyboardType="numeric"
@@ -184,9 +281,20 @@ export const SettingsModal: React.FC<Props> = ({ onClose }) => {
             </View>
 
             <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Max Notional Cap (USD)</Text>
+              <Text style={[styles.fieldLabel, { color: colors.textSubtle }]}>
+                Max Notional Cap (USD)
+              </Text>
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: colors.surface2,
+                    borderColor: colors.border,
+                    borderWidth: colors.borderWidth,
+                    borderRadius: colors.borderRadius,
+                    color: colors.text,
+                  },
+                ]}
                 value={maxNotionalUsd}
                 onChangeText={setMaxNotionalUsd}
                 keyboardType="numeric"
@@ -194,9 +302,20 @@ export const SettingsModal: React.FC<Props> = ({ onClose }) => {
             </View>
 
             <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Rolling 24h Loss Ceiling (USD)</Text>
+              <Text style={[styles.fieldLabel, { color: colors.textSubtle }]}>
+                Rolling 24h Loss Ceiling (USD)
+              </Text>
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: colors.surface2,
+                    borderColor: colors.border,
+                    borderWidth: colors.borderWidth,
+                    borderRadius: colors.borderRadius,
+                    color: colors.text,
+                  },
+                ]}
                 value={dailyLossLimitUsd}
                 onChangeText={setDailyLossLimitUsd}
                 keyboardType="numeric"
@@ -205,13 +324,27 @@ export const SettingsModal: React.FC<Props> = ({ onClose }) => {
           </View>
 
           {/* Notification Alerts */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>ALERTS & NOTIFICATIONS</Text>
+          <View
+            style={[
+              styles.section,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+                borderWidth: colors.borderWidth,
+                borderRadius: colors.borderRadiusCard,
+              },
+            ]}
+          >
+            <Text style={[styles.sectionTitle, { color: colors.textSubtle }]}>
+              ALERTS & NOTIFICATIONS
+            </Text>
 
-            <View style={styles.switchRow}>
+            <View style={[styles.switchRow, { borderBottomColor: colors.borderSubtle }]}>
               <View>
-                <Text style={styles.switchLabel}>Telegram Alerts</Text>
-                <Text style={styles.switchHint}>Dispatch signals to Telegram bot</Text>
+                <Text style={[styles.switchLabel, { color: colors.text }]}>Telegram Alerts</Text>
+                <Text style={[styles.switchHint, { color: colors.textMuted }]}>
+                  Dispatch signals to Telegram bot
+                </Text>
               </View>
               <Switch
                 value={tgEnabled}
@@ -222,9 +355,20 @@ export const SettingsModal: React.FC<Props> = ({ onClose }) => {
 
             {tgEnabled && (
               <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Telegram Chat ID</Text>
+                <Text style={[styles.fieldLabel, { color: colors.textSubtle }]}>
+                  Telegram Chat ID
+                </Text>
                 <TextInput
-                  style={styles.input}
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: colors.surface2,
+                      borderColor: colors.border,
+                      borderWidth: colors.borderWidth,
+                      borderRadius: colors.borderRadius,
+                      color: colors.text,
+                    },
+                  ]}
                   value={tgChatId}
                   onChangeText={setTgChatId}
                   placeholder="e.g. 12345678"
@@ -233,10 +377,12 @@ export const SettingsModal: React.FC<Props> = ({ onClose }) => {
               </View>
             )}
 
-            <View style={styles.switchRow}>
+            <View style={[styles.switchRow, { borderBottomColor: colors.borderSubtle }]}>
               <View>
-                <Text style={styles.switchLabel}>Resend Email Alerts</Text>
-                <Text style={styles.switchHint}>Dispatch signals to email</Text>
+                <Text style={[styles.switchLabel, { color: colors.text }]}>Resend Email Alerts</Text>
+                <Text style={[styles.switchHint, { color: colors.textMuted }]}>
+                  Dispatch signals to email
+                </Text>
               </View>
               <Switch
                 value={emailEnabled}
@@ -247,9 +393,20 @@ export const SettingsModal: React.FC<Props> = ({ onClose }) => {
 
             {emailEnabled && (
               <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Recipient Email</Text>
+                <Text style={[styles.fieldLabel, { color: colors.textSubtle }]}>
+                  Recipient Email
+                </Text>
                 <TextInput
-                  style={styles.input}
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: colors.surface2,
+                      borderColor: colors.border,
+                      borderWidth: colors.borderWidth,
+                      borderRadius: colors.borderRadius,
+                      color: colors.text,
+                    },
+                  ]}
                   value={emailTo}
                   onChangeText={setEmailTo}
                   keyboardType="email-address"
@@ -262,7 +419,15 @@ export const SettingsModal: React.FC<Props> = ({ onClose }) => {
           </View>
 
           <TouchableOpacity
-            style={styles.saveBtn}
+            style={[
+              styles.saveBtn,
+              {
+                backgroundColor: colors.primary,
+                borderRadius: colors.borderRadius,
+                borderWidth: colors.borderWidth,
+                borderColor: colors.border,
+              },
+            ]}
             onPress={handleSave}
             disabled={saving}
           >
@@ -281,7 +446,6 @@ export const SettingsModal: React.FC<Props> = ({ onClose }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.bg,
   },
   header: {
     flexDirection: 'row',
@@ -290,24 +454,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   headerTitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '800',
-    color: colors.text,
     letterSpacing: 0.8,
   },
   closeBtn: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: colors.surface2,
   },
   closeText: {
-    color: colors.primary,
-    fontWeight: '700',
+    fontWeight: '800',
     fontSize: 13,
   },
   center: {
@@ -317,7 +475,6 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   loadingText: {
-    color: colors.textMuted,
     fontSize: 13,
     marginTop: 10,
   },
@@ -326,34 +483,23 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   section: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
     padding: 16,
     marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.textSubtle,
+    fontSize: 10,
+    fontWeight: '800',
     letterSpacing: 0.8,
     marginBottom: 4,
   },
   sectionHint: {
     fontSize: 11,
-    color: colors.textMuted,
     marginBottom: 12,
     lineHeight: 16,
   },
   input: {
-    backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    color: colors.text,
     fontSize: 13,
   },
   switchRow: {
@@ -362,15 +508,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: colors.borderSubtle,
   },
   switchLabel: {
-    color: colors.text,
     fontSize: 13,
     fontWeight: '700',
   },
   switchHint: {
-    color: colors.textMuted,
     fontSize: 11,
     marginTop: 2,
   },
@@ -378,15 +521,12 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   fieldLabel: {
-    color: colors.textSubtle,
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 10,
+    fontWeight: '700',
     marginBottom: 6,
     textTransform: 'uppercase',
   },
   saveBtn: {
-    backgroundColor: colors.primary,
-    borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: 4,

@@ -1,33 +1,49 @@
 import React from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { IndicatorScore } from '../types'
-import { colors } from '../theme'
+import { useTheme } from '../theme'
 
 interface Props {
   indicators: IndicatorScore[]
 }
 
 export const IndicatorList: React.FC<Props> = ({ indicators }) => {
+  const { colors } = useTheme()
+
   if (!indicators || indicators.length === 0) return null
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.sectionTitle}>MULTI-INDICATOR BREAKDOWN (9 FACTORS)</Text>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: colors.surface,
+          borderColor: colors.border,
+          borderWidth: colors.borderWidth,
+          borderRadius: colors.borderRadiusCard,
+        },
+      ]}
+    >
+      <Text style={[styles.sectionTitle, { color: colors.textSubtle }]}>
+        MULTI-INDICATOR BREAKDOWN (9 FACTORS)
+      </Text>
       {indicators.map((ind) => {
         const isBullish = ind.raw > 15
         const isBearish = ind.raw < -15
         const color = isBullish ? colors.bullish : isBearish ? colors.bearish : colors.neutral
 
-        // Calculate progress bar fill
         const normalized = Math.min(100, Math.max(-100, ind.raw))
         const pct = Math.abs(normalized)
 
         return (
-          <View key={ind.key} style={styles.item}>
+          <View
+            key={ind.key}
+            style={[styles.item, { borderBottomColor: colors.borderSubtle }]}
+          >
             <View style={styles.topRow}>
               <View style={styles.labelCol}>
-                <Text style={styles.label}>{ind.label}</Text>
-                <Text style={styles.groupBadge}>
+                <Text style={[styles.label, { color: colors.text }]}>{ind.label}</Text>
+                <Text style={[styles.groupBadge, { color: colors.textSubtle }]}>
                   {ind.group} · wt {(ind.weight * 100).toFixed(0)}%
                 </Text>
               </View>
@@ -35,12 +51,14 @@ export const IndicatorList: React.FC<Props> = ({ indicators }) => {
                 <Text style={[styles.rawScore, { color }]}>
                   {ind.raw > 0 ? `+${ind.raw}` : ind.raw}
                 </Text>
-                <Text style={styles.contrib}>{(ind.contribution >= 0 ? '+' : '') + ind.contribution.toFixed(1)}</Text>
+                <Text style={[styles.contrib, { color: colors.textMuted }]}>
+                  {(ind.contribution >= 0 ? '+' : '') + ind.contribution.toFixed(1)}
+                </Text>
               </View>
             </View>
 
             {/* Gauge bar */}
-            <View style={styles.barBg}>
+            <View style={[styles.barBg, { backgroundColor: colors.surface2 }]}>
               <View
                 style={[
                   styles.barFill,
@@ -48,12 +66,13 @@ export const IndicatorList: React.FC<Props> = ({ indicators }) => {
                     width: `${pct}%`,
                     backgroundColor: color,
                     alignSelf: isBearish ? 'flex-end' : 'flex-start',
+                    borderRadius: colors.borderRadiusSm,
                   },
                 ]}
               />
             </View>
 
-            <Text style={styles.detail}>{ind.detail}</Text>
+            <Text style={[styles.detail, { color: colors.textMuted }]}>{ind.detail}</Text>
           </View>
         )
       })}
@@ -63,23 +82,17 @@ export const IndicatorList: React.FC<Props> = ({ indicators }) => {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
     padding: 16,
     marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.textSubtle,
+    fontSize: 10,
+    fontWeight: '800',
     letterSpacing: 0.8,
     marginBottom: 12,
   },
   item: {
     borderBottomWidth: 1,
-    borderBottomColor: colors.borderSubtle,
     paddingVertical: 10,
   },
   topRow: {
@@ -92,12 +105,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   label: {
-    color: colors.text,
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   groupBadge: {
-    color: colors.textSubtle,
     fontSize: 10,
     marginTop: 1,
     textTransform: 'uppercase',
@@ -111,22 +122,17 @@ const styles = StyleSheet.create({
   },
   contrib: {
     fontSize: 10,
-    color: colors.textMuted,
   },
   barBg: {
     height: 4,
-    backgroundColor: colors.surface2,
-    borderRadius: 2,
     marginVertical: 4,
     overflow: 'hidden',
   },
   barFill: {
     height: '100%',
-    borderRadius: 2,
   },
   detail: {
     fontSize: 11,
-    color: colors.textMuted,
     lineHeight: 15,
     marginTop: 2,
   },

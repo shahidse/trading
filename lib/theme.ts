@@ -1,20 +1,43 @@
 /**
- * Theme plumbing shared by the server-rendered layout and the client toggle.
- *
- * Kept as a plain module (no `'use client'`) so the root layout — a Server
- * Component — can import the inline bootstrap script without pulling in a
- * client boundary.
+ * Web Theme System for the 4 Design Archetypes with Light & Dark Modes:
+ * 1. data-driven: Sleek Data-Driven Dark/Light Mode (Pro Quant)
+ * 2. neofuturistic: Neofuturistic & AI-Integrated Minimalism (Cyan/Violet Synth)
+ * 3. playful: Playful Consumer-Grade (Social-Fi & Memecoin / Hot Pink & Lime)
+ * 4. brutalist: High-Contrast Neo-Brutalism & Editorial (Heavy Borders & Raw Contrast)
  */
 
-export type Theme = 'light' | 'dark'
+export type ThemeStyle = 'data-driven' | 'neofuturistic' | 'playful' | 'brutalist'
+export type ColorMode = 'dark' | 'light'
+export type Theme = ColorMode
 
-export const THEME_STORAGE_KEY = 'eth-signal-theme'
+export const THEME_STYLE_KEY = 'eth-signal-theme-style'
+export const COLOR_MODE_KEY = 'eth-signal-color-mode'
 
-/** Default when nothing is stored: follow the OS, falling back to dark. */
-export const DEFAULT_THEME: Theme = 'dark'
+export const DEFAULT_STYLE: ThemeStyle = 'data-driven'
+export const DEFAULT_MODE: ColorMode = 'dark'
 
-/**
- * Runs before first paint so the correct theme is applied with no flash.
- * Reads the stored preference, else the OS setting, then sets `.dark` on <html>.
- */
-export const themeInitScript = `(function(){try{var k='${THEME_STORAGE_KEY}';var s=localStorage.getItem(k);var d=s?s==='dark':!window.matchMedia('(prefers-color-scheme: light)').matches;document.documentElement.classList.toggle('dark',d);document.documentElement.style.colorScheme=d?'dark':'light';}catch(e){document.documentElement.classList.add('dark');}})();`
+export const THEME_STYLES: Array<{ id: ThemeStyle; label: string; icon: string }> = [
+  { id: 'data-driven', label: 'Data-Driven', icon: '📊' },
+  { id: 'neofuturistic', label: 'Neofuture AI', icon: '⚡' },
+  { id: 'playful', label: 'Social-Fi', icon: '🚀' },
+  { id: 'brutalist', label: 'Neo-Brutalist', icon: '📐' },
+]
+
+export const themeInitScript = `(function(){
+  try {
+    var s = localStorage.getItem('${THEME_STYLE_KEY}') || 'data-driven';
+    var m = localStorage.getItem('${COLOR_MODE_KEY}');
+    if (!m) {
+      m = !window.matchMedia('(prefers-color-scheme: light)').matches ? 'dark' : 'light';
+    }
+    var root = document.documentElement;
+    root.setAttribute('data-style', s);
+    root.setAttribute('data-mode', m);
+    root.classList.toggle('dark', m === 'dark');
+    root.style.colorScheme = m;
+  } catch(e) {
+    document.documentElement.setAttribute('data-style', 'data-driven');
+    document.documentElement.setAttribute('data-mode', 'dark');
+    document.documentElement.classList.add('dark');
+  }
+})();`
