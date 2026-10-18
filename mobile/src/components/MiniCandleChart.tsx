@@ -11,7 +11,7 @@ interface Props {
 }
 
 export const MiniCandleChart: React.FC<Props> = ({ candles, levels, height = 220 }) => {
-  const { colors } = useTheme()
+  const { colors, chartCandles } = useTheme()
 
   if (!candles || candles.length === 0) {
     return (
@@ -32,8 +32,8 @@ export const MiniCandleChart: React.FC<Props> = ({ candles, levels, height = 220
     )
   }
 
-  // Display the latest 32 candles for a responsive mobile view
-  const visible = candles.slice(-32)
+  // Display user-configured candle zoom count
+  const visible = candles.slice(-chartCandles)
   const highs = visible.map((c) => c.high)
   const lows = visible.map((c) => c.low)
 
@@ -64,7 +64,7 @@ export const MiniCandleChart: React.FC<Props> = ({ candles, levels, height = 220
       style={[
         styles.container,
         {
-          height,
+          minHeight: height,
           backgroundColor: colors.surface,
           borderColor: colors.border,
           borderWidth: colors.borderWidth,

@@ -1,5 +1,5 @@
-import React from 'react'
-import { View, Text, StyleSheet } from 'react-native'
+import React, { useState } from 'react'
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import { Signal } from '../types'
 import { useTheme, formatPercent, formatPrice } from '../theme'
 
@@ -8,7 +8,8 @@ interface Props {
 }
 
 export const SignalCard: React.FC<Props> = ({ signal }) => {
-  const { colors } = useTheme()
+  const { colors, layoutDensity } = useTheme()
+  const [expandedRationale, setExpandedRationale] = useState(false)
 
   const isLong = signal.direction === 'LONG'
   const isShort = signal.direction === 'SHORT'
@@ -65,6 +66,21 @@ export const SignalCard: React.FC<Props> = ({ signal }) => {
           >
             <Text style={[styles.actionText, { color: actionColor }]}>PLAN: {action}</Text>
           </View>
+          {signal.plan.gate === 'scalp-open' && (
+            <View
+              style={[
+                styles.scalpBadge,
+                {
+                  backgroundColor: colors.primaryLight,
+                  borderColor: colors.primary,
+                  borderWidth: colors.borderWidth,
+                  borderRadius: colors.borderRadiusSm,
+                },
+              ]}
+            >
+              <Text style={[styles.scalpText, { color: colors.primary }]}>⚡ SCALP</Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.scoreContainer}>
@@ -149,13 +165,29 @@ export const SignalCard: React.FC<Props> = ({ signal }) => {
       {/* Rationale Bullet Points */}
       {signal.plan.rationale.length > 0 && (
         <View style={[styles.rationaleContainer, { borderTopColor: colors.borderSubtle }]}>
-          <Text style={[styles.rationaleTitle, { color: colors.textSubtle }]}>STRATEGY REASONING</Text>
-          {signal.plan.rationale.map((reason, index) => (
-            <View key={index} style={styles.bulletRow}>
-              <Text style={[styles.bulletDot, { color: colors.primary }]}>•</Text>
-              <Text style={[styles.bulletText, { color: colors.textMuted }]}>{reason}</Text>
-            </View>
-          ))}
+          {layoutDensity === 'compact' ? (
+            <TouchableOpacity
+              onPress={() => setExpandedRationale((prev) => !prev)}
+              style={styles.expandRationaleRow}
+            >
+              <Text style={[styles.rationaleTitle, { color: colors.textSubtle, marginBottom: 0 }]}>
+                STRATEGY REASONING ({signal.plan.rationale.length})
+              </Text>
+              <Text style={[styles.expandToggleText, { color: colors.primary }]}>
+                {expandedRationale ? '▲ Hide' : '▼ Details'}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <Text style={[styles.rationaleTitle, { color: colors.textSubtle }]}>STRATEGY REASONING</Text>
+          )}
+
+          {(layoutDensity !== 'compact' || expandedRationale) &&
+            signal.plan.rationale.map((reason, index) => (
+              <View key={index} style={styles.bulletRow}>
+                <Text style={[styles.bulletDot, { color: colors.primary }]}>•</Text>
+                <Text style={[styles.bulletText, { color: colors.textMuted }]}>{reason}</Text>
+              </View>
+            ))}
         </View>
       )}
     </View>
@@ -194,6 +226,15 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 12,
   },
+  scalpBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+  },
+  scalpText: {
+    fontWeight: '800',
+    fontSize: 10,
+    letterSpacing: 0.5,
+  },
   scoreContainer: {
     alignItems: 'flex-end',
   },
@@ -220,7 +261,9 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   gridItem: {
-    width: '47%',
+    flex: 1,
+    minWidth: '45%',
+    maxWidth: '50%',
   },
   gridLabel: {
     fontSize: 10,
@@ -271,5 +314,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     flex: 1,
     lineHeight: 16,
+  },
+  expandRationaleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  expandToggleText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
 })

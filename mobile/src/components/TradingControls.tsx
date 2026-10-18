@@ -166,14 +166,21 @@ export const TradingControls: React.FC<Props> = ({ state, onRefresh }) => {
           style={[
             styles.positionBanner,
             {
-              backgroundColor: colors.bullishBg,
-              borderColor: colors.bullishBorder,
+              backgroundColor: openPosition.side === 'BUY' ? colors.bullishBg : colors.bearishBg,
+              borderColor: openPosition.side === 'BUY' ? colors.bullishBorder : colors.bearishBorder,
               borderWidth: colors.borderWidth,
               borderRadius: colors.borderRadius,
             },
           ]}
         >
-          <Text style={[styles.posTitle, { color: colors.bullish }]}>ACTIVE LONG POSITION</Text>
+          <Text
+            style={[
+              styles.posTitle,
+              { color: openPosition.side === 'BUY' ? colors.bullish : colors.bearish },
+            ]}
+          >
+            ACTIVE {openPosition.side} POSITION ({openPosition.quantity.toFixed(4)} ETH)
+          </Text>
           <Text style={[styles.posText, { color: colors.text }]}>
             Filled at {formatPrice(openPosition.price)} · Size: {formatPrice(openPosition.notionalUsd)}
           </Text>
@@ -225,7 +232,9 @@ export const TradingControls: React.FC<Props> = ({ state, onRefresh }) => {
           {loadingAction === 'arm' || loadingAction === 'disarm' ? (
             <ActivityIndicator color="#fff" size="small" />
           ) : (
-            <Text style={styles.btnText}>{isArmed ? 'DISARM BOT' : 'ARM TRADER'}</Text>
+            <Text style={[styles.btnText, { color: isArmed ? colors.text : '#ffffff' }]}>
+              {isArmed ? 'DISARM BOT' : 'ARM TRADER'}
+            </Text>
           )}
         </TouchableOpacity>
       </View>

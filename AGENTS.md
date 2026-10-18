@@ -2,7 +2,7 @@
 
 > **Target Workspace**: `eth-signal-app` (Ethereum Spot 15m Signal Engine & Execution Bot)  
 > **Repository Root**: `/home/shahid/Documents/WorkSpace/blockchain`  
-> **Node Runtime**: Node.js v22+ (`export PATH="/home/shahid/.nvm/versions/node/v22.12.0/bin:$PATH"`)  
+> **Node Runtime**: Node.js v22+ (`export PATH="/home/shahid/.nvm/versions/node/v22.14.0/bin:$PATH"`)  
 > **Primary Technology Stack**: Next.js 15 (App Router), TypeScript 5.7, Tailwind CSS v4, Drizzle ORM + SQLite (`better-sqlite3`), CCXT (Binance Spot), Viem / Wagmi, Lightweight Charts, Resend, Telegram Bot API, Vitest, Hardhat.
 
 ---

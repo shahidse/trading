@@ -19,6 +19,7 @@
     "contracts:install": "npm --prefix contracts install",
     "contracts:test": "npm --prefix contracts test",
     "mobile:start": "npm --prefix mobile run start",
+    "mobile:tunnel": "npm --prefix mobile run tunnel",
     "mobile:android": "npm --prefix mobile run android",
     "mobile:ios": "npm --prefix mobile run ios",
     "mobile:typecheck": "npm --prefix mobile run typecheck"

@@ -9,6 +9,9 @@ import {
   Switch,
   Alert,
   ActivityIndicator,
+  SafeAreaView,
+  Platform,
+  StatusBar,
 } from 'react-native'
 import { useTheme } from '../theme'
 import { api } from '../services/api'
@@ -106,7 +109,7 @@ export const SettingsModal: React.FC<Props> = ({ onClose }) => {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bg }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
       <View
         style={[
           styles.header,
@@ -456,21 +459,21 @@ export const SettingsModal: React.FC<Props> = ({ onClose }) => {
           </TouchableOpacity>
         </ScrollView>
       )}
-    </View>
+    </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 0,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 14,
+    paddingVertical: 14,
   },
   headerTitle: {
     fontSize: 12,

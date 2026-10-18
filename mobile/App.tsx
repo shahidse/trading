@@ -11,6 +11,7 @@ import {
   Modal,
   ActivityIndicator,
   Alert,
+  Platform,
 } from 'react-native'
 import { api } from './src/services/api'
 import { Candle, ChartPayload, PriceResponse, Signal, TradingStateResponse } from './src/types'
@@ -25,12 +26,13 @@ import { MiniCandleChart } from './src/components/MiniCandleChart'
 import { SignalCard } from './src/components/SignalCard'
 import { IndicatorList } from './src/components/IndicatorList'
 import { TradingControls } from './src/components/TradingControls'
+import { OrderHistory } from './src/components/OrderHistory'
 import { SignalHistory } from './src/components/SignalHistory'
 import { SettingsModal } from './src/components/SettingsModal'
 import { ThemeSelector } from './src/components/ThemeSelector'
 
 function MainScreen() {
-  const { colors, colorMode, themeStyle } = useTheme()
+  const { colors, colorMode, themeStyle, refreshInterval, showIndicators } = useTheme()
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
@@ -43,7 +45,7 @@ function MainScreen() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   // Active tab for Playful (Social-Fi) and Neofuturistic tabbed cockpit
-  const [activeTab, setActiveTab] = useState<'alpha' | 'chart' | 'indicators' | 'guards'>('alpha')
+  const [activeTab, setActiveTab] = useState<'alpha' | 'chart' | 'indicators' | 'guards' | 'orders'>('alpha')
 
   const loadData = useCallback(async () => {
     try {
@@ -83,9 +85,11 @@ function MainScreen() {
 
   useEffect(() => {
     loadData()
-    const interval = setInterval(loadData, 30_000)
-    return () => clearInterval(interval)
-  }, [loadData])
+    if (refreshInterval > 0) {
+      const interval = setInterval(loadData, refreshInterval * 1000)
+      return () => clearInterval(interval)
+    }
+  }, [loadData, refreshInterval])
 
   const onRefresh = () => {
     setRefreshing(true)
@@ -267,7 +271,14 @@ function MainScreen() {
             {/* Quantitative Signal Analysis */}
             {latestSignal && <SignalCard signal={latestSignal} />}
             <TradingControls state={tradingState} onRefresh={loadData} />
-            {latestSignal && <IndicatorList indicators={latestSignal.indicators || []} />}
+            {tradingState?.orders && (
+              <OrderHistory
+                orders={tradingState.orders}
+                openPosition={tradingState.openPosition}
+                realisedPnl24h={tradingState.realisedPnl24h}
+              />
+            )}
+            {showIndicators && latestSignal && <IndicatorList indicators={latestSignal.indicators || []} />}
             <SignalHistory signals={signals} />
           </View>
         )}
@@ -305,7 +316,7 @@ function MainScreen() {
 
             {/* Interactive Segments Bar */}
             <View style={styles.segmentBar}>
-              {(['alpha', 'chart', 'indicators', 'guards'] as const).map((tab) => {
+              {(['alpha', 'chart', 'indicators', 'guards', 'orders'] as const).map((tab) => {
                 const active = activeTab === tab
                 return (
                   <TouchableOpacity
@@ -343,6 +354,13 @@ function MainScreen() {
             )}
             {activeTab === 'guards' && (
               <TradingControls state={tradingState} onRefresh={loadData} />
+            )}
+            {activeTab === 'orders' && (
+              <OrderHistory
+                orders={tradingState?.orders || []}
+                openPosition={tradingState?.openPosition}
+                realisedPnl24h={tradingState?.realisedPnl24h}
+              />
             )}
 
             <SignalHistory signals={signals} />
@@ -390,7 +408,14 @@ function MainScreen() {
 
             {latestSignal && <SignalCard signal={latestSignal} />}
             <TradingControls state={tradingState} onRefresh={loadData} />
-            {latestSignal && <IndicatorList indicators={latestSignal.indicators || []} />}
+            {tradingState?.orders && (
+              <OrderHistory
+                orders={tradingState.orders}
+                openPosition={tradingState.openPosition}
+                realisedPnl24h={tradingState.realisedPnl24h}
+              />
+            )}
+            {showIndicators && latestSignal && <IndicatorList indicators={latestSignal.indicators || []} />}
             <SignalHistory signals={signals} />
           </View>
         )}
@@ -440,7 +465,14 @@ function MainScreen() {
 
             {latestSignal && <SignalCard signal={latestSignal} />}
             <TradingControls state={tradingState} onRefresh={loadData} />
-            {latestSignal && <IndicatorList indicators={latestSignal.indicators || []} />}
+            {tradingState?.orders && (
+              <OrderHistory
+                orders={tradingState.orders}
+                openPosition={tradingState.openPosition}
+                realisedPnl24h={tradingState.realisedPnl24h}
+              />
+            )}
+            {showIndicators && latestSignal && <IndicatorList indicators={latestSignal.indicators || []} />}
             <SignalHistory signals={signals} />
           </View>
         )}
@@ -475,6 +507,7 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 0,
   },
   navBar: {
     flexDirection: 'row',

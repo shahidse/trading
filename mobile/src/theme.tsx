@@ -450,27 +450,51 @@ export const THEME_STYLES: Array<{ id: ThemeStyle; label: string; icon: string }
   { id: 'brutalist', label: 'Neo-Brutalist', icon: '📐' },
 ]
 
+export type LayoutDensity = 'compact' | 'comfortable' | 'detailed'
+export type ChartCandles = 20 | 32 | 50
+export type RefreshInterval = 0 | 15 | 30 | 60
+
 interface ThemeContextValue {
   themeStyle: ThemeStyle
   colorMode: ColorMode
   colors: ThemeColors
+  layoutDensity: LayoutDensity
+  chartCandles: ChartCandles
+  refreshInterval: RefreshInterval
+  showIndicators: boolean
   setThemeStyle: (style: ThemeStyle) => void
   setColorMode: (mode: ColorMode) => void
   toggleColorMode: () => void
+  setLayoutDensity: (density: LayoutDensity) => void
+  setChartCandles: (candles: ChartCandles) => void
+  setRefreshInterval: (seconds: RefreshInterval) => void
+  setShowIndicators: (show: boolean) => void
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
   themeStyle: 'data-driven',
   colorMode: 'dark',
   colors: themes['data-driven'].dark,
+  layoutDensity: 'comfortable',
+  chartCandles: 32,
+  refreshInterval: 30,
+  showIndicators: true,
   setThemeStyle: () => {},
   setColorMode: () => {},
   toggleColorMode: () => {},
+  setLayoutDensity: () => {},
+  setChartCandles: () => {},
+  setRefreshInterval: () => {},
+  setShowIndicators: () => {},
 })
 
 export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [themeStyle, setThemeStyle] = useState<ThemeStyle>('data-driven')
   const [colorMode, setColorMode] = useState<ColorMode>('dark')
+  const [layoutDensity, setLayoutDensity] = useState<LayoutDensity>('comfortable')
+  const [chartCandles, setChartCandles] = useState<ChartCandles>(32)
+  const [refreshInterval, setRefreshInterval] = useState<RefreshInterval>(30)
+  const [showIndicators, setShowIndicators] = useState<boolean>(true)
 
   const activeColors = themes[themeStyle][colorMode]
   // Update export reference for unhooked utilities
@@ -486,9 +510,17 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         themeStyle,
         colorMode,
         colors: activeColors,
+        layoutDensity,
+        chartCandles,
+        refreshInterval,
+        showIndicators,
         setThemeStyle,
         setColorMode,
         toggleColorMode,
+        setLayoutDensity,
+        setChartCandles,
+        setRefreshInterval,
+        setShowIndicators,
       }}
     >
       {children}

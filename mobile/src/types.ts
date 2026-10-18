@@ -53,7 +53,7 @@ export type TradePlan = {
   headline: string
   forFlat: string
   forHolder: string
-  gate: 'open' | 'blocked-by-trend' | 'no-edge'
+  gate: 'open' | 'scalp-open' | 'blocked-by-trend' | 'no-edge'
   levels: TradeLevels | null
   protectiveStop: number | null
   rationale: string[]
@@ -126,23 +126,26 @@ export type ChartPayload = {
 
 export type TradeOrder = {
   id: number
-  clientOrderId: string
-  exchangeOrderId: string | null
+  clientOrderId?: string
+  exchangeOrderId?: string | null
   symbol: string
   side: 'BUY' | 'SELL'
   type: string
-  status: 'PENDING' | 'FILLED' | 'CANCELED' | 'REJECTED' | 'EXPIRED'
-  price: number
+  status: 'placed' | 'dry-run' | 'refused' | 'error' | 'skipped' | 'PENDING' | 'FILLED' | 'CANCELED' | 'REJECTED' | 'EXPIRED' | string
+  price: number | null
   quantity: number
   notionalUsd: number
-  feeUsd: number | null
-  realisedPnlUsd: number | null
-  signalScore: number | null
-  stopLossPrice: number | null
-  takeProfitPrice: number | null
-  dryRun: boolean
-  isTestnet: boolean
-  executedAt: number
+  reason?: string
+  environment?: string
+  feeUsd?: number | null
+  realisedPnlUsd?: number | null
+  signalScore?: number | null
+  stopLossPrice?: number | null
+  takeProfitPrice?: number | null
+  dryRun?: boolean
+  isTestnet?: boolean
+  createdAt?: number
+  executedAt?: number
 }
 
 export type TradingStateResponse = {
