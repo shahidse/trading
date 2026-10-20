@@ -10,6 +10,7 @@ function bundleWith(overrides: Partial<IndicatorBundle>): IndicatorBundle {
     ichimoku: null,
     macd: null,
     emaTrend: null,
+    supertrend: null,
     bollinger: null,
     rsi: null,
     stochRsi: null,

@@ -153,6 +153,15 @@ export function scoreIndicators(bundle: IndicatorBundle): ScoringResult {
       cross: bundle.emaTrend.cross,
     })
   }
+  if (bundle.supertrend) {
+    add('supertrend', 'SuperTrend (10/3)', 'trend', bundle.supertrend.score, bundle.supertrend.detail, {
+      direction: bundle.supertrend.direction,
+      value: bundle.supertrend.value,
+      flipped: bundle.supertrend.flipped,
+      barsSinceFlip: bundle.supertrend.barsSinceFlip,
+      distancePct: bundle.supertrend.distancePct,
+    })
+  }
   if (bundle.bollinger) {
     add('bollinger', 'Bollinger Bands', 'mean-reversion', bundle.bollinger.score, bundle.bollinger.detail, {
       percentB: bundle.bollinger.percentB,

@@ -59,6 +59,7 @@ type ToggleKey =
   | 'bollinger'
   | 'ema'
   | 'vwap'
+  | 'supertrend'
   | 'ichimoku'
   | 'volume'
   | 'rsi'
@@ -71,6 +72,7 @@ const DEFAULT_TOGGLES: Toggles = {
   bollinger: true,
   ema: true,
   vwap: true,
+  supertrend: true,
   ichimoku: true,
   volume: true,
   rsi: true,
@@ -79,6 +81,7 @@ const DEFAULT_TOGGLES: Toggles = {
 }
 
 const TOGGLE_LABELS: { key: ToggleKey; label: string }[] = [
+  { key: 'supertrend', label: 'SuperTrend' },
   { key: 'bollinger', label: 'Bollinger' },
   { key: 'ema', label: 'EMA 20/50/200' },
   { key: 'vwap', label: 'VWAP' },
@@ -249,6 +252,10 @@ export function CandleChart({ limit = 500 }: { limit?: number }) {
     overlays.vwap = line('#ec4899', 2)
     overlays.vwap.setData(toLine(series.vwap))
 
+    // SuperTrend (Scalping trailing stop / support-resistance)
+    overlays.supertrend = line('#10b981', 2)
+    overlays.supertrend.setData(toLine(series.supertrend ?? []))
+
     // Ichimoku (cloud drawn as the two leading-span lines)
     overlays.ichimokuConversion = line('#22d3ee')
     overlays.ichimokuConversion.setData(toLine(series.ichimoku.conversion))
@@ -382,6 +389,7 @@ export function CandleChart({ limit = 500 }: { limit?: number }) {
     visible('emaSlow', toggles.ema)
 
     visible('vwap', toggles.vwap)
+    visible('supertrend', toggles.supertrend)
 
     visible('ichimokuConversion', toggles.ichimoku)
     visible('ichimokuBase', toggles.ichimoku)

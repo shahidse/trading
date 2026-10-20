@@ -40,16 +40,17 @@ export const config = {
    */
   weights: {
     // trend-following
-    ichimoku: 0.15,
-    macd: 0.13,
-    emaTrend: 0.12,
+    ichimoku: 0.13,
+    macd: 0.11,
+    emaTrend: 0.1,
+    supertrend: 0.1,
     // mean-reversion
-    bollinger: 0.1,
-    rsi: 0.1,
+    bollinger: 0.09,
+    rsi: 0.09,
     stochRsi: 0.08,
-    vwap: 0.1,
+    vwap: 0.09,
     // context / confirmation
-    volume: 0.12,
+    volume: 0.11,
     pattern: 0.1,
   },
 
@@ -60,6 +61,11 @@ export const config = {
   macd: { fastPeriod: 12, slowPeriod: 26, signalPeriod: 9 },
 
   emaTrend: { fast: 20, mid: 50, slow: 200 },
+
+  supertrend: {
+    period: num(process.env.SUPERTREND_PERIOD, 10),
+    multiplier: num(process.env.SUPERTREND_MULTIPLIER, 3.0),
+  },
 
   stochRsi: { rsiPeriod: 14, stochasticPeriod: 14, kPeriod: 3, dPeriod: 3 },
 

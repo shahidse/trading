@@ -9,6 +9,7 @@ import { macd, type MacdResult } from './macd'
 import { patterns, type PatternResult } from './patterns'
 import { rsi, type RsiResult } from './rsi'
 import { stochRsi, type StochRsiResult } from './stoch-rsi'
+import { supertrend, type SuperTrendResult } from './supertrend'
 import { volume, type VolumeResult } from './volume'
 import { vwap, type VwapResult } from './vwap'
 
@@ -17,6 +18,7 @@ export type IndicatorBundle = {
   ichimoku: IchimokuResult | null
   macd: MacdResult | null
   emaTrend: EmaTrendResult | null
+  supertrend: SuperTrendResult | null
   bollinger: BollingerResult | null
   rsi: RsiResult | null
   stochRsi: StochRsiResult | null
@@ -28,7 +30,7 @@ export type IndicatorBundle = {
   atr: AtrResult | null
 }
 
-export { adx, atr, bollinger, emaTrend, ichimoku, macd, patterns, rsi, stochRsi, volume, vwap }
+export { adx, atr, bollinger, emaTrend, ichimoku, macd, patterns, rsi, stochRsi, supertrend, volume, vwap }
 export type {
   AdxResult,
   AtrResult,
@@ -39,6 +41,7 @@ export type {
   PatternResult,
   RsiResult,
   StochRsiResult,
+  SuperTrendResult,
   VolumeResult,
   VwapResult,
 }
@@ -49,6 +52,7 @@ export function computeIndicators(candles: Candle[]): IndicatorBundle {
     ichimoku: ichimoku(candles, config.ichimoku),
     macd: macd(candles, config.macd),
     emaTrend: emaTrend(candles, config.emaTrend),
+    supertrend: supertrend(candles, config.supertrend),
     bollinger: bollinger(candles, config.bollinger.period, config.bollinger.stdDev),
     rsi: rsi(candles, config.rsi.period),
     stochRsi: stochRsi(candles, config.stochRsi),
@@ -63,4 +67,5 @@ export function computeIndicators(candles: Candle[]): IndicatorBundle {
     atr: atr(candles, config.atr),
   }
 }
+
 

@@ -63,6 +63,7 @@ export function generateSignal(candles: Candle[], ctx: SignalContext = {}): Sign
     patternScore: bundle.patterns?.score,
     patternNames: bundle.patterns?.patterns.map((p) => p.label) ?? [],
     rsiValue: bundle.rsi?.value ?? null,
+    supertrend: bundle.supertrend,
     reversalScalpMode: ctx.reversalScalpMode ?? config.exchange.reversalScalpMode,
   })
 

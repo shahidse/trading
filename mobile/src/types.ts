@@ -110,6 +110,7 @@ export type ChartPayload = {
     ichimoku: { conversion: LinePoint[]; base: LinePoint[]; spanA: LinePoint[]; spanB: LinePoint[] }
     rsi: LinePoint[]
     macd: { macd: LinePoint[]; signal: LinePoint[]; histogram: LinePoint[] }
+    supertrend?: LinePoint[]
   }
   markers: Array<{
     time: number

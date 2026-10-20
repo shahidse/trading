@@ -17,6 +17,7 @@ export type IndicatorKey =
   | 'ichimoku'
   | 'macd'
   | 'emaTrend'
+  | 'supertrend'
   | 'bollinger'
   | 'rsi'
   | 'stochRsi'
@@ -158,6 +159,7 @@ export type ChartSeries = {
   ichimoku: { conversion: LinePoint[]; base: LinePoint[]; spanA: LinePoint[]; spanB: LinePoint[] }
   rsi: LinePoint[]
   macd: { macd: LinePoint[]; signal: LinePoint[]; histogram: LinePoint[] }
+  supertrend: LinePoint[]
 }
 
 /** A stored signal reduced to what the chart's markers need. */

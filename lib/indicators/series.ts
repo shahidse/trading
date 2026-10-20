@@ -204,6 +204,85 @@ export function macdSeries(
   }
 }
 
+/**
+ * SuperTrend (10, 3) trailing stop / support-resistance line.
+ *
+ * Trailing price level plotted on every bar where SuperTrend is defined.
+ */
+export function supertrendSeries(candles: Candle[], opts = config.supertrend): LinePoint[] {
+  const period = opts.period ?? 10
+  const multiplier = opts.multiplier ?? 3
+  const len = candles.length
+  if (len < period + 1) return []
+
+  const tr: number[] = new Array(len)
+  tr[0] = candles[0].high - candles[0].low
+  for (let i = 1; i < len; i++) {
+    const hl = candles[i].high - candles[i].low
+    const hc = Math.abs(candles[i].high - candles[i - 1].close)
+    const lc = Math.abs(candles[i].low - candles[i - 1].close)
+    tr[i] = Math.max(hl, hc, lc)
+  }
+
+  const atrValues: number[] = new Array(len)
+  let sumTr = 0
+  for (let i = 0; i < period; i++) sumTr += tr[i]
+  atrValues[period - 1] = sumTr / period
+  for (let i = period; i < len; i++) {
+    atrValues[i] = (atrValues[i - 1] * (period - 1) + tr[i]) / period
+  }
+
+  const upperBand: number[] = new Array(len)
+  const lowerBand: number[] = new Array(len)
+  const st: number[] = new Array(len)
+  const dir: ('bullish' | 'bearish')[] = new Array(len)
+  const out: LinePoint[] = []
+
+  for (let i = period - 1; i < len; i++) {
+    const hl2 = (candles[i].high + candles[i].low) / 2
+    const currentAtr = atrValues[i]
+    const basicUpper = hl2 + multiplier * currentAtr
+    const basicLower = hl2 - multiplier * currentAtr
+
+    if (i === period - 1) {
+      upperBand[i] = basicUpper
+      lowerBand[i] = basicLower
+      dir[i] = candles[i].close >= basicLower ? 'bullish' : 'bearish'
+      st[i] = dir[i] === 'bullish' ? lowerBand[i] : upperBand[i]
+    } else {
+      const prevUpper = upperBand[i - 1]
+      const prevLower = lowerBand[i - 1]
+      const prevClose = candles[i - 1].close
+
+      upperBand[i] = basicUpper < prevUpper || prevClose > prevUpper ? basicUpper : prevUpper
+      lowerBand[i] = basicLower > prevLower || prevClose < prevLower ? basicLower : prevLower
+
+      const prevDir = dir[i - 1]
+      if (prevDir === 'bullish') {
+        if (candles[i].close < lowerBand[i]) {
+          dir[i] = 'bearish'
+          st[i] = upperBand[i]
+        } else {
+          dir[i] = 'bullish'
+          st[i] = lowerBand[i]
+        }
+      } else {
+        if (candles[i].close > upperBand[i]) {
+          dir[i] = 'bullish'
+          st[i] = lowerBand[i]
+        } else {
+          dir[i] = 'bearish'
+          st[i] = upperBand[i]
+        }
+      }
+    }
+
+    out.push({ time: candles[i].time, value: Number(st[i].toFixed(2)) })
+  }
+
+  return out
+}
+
 /** Every overlay series the chart can render, in one pass. */
 export function computeChartSeries(candles: Candle[]) {
   return {
@@ -214,6 +293,7 @@ export function computeChartSeries(candles: Candle[]) {
     ichimoku: ichimokuSeries(candles),
     rsi: rsiSeries(candles),
     macd: macdSeries(candles),
+    supertrend: supertrendSeries(candles),
   }
 }
 

@@ -9,6 +9,7 @@ const emptyBundle: IndicatorBundle = {
   ichimoku: null,
   macd: null,
   emaTrend: null,
+  supertrend: null,
   bollinger: null,
   rsi: null,
   stochRsi: null,
@@ -85,8 +86,8 @@ describe('generateSignal', () => {
     expect(signal.score).toBeGreaterThanOrEqual(-100)
     expect(signal.score).toBeLessThanOrEqual(100)
     expect(signal.confidence).toBeCloseTo(Math.abs(signal.score), 1)
-    // All 9 directional indicators, given enough history for EMA200.
-    expect(signal.indicators).toHaveLength(9)
+    // All 10 directional indicators, given enough history for EMA200.
+    expect(signal.indicators).toHaveLength(10)
     expect(signal.reasons.length).toBeGreaterThan(0)
     expect(signal.price).toBeGreaterThan(0)
     expect(signal.timeframe).toBe('15m')

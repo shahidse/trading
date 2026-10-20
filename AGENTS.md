@@ -80,15 +80,16 @@ blockchain/
 │   │   ├── client.ts          # CCXT exchange instantiation, permissions, precision
 │   │   ├── settings.ts        # Runtime exchange credentials & limits
 │   │   └── trader.ts          # pure decideTrade() -> pure checkGuards() -> executeTrade()
-│   ├── indicators/            # 9 Directional + 2 Context indicators:
-│   │   ├── ichimoku.ts        # Conversion, Base, Span A/B (15%)
-│   │   ├── macd.ts            # Fast 12, Slow 26, Signal 9 (13%)
-│   │   ├── ema-trend.ts       # EMA 20, 50, 200 stack (12%)
-│   │   ├── bollinger.ts       # 20-period 2-stddev mean reversion (10%)
-│   │   ├── rsi.ts             # 14-period RSI (10%)
+│   ├── indicators/            # 10 Directional + 2 Context indicators:
+│   │   ├── ichimoku.ts        # Conversion, Base, Span A/B (13%)
+│   │   ├── macd.ts            # Fast 12, Slow 26, Signal 9 (11%)
+│   │   ├── ema-trend.ts       # EMA 20, 50, 200 stack (10%)
+│   │   ├── supertrend.ts      # ATR-based trailing trend & scalping flip (10%)
+│   │   ├── bollinger.ts       # 20-period 2-stddev mean reversion (9%)
+│   │   ├── rsi.ts             # 14-period RSI (9%)
 │   │   ├── stoch-rsi.ts       # Stochastic RSI (8%)
-│   │   ├── vwap.ts            # Rolling 24h VWAP (10%)
-│   │   ├── volume.ts          # OBV & Volume spikes (12%)
+│   │   ├── vwap.ts            # Rolling 24h VWAP (9%)
+│   │   ├── volume.ts          # OBV & Volume spikes (11%)
 │   │   ├── patterns.ts        # Engulfing, Hammer, Morning/Evening Star (10%)
 │   │   ├── adx.ts             # 14-period ADX regime filter (weights tilt)
 │   │   ├── atr.ts             # 14-period ATR volatility adaptive multiplier
@@ -113,9 +114,9 @@ blockchain/
 
 ### 4.1 Indicator Scoring Matrix
 Directional indicators score within `[-100, +100]`. Raw weights:
-- **Trend Group**: Ichimoku (15%), MACD (13%), EMA Trend (12%)
-- **Mean Reversion Group**: Bollinger Bands (10%), RSI (10%), StochRSI (8%), VWAP (10%)
-- **Context Group**: Volume / OBV (12%), Candlestick Patterns (10%)
+- **Trend Group**: Ichimoku (13%), MACD (11%), EMA Trend (10%), SuperTrend (10%)
+- **Mean Reversion Group**: Bollinger Bands (9%), RSI (9%), StochRSI (8%), VWAP (9%)
+- **Context Group**: Volume / OBV (11%), Candlestick Patterns (10%)
 
 ### 4.2 Dynamic Regime Tilt (ADX 14)
 ADX does **not** contribute to the score; it dynamically alters weights:
