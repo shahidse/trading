@@ -11,14 +11,12 @@ function getClient(): Exchange {
   if (!client) {
     client = new binance({
       enableRateLimit: true,
-      options: { defaultType: 'spot' },
+      options: { defaultType: 'spot', fetchCurrencies: false },
       urls: {
         api: {
           public: 'https://data-api.binance.vision/api/v3',
         },
       },
-      ...(process.env.BINANCE_API_KEY ? { apiKey: process.env.BINANCE_API_KEY } : {}),
-      ...(process.env.BINANCE_SECRET ? { secret: process.env.BINANCE_SECRET } : {}),
     })
   }
   return client
@@ -135,3 +133,81 @@ export async function fetchLastPrice(symbol: string = config.symbol): Promise<nu
     throw error
   }
 }
+
+export type OrderBookEntry = { price: number; quantity: number }
+
+export type OrderBookSnapshot = {
+  symbol: string
+  bids: OrderBookEntry[]
+  asks: OrderBookEntry[]
+  spread: number
+  spreadPct: number
+  midPrice: number
+  timestamp: number
+}
+
+/** Fetch top bids, asks, and depth from the order book. */
+export async function fetchOrderBook(
+  symbol: string = config.symbol,
+  limit = 15,
+): Promise<OrderBookSnapshot> {
+  try {
+    const exchange = getClient()
+    const book = await exchange.fetchOrderBook(symbol, limit)
+
+    const bids: OrderBookEntry[] = (book.bids || []).slice(0, limit).map(([p, q]) => ({
+      price: Number(p),
+      quantity: Number(q),
+    }))
+    const asks: OrderBookEntry[] = (book.asks || []).slice(0, limit).map(([p, q]) => ({
+      price: Number(p),
+      quantity: Number(q),
+    }))
+
+    const bestBid = bids[0]?.price ?? 0
+    const bestAsk = asks[0]?.price ?? 0
+    const spread = bestAsk > bestBid ? bestAsk - bestBid : 0
+    const midPrice = bestBid && bestAsk ? (bestBid + bestAsk) / 2 : bestBid || bestAsk
+    const spreadPct = midPrice > 0 ? (spread / midPrice) * 100 : 0
+
+    return {
+      symbol,
+      bids,
+      asks,
+      spread: Number(spread.toFixed(2)),
+      spreadPct: Number(spreadPct.toFixed(4)),
+      midPrice: Number(midPrice.toFixed(2)),
+      timestamp: book.timestamp ?? Date.now(),
+    }
+  } catch (error) {
+    if (isGeoBlocked(error)) {
+      const fallback = getFallbackExchange()
+      const book = await fallback.fetchOrderBook(symbol, limit)
+      const bids: OrderBookEntry[] = (book.bids || []).slice(0, limit).map(([p, q]) => ({
+        price: Number(p),
+        quantity: Number(q),
+      }))
+      const asks: OrderBookEntry[] = (book.asks || []).slice(0, limit).map(([p, q]) => ({
+        price: Number(p),
+        quantity: Number(q),
+      }))
+      const bestBid = bids[0]?.price ?? 0
+      const bestAsk = asks[0]?.price ?? 0
+      const spread = bestAsk > bestBid ? bestAsk - bestBid : 0
+      const midPrice = bestBid && bestAsk ? (bestBid + bestAsk) / 2 : bestBid || bestAsk
+      const spreadPct = midPrice > 0 ? (spread / midPrice) * 100 : 0
+
+      return {
+        symbol,
+        bids,
+        asks,
+        spread: Number(spread.toFixed(2)),
+        spreadPct: Number(spreadPct.toFixed(4)),
+        midPrice: Number(midPrice.toFixed(2)),
+        timestamp: book.timestamp ?? Date.now(),
+      }
+    }
+    throw error
+  }
+}
+

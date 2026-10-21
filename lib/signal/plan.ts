@@ -2,6 +2,7 @@ import { config } from '@/lib/config'
 import type { IndicatorBundle } from '@/lib/indicators'
 import type {
   ConfluenceInfo,
+  MacroTrendInfo,
   NotifyMode,
   RegimeInfo,
   SignalDirection,
@@ -124,7 +125,7 @@ export function trendRead(bundle: IndicatorBundle): TrendRead {
   return { verdict: 'neutral', evidence }
 }
 
-/** ATR-based entry / stop / target. */
+/** ATR-based entry / stop / target with staged multi-tier take-profits. */
 function buildLevels(price: number, atrValue: number | null): TradeLevels | null {
   if (!atrValue || atrValue <= 0 || price <= 0) return null
 
@@ -135,6 +136,44 @@ function buildLevels(price: number, atrValue: number | null): TradeLevels | null
   const rewardDistance = stopDistance * config.trade.rewardMultiple
   const takeProfit = price + rewardDistance
 
+  // Multi-tier staged targets:
+  // Tier 1: 50% scale-out at 1.5R stop distance -> triggers Breakeven Stop
+  const tp1Distance = stopDistance * 1.5
+  const tp1Price = round(price + tp1Distance, 2)
+  // Tier 2: 30% scale-out at 2.6R stop distance -> trails with SuperTrend
+  const tp2Distance = stopDistance * 2.6
+  const tp2Price = round(price + tp2Distance, 2)
+  // Tier 3: 20% trailing runner at 3.5R stop distance
+  const runnerDistance = stopDistance * 3.5
+  const runnerPrice = round(price + runnerDistance, 2)
+
+  const stagedTargets = [
+    {
+      tier: 1,
+      price: tp1Price,
+      distancePct: round((tp1Distance / price) * 100, 2),
+      sizePct: 50,
+      riskReward: 1.5,
+      action: 'breakeven-stop' as const,
+    },
+    {
+      tier: 2,
+      price: tp2Price,
+      distancePct: round((tp2Distance / price) * 100, 2),
+      sizePct: 30,
+      riskReward: 2.6,
+      action: 'trail-stop' as const,
+    },
+    {
+      tier: 3,
+      price: runnerPrice,
+      distancePct: round((runnerDistance / price) * 100, 2),
+      sizePct: 20,
+      riskReward: 3.5,
+      action: 'close-runner' as const,
+    },
+  ]
+
   return {
     entry: round(price, 2),
     stopLoss: round(stopLoss, 2),
@@ -142,6 +181,8 @@ function buildLevels(price: number, atrValue: number | null): TradeLevels | null
     riskReward: round(config.trade.rewardMultiple, 2),
     stopDistancePct: round((stopDistance / price) * 100, 2),
     targetDistancePct: round((rewardDistance / price) * 100, 2),
+    stagedTargets,
+    breakevenPrice: tp1Price,
   }
 }
 
@@ -160,10 +201,11 @@ export type TradePlanInput = {
   patternNames?: string[]
   rsiValue?: number | null
   supertrend?: IndicatorBundle['supertrend']
+  macroTrend?: MacroTrendInfo
   reversalScalpMode?: boolean
 }
 
-/** Tight scalp levels (~0.8% stop, ~1.2% profit target for quick intraday gains). */
+/** Tight scalp levels (~0.8% stop, ~1.2% profit target with quick breakeven trigger). */
 function buildScalpLevels(price: number): TradeLevels | null {
   if (price <= 0) return null
   const stopDistancePct = config.scalp.stopDistancePct
@@ -172,6 +214,29 @@ function buildScalpLevels(price: number): TradeLevels | null {
   const takeProfit = round(price * (1 + targetDistancePct / 100), 2)
   const riskReward = round(targetDistancePct / stopDistancePct, 2)
 
+  // Staged Scalp targets:
+  // Tier 1: 70% at 75% of target -> ratchet to breakeven
+  // Tier 2: 30% runner at 100% of target
+  const tp1Price = round(price * (1 + (targetDistancePct * 0.75) / 100), 2)
+  const stagedTargets = [
+    {
+      tier: 1,
+      price: tp1Price,
+      distancePct: round(targetDistancePct * 0.75, 2),
+      sizePct: 70,
+      riskReward: round((targetDistancePct * 0.75) / stopDistancePct, 2),
+      action: 'breakeven-stop' as const,
+    },
+    {
+      tier: 2,
+      price: takeProfit,
+      distancePct: targetDistancePct,
+      sizePct: 30,
+      riskReward,
+      action: 'trail-stop' as const,
+    },
+  ]
+
   return {
     entry: round(price, 2),
     stopLoss,
@@ -179,6 +244,8 @@ function buildScalpLevels(price: number): TradeLevels | null {
     riskReward,
     stopDistancePct,
     targetDistancePct,
+    stagedTargets,
+    breakevenPrice: tp1Price,
   }
 }
 

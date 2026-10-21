@@ -27,7 +27,13 @@ const DAY_MS = 24 * 60 * 60 * 1000
  *         `arm` / `disarm` (master enable).
  */
 
-export function GET() {
+import {
+  fetchAccountBalances,
+  fetchLiveOrders,
+  getTradingExchange,
+} from '@/lib/exchange/client'
+
+export async function GET() {
   try {
     const settings = getExchangeSettings()
     const realisedPnl24h = realisedPnlSince(Date.now() - DAY_MS)
@@ -36,12 +42,27 @@ export function GET() {
       ? (getOpenDryRunPosition(config.symbol)?.order ?? null)
       : getOpenBuyPosition(config.symbol)
 
+    let liveBalances = null
+    let liveOrders = null
+
+    if (settings.apiKey && settings.secret) {
+      try {
+        const exchange = await getTradingExchange()
+        liveBalances = await fetchAccountBalances(exchange)
+        liveOrders = await fetchLiveOrders(exchange, config.symbol, 20)
+      } catch (err) {
+        console.warn('Could not fetch live exchange data:', err)
+      }
+    }
+
     return NextResponse.json({
       settings: publicExchangeSettings(settings),
       orders: getRecentTradeOrders(50),
       openPosition,
       realisedPnl24h,
       symbol: config.symbol,
+      liveBalances,
+      liveOrders,
     })
   } catch (error) {
     return NextResponse.json(

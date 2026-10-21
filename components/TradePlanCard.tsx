@@ -88,25 +88,68 @@ export function TradePlanCard({ plan }: { plan: TradePlan }) {
       </div>
 
       {plan.levels ? (
-        <div className="mt-5 grid grid-cols-2 gap-3 xl:grid-cols-4">
-          <Level label="Entry" value={formatPrice(plan.levels.entry)} hint="buy here" />
-          <Level
-            label="Stop loss"
-            value={formatPrice(plan.levels.stopLoss)}
-            hint={`−${plan.levels.stopDistancePct}% · sell if breached`}
-            tone="down"
-          />
-          <Level
-            label="Take profit"
-            value={formatPrice(plan.levels.takeProfit)}
-            hint={`+${plan.levels.targetDistancePct}% · sell here`}
-            tone="up"
-          />
-          <Level
-            label="Reward : risk"
-            value={`${plan.levels.riskReward} : 1`}
-            hint={`risk ${plan.levels.stopDistancePct}% to make ${plan.levels.targetDistancePct}%`}
-          />
+        <div className="mt-5 space-y-3">
+          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+            <Level label="Entry" value={formatPrice(plan.levels.entry)} hint="buy here" />
+            <Level
+              label="Stop loss"
+              value={formatPrice(plan.levels.stopLoss)}
+              hint={`−${plan.levels.stopDistancePct}% · sell if breached`}
+              tone="down"
+            />
+            <Level
+              label="Take profit"
+              value={formatPrice(plan.levels.takeProfit)}
+              hint={`+${plan.levels.targetDistancePct}% · primary target`}
+              tone="up"
+            />
+            <Level
+              label="Reward : risk"
+              value={`${plan.levels.riskReward} : 1`}
+              hint={`risk ${plan.levels.stopDistancePct}% to make ${plan.levels.targetDistancePct}%`}
+            />
+          </div>
+
+          {/* Staged Take-Profit Scale-Outs & Breakeven Stop Ratchet */}
+          {plan.levels.stagedTargets && plan.levels.stagedTargets.length > 0 && (
+            <div className="rounded-xl border border-line-soft bg-surface-2 p-3.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold uppercase tracking-wider text-muted">
+                  Staged Scale-Outs & Stop Ratchet
+                </span>
+                {plan.levels.breakevenPrice && (
+                  <span className="rounded bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                    🛡️ Ratchet to Breakeven at ${plan.levels.breakevenPrice}
+                  </span>
+                )}
+              </div>
+              <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                {plan.levels.stagedTargets.map((t) => (
+                  <div
+                    key={t.tier}
+                    className="flex items-center justify-between rounded-lg border border-line bg-surface px-3 py-2 text-xs"
+                  >
+                    <div>
+                      <span className="font-medium text-ink">
+                        T{t.tier}: {t.sizePct}% size
+                      </span>
+                      <p className="text-[10px] text-subtle">
+                        {t.action === 'breakeven-stop'
+                          ? 'Moves Stop to Breakeven'
+                          : t.action === 'trail-stop'
+                          ? 'Trails with SuperTrend'
+                          : 'Trailing runner exit'}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-semibold text-up">${t.price}</span>
+                      <p className="text-[10px] text-muted">+{t.distancePct}% ({t.riskReward}R)</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       ) : plan.protectiveStop != null ? (
         <div className="mt-5 flex flex-wrap gap-3">

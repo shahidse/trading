@@ -24,6 +24,28 @@ export function SignalCard({ signal }: { signal: Signal & { emailed?: boolean } 
               </p>
             </div>
           </div>
+          {signal.macroTrend && (
+            <div className="mt-2.5 flex flex-wrap items-center gap-2">
+              <span
+                className={`rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider ${
+                  signal.macroTrend.verdict === 'bullish'
+                    ? 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                    : signal.macroTrend.verdict === 'bearish'
+                    ? 'border border-rose-500/30 bg-rose-500/10 text-rose-400'
+                    : 'border border-line bg-surface-2 text-muted'
+                }`}
+              >
+                1h Macro: {signal.macroTrend.verdict}
+              </span>
+              <span className="text-xs text-subtle">
+                {signal.macroTrend.alignmentWithSignal === 'aligned'
+                  ? '🎯 Full Macro Trend Alignment'
+                  : signal.macroTrend.alignmentWithSignal === 'counter-trend'
+                  ? '⚠️ Counter-Macro Trend Scalp'
+                  : 'Macro Neutral'} · {signal.macroTrend.detail}
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="text-right text-sm">

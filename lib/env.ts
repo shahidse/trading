@@ -27,6 +27,11 @@ function load(file = '.env.local'): void {
         (value.startsWith("'") && value.endsWith("'"))
       ) {
         value = value.slice(1, -1)
+      } else {
+        const commentIdx = value.indexOf('#')
+        if (commentIdx !== -1) {
+          value = value.slice(0, commentIdx).trim()
+        }
       }
       process.env[key] = value
     }

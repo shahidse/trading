@@ -39,6 +39,15 @@ export type ConfluenceInfo = {
   detail: string
 }
 
+export type StagedTarget = {
+  tier: number
+  price: number
+  distancePct: number
+  sizePct: number
+  riskReward: number
+  action: 'breakeven-stop' | 'trail-stop' | 'close-runner'
+}
+
 export type TradeLevels = {
   entry: number
   stopLoss: number
@@ -46,6 +55,18 @@ export type TradeLevels = {
   riskReward: number
   stopDistancePct: number
   targetDistancePct: number
+  stagedTargets?: StagedTarget[]
+  breakevenPrice?: number
+}
+
+export type MacroTrendInfo = {
+  timeframe: string
+  verdict: 'bullish' | 'bearish' | 'neutral'
+  supertrendDirection: 'bullish' | 'bearish' | null
+  supertrendValue: number | null
+  emaAlignment: 'bullish' | 'bearish' | 'mixed' | null
+  alignmentWithSignal: 'aligned' | 'counter-trend' | 'neutral'
+  detail: string
 }
 
 export type TradePlan = {
@@ -75,6 +96,7 @@ export type Signal = {
   thresholdsUsed: { long: number; short: number }
   plan: TradePlan
   indicators: IndicatorScore[]
+  macroTrend?: MacroTrendInfo
   reasons: string[]
 }
 

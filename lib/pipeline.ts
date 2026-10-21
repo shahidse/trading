@@ -52,6 +52,7 @@ export async function runAnalysis(options: SnapshotOptions = {}): Promise<Analys
     divergencePct: snapshot.divergencePct,
     timestamp: Date.now(),
     reversalScalpMode: exchangeSettings.reversalScalpMode,
+    macroCandles: snapshot.macroCandles,
   })
 
   const previous = getLastSignal()

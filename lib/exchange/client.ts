@@ -20,7 +20,11 @@ export async function getTradingExchange(): Promise<Exchange> {
     enableRateLimit: true,
     apiKey: settings.apiKey,
     secret: settings.secret,
-    options: { defaultType: 'spot', adjustForTimeDifference: true },
+    options: {
+      defaultType: 'spot',
+      adjustForTimeDifference: true,
+      fetchCurrencies: false,
+    },
   })
 
   // Binance Spot Testnet — fake funds, real signed-API flow.
@@ -161,3 +165,102 @@ export async function assertWithdrawalsDisabled(exchange: Exchange): Promise<voi
 export function resetPermissionCheck(): void {
   permissionsVerified = false
 }
+
+export type AssetBalance = {
+  asset: string
+  free: number
+  locked: number
+  total: number
+}
+
+export type AccountBalancesResult = {
+  balances: AssetBalance[]
+  testnet: boolean
+  updatedAt: number
+}
+
+/**
+ * Fetch all assets with non-zero balances from Binance (mainnet or testnet).
+ */
+export async function fetchAccountBalances(exchange: Exchange): Promise<AccountBalancesResult> {
+  const raw = await exchange.fetchBalance()
+  const balances: AssetBalance[] = []
+
+  const total = (raw.total as unknown as Record<string, number | undefined>) ?? {}
+  const free = (raw.free as unknown as Record<string, number | undefined>) ?? {}
+  const used = (raw.used as unknown as Record<string, number | undefined>) ?? {}
+
+  for (const [asset, totalAmt] of Object.entries(total)) {
+    if (typeof totalAmt === 'number' && totalAmt > 0) {
+      balances.push({
+        asset,
+        free: Number(free[asset] ?? 0),
+        locked: Number(used[asset] ?? 0),
+        total: totalAmt,
+      })
+    }
+  }
+
+  balances.sort((a, b) => {
+    if (a.asset === 'USDT') return -1
+    if (b.asset === 'USDT') return 1
+    if (a.asset === 'ETH') return -1
+    if (b.asset === 'ETH') return 1
+    return b.total - a.total
+  })
+
+  const settings = getExchangeSettings()
+  return {
+    balances,
+    testnet: settings.testnet,
+    updatedAt: Date.now(),
+  }
+}
+
+export type LiveOrder = {
+  id: string
+  clientOrderId?: string
+  symbol: string
+  side: 'buy' | 'sell'
+  type: string
+  status: string
+  price: number
+  amount: number
+  filled: number
+  cost: number
+  timestamp: number
+}
+
+/**
+ * Fetch live open orders and order history directly from Binance (or testnet).
+ */
+export async function fetchLiveOrders(
+  exchange: Exchange,
+  symbol = 'ETH/USDT',
+  limit = 20,
+): Promise<{ openOrders: LiveOrder[]; recentOrders: LiveOrder[] }> {
+  const [openRaw, allRaw] = await Promise.all([
+    exchange.fetchOpenOrders(symbol, undefined, limit).catch(() => []),
+    exchange.fetchOrders(symbol, undefined, limit).catch(() => []),
+  ])
+
+  const mapOrder = (o: any): LiveOrder => ({
+    id: String(o.id),
+    clientOrderId: o.clientOrderId ? String(o.clientOrderId) : undefined,
+    symbol: o.symbol,
+    side: (o.side?.toLowerCase() === 'buy' ? 'buy' : 'sell') as 'buy' | 'sell',
+    type: String(o.type ?? 'limit'),
+    status: String(o.status ?? 'open'),
+    price: Number(o.price ?? o.average ?? 0),
+    amount: Number(o.amount ?? 0),
+    filled: Number(o.filled ?? 0),
+    cost: Number(o.cost ?? (o.price && o.filled ? o.price * o.filled : 0)),
+    timestamp: Number(o.timestamp ?? Date.now()),
+  })
+
+  return {
+    openOrders: openRaw.map(mapOrder),
+    recentOrders: allRaw.map(mapOrder),
+  }
+}
+

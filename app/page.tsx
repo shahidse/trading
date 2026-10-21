@@ -12,6 +12,10 @@ import { useTheme } from '@/components/ThemeToggle'
 import { TradePlanCard } from '@/components/TradePlanCard'
 import { TradingControls } from '@/components/TradingControls'
 import { WalletConnect } from '@/components/WalletConnect'
+import { WalletAssetsCard } from '@/components/WalletAssetsCard'
+import { OrderBookWidget } from '@/components/OrderBookWidget'
+import { useBinanceWebSocket } from '@/hooks/useBinanceWebSocket'
+import type { AssetBalance, LiveOrder } from '@/lib/exchange/client'
 import type { StoredTradeOrder } from '@/lib/db/client'
 import { formatAge, formatPrice } from '@/lib/format'
 import { readJson } from '@/lib/utils'
@@ -25,11 +29,25 @@ type PriceResponse = {
 }
 
 type TradesResponse = {
-  settings: unknown
+  settings: {
+    testnet?: boolean
+    enabled?: boolean
+    dryRun?: boolean
+    killSwitch?: boolean
+  }
   orders: StoredTradeOrder[]
   openPosition: StoredTradeOrder | null
   realisedPnl24h: number
   symbol: string
+  liveBalances?: {
+    balances: AssetBalance[]
+    testnet: boolean
+    updatedAt: number
+  } | null
+  liveOrders?: {
+    openOrders: LiveOrder[]
+    recentOrders: LiveOrder[]
+  } | null
 }
 
 const REFRESH_MS = 60_000
@@ -45,11 +63,20 @@ export default function Page() {
   const [updatedAt, setUpdatedAt] = useState<number | null>(null)
 
   // Floating canvas viewport & inspector controls
-  const [activeInspectorTab, setActiveInspectorTab] = useState<'plan' | 'indicators' | 'orders' | 'backtest'>(
-    'plan'
-  )
+  const [activeInspectorTab, setActiveInspectorTab] = useState<
+    'plan' | 'indicators' | 'depth' | 'assets' | 'orders' | 'backtest'
+  >('plan')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [activeSidebarNav, setActiveSidebarNav] = useState<'overview' | 'chart' | 'plan' | 'indicators' | 'orders' | 'history' | 'backtest'>('overview')
+  const [activeSidebarNav, setActiveSidebarNav] = useState<
+    'overview' | 'chart' | 'plan' | 'indicators' | 'orders' | 'history' | 'backtest'
+  >('overview')
+
+  const isTestnet = Boolean((tradesData?.settings as Record<string, unknown> | undefined)?.testnet)
+  const ws = useBinanceWebSocket({
+    symbol: price?.symbol ?? 'ETH/USDT',
+    isTestnet,
+    enabled: true,
+  })
   const [multiColumnMobileTab, setMultiColumnMobileTab] = useState<'stacked' | 'plan' | 'chart' | 'indicators' | 'orders'>('stacked')
   const [mobileInspectorOpen, setMobileInspectorOpen] = useState(true)
   const [splitScreenMobileTab, setSplitScreenMobileTab] = useState<'both' | 'chart' | 'confluence' | 'orders'>('both')
@@ -202,7 +229,15 @@ export default function Page() {
         <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs">
           <div className="flex items-center gap-1.5 font-mono">
             <span className="text-subtle text-[11px]">Binance:</span>
-            <span className="font-bold text-ink">{formatPrice(price?.price ?? null)}</span>
+            <span className="font-bold text-ink">
+              {formatPrice(ws.ticker?.price ?? price?.price ?? null)}
+            </span>
+            {ws.status === 'connected' ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-400">
+                <span className="h-1 w-1 rounded-full bg-emerald-400 animate-pulse" />
+                Live WS
+              </span>
+            ) : null}
           </div>
           <div className="flex items-center gap-1.5 font-mono">
             <span className="text-subtle text-[11px]">Oracle:</span>
@@ -371,12 +406,28 @@ export default function Page() {
                   </div>
                 </div>
                 {latest && <IndicatorPanel indicators={latest.indicators} />}
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                  <WalletAssetsCard
+                    balances={tradesData?.liveBalances?.balances}
+                    testnet={tradesData?.settings?.testnet}
+                    ethPrice={ws.ticker?.price ?? price?.price}
+                    onRefresh={load}
+                    loading={loading}
+                  />
+                  <OrderBookWidget
+                    orderBook={ws.orderBook}
+                    wsConnected={ws.status === 'connected'}
+                    symbol={price?.symbol ?? 'ETH/USDT'}
+                  />
+                </div>
                 <OrderHistory
                   orders={tradesData?.orders ?? []}
                   openPosition={tradesData?.openPosition ?? null}
                   realisedPnl24h={tradesData?.realisedPnl24h ?? 0}
                   onRefresh={load}
                   loading={loading}
+                  liveOrders={tradesData?.liveOrders}
+                  testnet={tradesData?.settings?.testnet}
                 />
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                   <SignalHistory signals={signals} />
@@ -416,6 +467,8 @@ export default function Page() {
                 realisedPnl24h={tradesData?.realisedPnl24h ?? 0}
                 onRefresh={load}
                 loading={loading}
+                liveOrders={tradesData?.liveOrders}
+                testnet={tradesData?.settings?.testnet}
               />
             )}
 
@@ -554,6 +607,8 @@ export default function Page() {
                 realisedPnl24h={tradesData?.realisedPnl24h ?? 0}
                 onRefresh={load}
                 loading={loading}
+                liveOrders={tradesData?.liveOrders}
+                testnet={tradesData?.settings?.testnet}
               />
             </div>
           </div>
@@ -610,6 +665,30 @@ export default function Page() {
                     <button
                       type="button"
                       onClick={() => {
+                        setActiveInspectorTab('depth')
+                        setMobileInspectorOpen(true)
+                      }}
+                      className={`px-2.5 py-1 rounded-lg font-bold transition ${
+                        activeInspectorTab === 'depth' ? 'bg-accent text-white shadow-xs' : 'text-muted hover:text-ink'
+                      }`}
+                    >
+                      Depth
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveInspectorTab('assets')
+                        setMobileInspectorOpen(true)
+                      }}
+                      className={`px-2.5 py-1 rounded-lg font-bold transition ${
+                        activeInspectorTab === 'assets' ? 'bg-accent text-white shadow-xs' : 'text-muted hover:text-ink'
+                      }`}
+                    >
+                      Assets
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
                         setActiveInspectorTab('orders')
                         setMobileInspectorOpen(true)
                       }}
@@ -656,6 +735,22 @@ export default function Page() {
                 {activeInspectorTab === 'indicators' && latest && (
                   <IndicatorPanel indicators={latest.indicators} />
                 )}
+                {activeInspectorTab === 'depth' && (
+                  <OrderBookWidget
+                    orderBook={ws.orderBook}
+                    wsConnected={ws.status === 'connected'}
+                    symbol={price?.symbol ?? 'ETH/USDT'}
+                  />
+                )}
+                {activeInspectorTab === 'assets' && (
+                  <WalletAssetsCard
+                    balances={tradesData?.liveBalances?.balances}
+                    testnet={tradesData?.settings?.testnet}
+                    ethPrice={ws.ticker?.price ?? price?.price}
+                    onRefresh={load}
+                    loading={loading}
+                  />
+                )}
                 {activeInspectorTab === 'orders' && (
                   <OrderHistory
                     orders={tradesData?.orders ?? []}
@@ -663,6 +758,8 @@ export default function Page() {
                     realisedPnl24h={tradesData?.realisedPnl24h ?? 0}
                     onRefresh={load}
                     loading={loading}
+                    liveOrders={tradesData?.liveOrders}
+                    testnet={tradesData?.settings?.testnet}
                   />
                 )}
                 {activeInspectorTab === 'backtest' && <BacktestPanel />}
@@ -672,12 +769,28 @@ export default function Page() {
 
           {/* Lower Full-Width Execution Audit & Signal Strip */}
           <div className="space-y-6">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <WalletAssetsCard
+                balances={tradesData?.liveBalances?.balances}
+                testnet={tradesData?.settings?.testnet}
+                ethPrice={ws.ticker?.price ?? price?.price}
+                onRefresh={load}
+                loading={loading}
+              />
+              <OrderBookWidget
+                orderBook={ws.orderBook}
+                wsConnected={ws.status === 'connected'}
+                symbol={price?.symbol ?? 'ETH/USDT'}
+              />
+            </div>
             <OrderHistory
               orders={tradesData?.orders ?? []}
               openPosition={tradesData?.openPosition ?? null}
               realisedPnl24h={tradesData?.realisedPnl24h ?? 0}
               onRefresh={load}
               loading={loading}
+              liveOrders={tradesData?.liveOrders}
+              testnet={tradesData?.settings?.testnet}
             />
             <div className="rounded-3xl border border-line bg-surface p-4 shadow-xs">
               <SignalHistory signals={signals} />
@@ -697,6 +810,8 @@ export default function Page() {
             <span className="text-[11px] font-bold text-subtle uppercase tracking-wider shrink-0 mr-1">Jump:</span>
             {[
               { id: 'bento-chart', label: 'Chart', icon: '📈' },
+              { id: 'bento-assets', label: 'Assets', icon: '💰' },
+              { id: 'bento-depth', label: 'Depth', icon: '📖' },
               { id: 'bento-plan', label: 'Plan', icon: '🎯' },
               { id: 'bento-score', label: 'Score', icon: '⚡' },
               { id: 'bento-backtest', label: 'Backtest', icon: '🧪' },
@@ -749,6 +864,26 @@ export default function Page() {
               {latest && <IndicatorPanel indicators={latest.indicators} />}
             </div>
 
+            {/* Bento Cell: Live Exchange Assets (6 cols) */}
+            <div id="bento-assets" className="lg:col-span-6 rounded-3xl border border-line bg-surface p-2 shadow-sm">
+              <WalletAssetsCard
+                balances={tradesData?.liveBalances?.balances}
+                testnet={tradesData?.settings?.testnet}
+                ethPrice={ws.ticker?.price ?? price?.price}
+                onRefresh={load}
+                loading={loading}
+              />
+            </div>
+
+            {/* Bento Cell: Live Order Book Depth (6 cols) */}
+            <div id="bento-depth" className="lg:col-span-6 rounded-3xl border border-line bg-surface p-2 shadow-sm">
+              <OrderBookWidget
+                orderBook={ws.orderBook}
+                wsConnected={ws.status === 'connected'}
+                symbol={price?.symbol ?? 'ETH/USDT'}
+              />
+            </div>
+
             {/* Bento Cell 6: Order & Execution History (12 cols) */}
             <div id="bento-orders" className="lg:col-span-12 rounded-3xl border border-line bg-surface p-2 shadow-sm">
               <OrderHistory
@@ -757,6 +892,8 @@ export default function Page() {
                 realisedPnl24h={tradesData?.realisedPnl24h ?? 0}
                 onRefresh={load}
                 loading={loading}
+                liveOrders={tradesData?.liveOrders}
+                testnet={tradesData?.settings?.testnet}
               />
             </div>
 
@@ -842,12 +979,28 @@ export default function Page() {
               {latest && <TradePlanCard plan={latest.plan} />}
               {latest && <SignalCard signal={latest} />}
               {latest && <IndicatorPanel indicators={latest.indicators} />}
+              <div className="grid grid-cols-1 gap-4">
+                <WalletAssetsCard
+                  balances={tradesData?.liveBalances?.balances}
+                  testnet={tradesData?.settings?.testnet}
+                  ethPrice={ws.ticker?.price ?? price?.price}
+                  onRefresh={load}
+                  loading={loading}
+                />
+                <OrderBookWidget
+                  orderBook={ws.orderBook}
+                  wsConnected={ws.status === 'connected'}
+                  symbol={price?.symbol ?? 'ETH/USDT'}
+                />
+              </div>
               <OrderHistory
                 orders={tradesData?.orders ?? []}
                 openPosition={tradesData?.openPosition ?? null}
                 realisedPnl24h={tradesData?.realisedPnl24h ?? 0}
                 onRefresh={load}
                 loading={loading}
+                liveOrders={tradesData?.liveOrders}
+                testnet={tradesData?.settings?.testnet}
               />
               <div className="rounded-3xl border border-line bg-surface p-2 shadow-xs">
                 <SignalHistory signals={signals} />

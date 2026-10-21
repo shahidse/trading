@@ -85,6 +85,16 @@ export type ConfluenceInfo = {
 
 export type TradeAction = 'BUY' | 'HOLD' | 'SELL' | 'STAY_OUT'
 
+/** Staged take-profit tier for multi-target scale outs. */
+export type StagedTarget = {
+  tier: number
+  price: number
+  distancePct: number
+  sizePct: number
+  riskReward: number
+  action: 'breakeven-stop' | 'trail-stop' | 'close-runner'
+}
+
 /** Where to enter, where to give up, where to take profit. */
 export type TradeLevels = {
   entry: number
@@ -96,6 +106,21 @@ export type TradeLevels = {
   stopDistancePct: number
   /** Distance from entry to target, in percent. */
   targetDistancePct: number
+  /** Multi-tier staged scale-out targets (e.g. 50% at 1.5R, 30% at 2.6R, 20% runner). */
+  stagedTargets?: StagedTarget[]
+  /** Level where the protective stop is ratcheted to breakeven (entry price). */
+  breakevenPrice?: number
+}
+
+/** Higher timeframe (1h / 4h) macro trend context. */
+export type MacroTrendInfo = {
+  timeframe: string
+  verdict: 'bullish' | 'bearish' | 'neutral'
+  supertrendDirection: 'bullish' | 'bearish' | null
+  supertrendValue: number | null
+  emaAlignment: 'bullish' | 'bearish' | 'mixed' | null
+  alignmentWithSignal: 'aligned' | 'counter-trend' | 'neutral'
+  detail: string
 }
 
 /** Concrete instruction derived from the signal, with levels you can act on. */
@@ -144,6 +169,8 @@ export type Signal = {
   /** Entry / stop-loss / take-profit instruction with levels. */
   plan: TradePlan
   indicators: IndicatorScore[]
+  /** 1h macro trend filter alignment. */
+  macroTrend?: MacroTrendInfo
   reasons: string[]
 }
 

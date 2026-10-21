@@ -159,15 +159,15 @@ export const config = {
    */
   exchange: {
     /** Master arm switch. */
-    enabled: bool(process.env.TRADING_ENABLED, false),
+    enabled: bool(process.env.TRADING_ENABLED ?? process.env.AUTO_TRADE_ENABLED, false),
     /** Immediate halt, checked before every order. */
     killSwitch: bool(process.env.TRADING_KILL_SWITCH, false),
     /** Log the intended order instead of sending it. */
-    dryRun: bool(process.env.TRADING_DRY_RUN, true),
+    dryRun: bool(process.env.TRADING_DRY_RUN ?? process.env.DRY_RUN, true),
     /** Binance Spot Testnet (fake funds) rather than mainnet. */
-    testnet: bool(process.env.EXCHANGE_TESTNET, true),
+    testnet: bool(process.env.EXCHANGE_TESTNET ?? process.env.BINANCE_TESTNET, true),
     apiKey: process.env.BINANCE_API_KEY ?? '',
-    secret: process.env.BINANCE_SECRET ?? '',
+    secret: process.env.BINANCE_SECRET ?? process.env.BINANCE_API_SECRET ?? '',
     /** Fixed notional per entry, in quote currency. */
     notionalUsd: num(process.env.TRADE_NOTIONAL_USD, 100),
     /** Hard cap — refuse any single order above this. */

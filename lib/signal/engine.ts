@@ -1,6 +1,8 @@
 import { config } from '@/lib/config'
 import { computeIndicators } from '@/lib/indicators'
-import type { Candle, RegimeInfo, Signal, SignalDirection } from '@/lib/types'
+import { emaTrend } from '@/lib/indicators/ema-trend'
+import { supertrend } from '@/lib/indicators/supertrend'
+import type { Candle, MacroTrendInfo, RegimeInfo, Signal, SignalDirection } from '@/lib/types'
 import { round } from '@/lib/utils'
 import { buildTradePlan, trendRead } from './plan'
 import { scoreIndicators } from './scoring'
@@ -14,6 +16,63 @@ export type SignalContext = {
   divergencePct?: number | null
   timestamp?: number
   reversalScalpMode?: boolean
+  macroCandles?: Candle[]
+}
+
+/** Compute higher timeframe (1h) macro trend filter. */
+export function computeMacroTrend(
+  macroCandles: Candle[] | undefined,
+  currentDirection: SignalDirection,
+): MacroTrendInfo | undefined {
+  if (!macroCandles || macroCandles.length < 25) return undefined
+
+  const st = supertrend(macroCandles, { period: 10, multiplier: 3 })
+  const ema = emaTrend(macroCandles, { fast: 20, mid: 50, slow: 200 })
+
+  let up = 0
+  let down = 0
+  const evidence: string[] = []
+
+  if (st) {
+    if (st.direction === 'bullish') {
+      up++
+      evidence.push(`1h SuperTrend bullish ($${st.value})`)
+    } else {
+      down++
+      evidence.push(`1h SuperTrend bearish ($${st.value})`)
+    }
+  }
+
+  if (ema) {
+    if (ema.alignment === 'bullish') {
+      up++
+      evidence.push('1h EMAs stacked bullish')
+    } else if (ema.alignment === 'bearish') {
+      down++
+      evidence.push('1h EMAs stacked bearish')
+    }
+  }
+
+  const verdict: MacroTrendInfo['verdict'] = up > down ? 'bullish' : down > up ? 'bearish' : 'neutral'
+  let alignmentWithSignal: MacroTrendInfo['alignmentWithSignal'] = 'neutral'
+
+  if (currentDirection === 'LONG') {
+    alignmentWithSignal = verdict === 'bullish' ? 'aligned' : verdict === 'bearish' ? 'counter-trend' : 'neutral'
+  } else if (currentDirection === 'SHORT') {
+    alignmentWithSignal = verdict === 'bearish' ? 'aligned' : verdict === 'bullish' ? 'counter-trend' : 'neutral'
+  }
+
+  const detail = evidence.length > 0 ? evidence.join(' · ') : '1h macro trend neutral'
+
+  return {
+    timeframe: '1h',
+    verdict,
+    supertrendDirection: st?.direction ?? null,
+    supertrendValue: st?.value ?? null,
+    emaAlignment: ema?.alignment ?? null,
+    alignmentWithSignal,
+    detail,
+  }
 }
 
 /** Thresholds scaled by the ATR volatility multiplier. */
@@ -51,6 +110,9 @@ export function generateSignal(candles: Candle[], ctx: SignalContext = {}): Sign
   const thresholdsUsed = effectiveThresholds(regime)
   const direction = decideDirection(composite, thresholdsUsed)
 
+  // 1h Macro Trend Filter
+  const macroTrend = computeMacroTrend(ctx.macroCandles, direction)
+
   // Concrete, actionable levels — including the trend gate that refuses to buy
   // into a confirmed downtrend, and the Reversal Scalper for bullish candle bounces.
   const plan = buildTradePlan({
@@ -64,6 +126,7 @@ export function generateSignal(candles: Candle[], ctx: SignalContext = {}): Sign
     patternNames: bundle.patterns?.patterns.map((p) => p.label) ?? [],
     rsiValue: bundle.rsi?.value ?? null,
     supertrend: bundle.supertrend,
+    macroTrend,
     reversalScalpMode: ctx.reversalScalpMode ?? config.exchange.reversalScalpMode,
   })
 
@@ -76,6 +139,9 @@ export function generateSignal(candles: Candle[], ctx: SignalContext = {}): Sign
     summary.push(
       `No edge — composite ${composite} inside ${thresholdsUsed.short}…${thresholdsUsed.long}`,
     )
+  }
+  if (macroTrend) {
+    summary.push(`Macro (1h): ${macroTrend.detail} (${macroTrend.alignmentWithSignal})`)
   }
   summary.push(...reasons)
 
@@ -94,6 +160,7 @@ export function generateSignal(candles: Candle[], ctx: SignalContext = {}): Sign
     thresholdsUsed,
     plan,
     indicators,
+    macroTrend,
     reasons: summary,
   }
 }

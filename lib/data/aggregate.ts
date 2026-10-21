@@ -8,6 +8,7 @@ export type MarketSnapshot = {
   symbol: string
   timeframe: string
   candles: Candle[]
+  macroCandles?: Candle[]
   /** Exchange last price (Binance). */
   price: number
   /** Chainlink oracle reading, or null when unavailable. */
@@ -20,6 +21,7 @@ export type SnapshotOptions = {
   symbol?: string
   timeframe?: string
   limit?: number
+  fetchMacro?: boolean
 }
 
 /**
@@ -32,9 +34,11 @@ export async function getMarketSnapshot(options: SnapshotOptions = {}): Promise<
   const symbol = options.symbol ?? config.symbol
   const timeframe = options.timeframe ?? config.timeframe
   const limit = options.limit ?? config.candleLimit
+  const fetchMacro = options.fetchMacro ?? true
 
-  const [candles, price, chainlink] = await Promise.all([
+  const [candles, macroCandles, price, chainlink] = await Promise.all([
     fetchCandles(symbol, timeframe, limit),
+    fetchMacro ? fetchCandles(symbol, '1h', 100).catch(() => []) : Promise.resolve([]),
     fetchLastPrice(symbol),
     fetchChainlinkEthUsd().catch(() => null),
   ])
@@ -48,5 +52,13 @@ export async function getMarketSnapshot(options: SnapshotOptions = {}): Promise<
       ? round(((price - chainlink.price) / chainlink.price) * 100, 3)
       : null
 
-  return { symbol, timeframe, candles, price, chainlink, divergencePct }
+  return {
+    symbol,
+    timeframe,
+    candles,
+    macroCandles: macroCandles.length > 0 ? macroCandles : undefined,
+    price,
+    chainlink,
+    divergencePct,
+  }
 }

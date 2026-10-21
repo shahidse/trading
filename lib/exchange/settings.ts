@@ -77,7 +77,7 @@ const num = (value: unknown, fallback: number): number =>
   typeof value === 'number' && Number.isFinite(value) ? value : fallback
 
 const str = (value: unknown, fallback: string): string =>
-  typeof value === 'string' ? value : fallback
+  typeof value === 'string' && value.trim() !== '' ? value : fallback
 
 /** Stored fields win when present; an empty string deliberately clears a secret. */
 function mergeStored(raw: unknown, base: ExchangeSettings): ExchangeSettings {
