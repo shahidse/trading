@@ -33,14 +33,16 @@ import {
   getTradingExchange,
 } from '@/lib/exchange/client'
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const url = new URL(request.url)
+    const symbol = url.searchParams.get('symbol') ?? config.symbol
     const settings = getExchangeSettings()
     const realisedPnl24h = realisedPnlSince(Date.now() - DAY_MS)
 
     const openPosition = settings.dryRun
-      ? (getOpenDryRunPosition(config.symbol)?.order ?? null)
-      : getOpenBuyPosition(config.symbol)
+      ? (getOpenDryRunPosition(symbol)?.order ?? null)
+      : getOpenBuyPosition(symbol)
 
     let liveBalances = null
     let liveOrders = null
@@ -49,7 +51,7 @@ export async function GET() {
       try {
         const exchange = await getTradingExchange()
         liveBalances = await fetchAccountBalances(exchange)
-        liveOrders = await fetchLiveOrders(exchange, config.symbol, 20)
+        liveOrders = await fetchLiveOrders(exchange, symbol, 20)
       } catch (err) {
         console.warn('Could not fetch live exchange data:', err)
       }
@@ -60,7 +62,7 @@ export async function GET() {
       orders: getRecentTradeOrders(50),
       openPosition,
       realisedPnl24h,
-      symbol: config.symbol,
+      symbol,
       liveBalances,
       liveOrders,
     })

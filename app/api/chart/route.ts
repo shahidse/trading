@@ -19,17 +19,19 @@ export const maxDuration = 60
  * `?limit=500` (bars, 100–1500).
  */
 export async function GET(request: Request) {
-  const limitParam = new URL(request.url).searchParams.get('limit')
+  const url = new URL(request.url)
+  const symbol = url.searchParams.get('symbol') ?? config.symbol
+  const limitParam = url.searchParams.get('limit')
   const limit = Math.min(Math.max(Number(limitParam ?? 500) || 500, 100), 1500)
 
   try {
-    const candles = await fetchCandles(config.symbol, config.timeframe, limit)
+    const candles = await fetchCandles(symbol, config.timeframe, limit)
     const series = computeChartSeries(candles)
 
     // Markers come from persisted signals. Keep only actionable directions so
     // the chart is not littered with neutral readings.
     const firstTime = candles[0]?.time ?? 0
-    const markers: ChartMarker[] = getRecentSignals(200)
+    const markers: ChartMarker[] = getRecentSignals(200, symbol)
       .filter((s) => s.direction !== 'NEUTRAL' && s.timestamp >= firstTime)
       .map((s) => ({
         time: s.timestamp,
@@ -39,10 +41,10 @@ export async function GET(request: Request) {
       }))
       .sort((a, b) => a.time - b.time)
 
-    const latest = getRecentSignals(1)[0] ?? null
+    const latest = getRecentSignals(1, symbol)[0] ?? null
 
     const payload: ChartPayload = {
-      symbol: config.symbol,
+      symbol,
       timeframe: config.timeframe,
       limit,
       generatedAt: Date.now(),

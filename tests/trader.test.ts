@@ -152,3 +152,20 @@ describe('checkGuards', () => {
     expect(result.ok).toBe(true)
   })
 })
+
+describe('stateless dry-run position tracking', () => {
+  it('manages inMemoryDryRunPositions cleanly', async () => {
+    const { inMemoryDryRunPositions } = await import('@/lib/exchange/trader')
+    inMemoryDryRunPositions.set('TEST/USDT', {
+      side: 'BUY',
+      quantity: 1,
+      price: 100,
+      notionalUsd: 100,
+      timestamp: Date.now(),
+    })
+    expect(inMemoryDryRunPositions.has('TEST/USDT')).toBe(true)
+    expect(inMemoryDryRunPositions.get('TEST/USDT')?.side).toBe('BUY')
+    inMemoryDryRunPositions.delete('TEST/USDT')
+    expect(inMemoryDryRunPositions.has('TEST/USDT')).toBe(false)
+  })
+})

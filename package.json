@@ -16,6 +16,7 @@
     "check-telegram": "tsx scripts/check-telegram.ts",
     "check-exchange": "tsx scripts/check-exchange.ts",
     "scheduler": "tsx scripts/scheduler.ts",
+    "performance": "tsx scripts/performance.ts",
     "contracts:install": "npm --prefix contracts install",
     "contracts:test": "npm --prefix contracts test",
     "mobile:start": "npm --prefix mobile run start",

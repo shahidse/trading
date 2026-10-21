@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { BacktestPanel } from '@/components/BacktestPanel'
 import { CandleChart } from '@/components/CandleChart'
+import { CoinSelector } from '@/components/CoinSelector'
 import { IndicatorPanel } from '@/components/IndicatorPanel'
 import { OrderHistory } from '@/components/OrderHistory'
 import { SignalCard } from '@/components/SignalCard'
@@ -54,6 +55,7 @@ const REFRESH_MS = 60_000
 
 export default function Page() {
   const { themeStyle, layoutType } = useTheme()
+  const [selectedSymbol, setSelectedSymbol] = useState<string>('ETH/USDT')
   const [signals, setSignals] = useState<StoredSignal[]>([])
   const [price, setPrice] = useState<PriceResponse | null>(null)
   const [tradesData, setTradesData] = useState<TradesResponse | null>(null)
@@ -73,7 +75,7 @@ export default function Page() {
 
   const isTestnet = Boolean((tradesData?.settings as Record<string, unknown> | undefined)?.testnet)
   const ws = useBinanceWebSocket({
-    symbol: price?.symbol ?? 'ETH/USDT',
+    symbol: selectedSymbol,
     isTestnet,
     enabled: true,
   })
@@ -81,12 +83,12 @@ export default function Page() {
   const [mobileInspectorOpen, setMobileInspectorOpen] = useState(true)
   const [splitScreenMobileTab, setSplitScreenMobileTab] = useState<'both' | 'chart' | 'confluence' | 'orders'>('both')
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (sym: string = selectedSymbol) => {
     try {
       const [signalsResponse, priceResponse, tradesResponse] = await Promise.all([
-        fetch('/api/signals?limit=50'),
-        fetch('/api/price'),
-        fetch('/api/trades'),
+        fetch(`/api/signals?limit=50&symbol=${encodeURIComponent(sym)}`),
+        fetch(`/api/price?symbol=${encodeURIComponent(sym)}`),
+        fetch(`/api/trades?symbol=${encodeURIComponent(sym)}`),
       ])
 
       const signalsJson = await readJson<{ signals?: StoredSignal[] }>(signalsResponse)
@@ -103,22 +105,31 @@ export default function Page() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [selectedSymbol])
 
   useEffect(() => {
-    void load()
-    const timer = setInterval(() => void load(), REFRESH_MS)
+    void load(selectedSymbol)
+    const timer = setInterval(() => void load(selectedSymbol), REFRESH_MS)
     return () => clearInterval(timer)
-  }, [load])
+  }, [load, selectedSymbol])
+
+  function handleSelectSymbol(sym: string) {
+    setSelectedSymbol(sym)
+    void load(sym)
+  }
 
   async function runAnalysis() {
     setRunning(true)
     setError(null)
     try {
-      const response = await fetch('/api/analyze', { method: 'POST' })
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symbol: selectedSymbol }),
+      })
       const json = await response.json()
       if (!response.ok) throw new Error(json.error ?? 'Analysis failed')
-      await load()
+      await load(selectedSymbol)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Analysis failed')
     } finally {
@@ -177,7 +188,7 @@ export default function Page() {
               </span>
             </div>
             <p className="mt-0.5 text-xs text-muted">
-              {price ? `${price.symbol} · ${price.timeframe}` : 'ETH/USDT · 15m'} — Systematic Spot
+              {price ? `${price.symbol} · ${price.timeframe}` : `${selectedSymbol} · 15m`} — Systematic Spot
               Engine
             </p>
           </div>
@@ -196,6 +207,29 @@ export default function Page() {
           <WalletConnect />
         </div>
       </header>
+
+      {/* Top 50 Coin Switcher & Market Action Bar */}
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-surface/80 p-2.5 shadow-xs">
+        <CoinSelector activeSymbol={selectedSymbol} onSelectSymbol={handleSelectSymbol} />
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={runAnalysis}
+            disabled={running}
+            className={`px-3.5 py-1.5 text-xs font-bold transition disabled:opacity-50 ${
+              isBrutalist
+                ? 'border-2 border-line bg-accent text-white hover:translate-x-0.5 hover:translate-y-0.5'
+                : isPlayful
+                ? 'rounded-full bg-accent text-white px-4 py-1.5 font-black hover:scale-105 shadow-sm'
+                : isNeofuturistic
+                ? 'rounded-xl bg-gradient-to-r from-accent to-up text-white shadow-sm hover:brightness-110'
+                : 'rounded-lg bg-indigo-500 text-white hover:bg-indigo-400'
+            }`}
+          >
+            {running ? 'Evaluating…' : `▶ Analyze ${selectedSymbol.split('/')[0]}`}
+          </button>
+        </div>
+      </div>
 
       {/* Action Controls & Market Price Strip (Mobile Optimised) */}
       <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -397,7 +431,7 @@ export default function Page() {
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
                   <div className="space-y-6 lg:col-span-7 xl:col-span-7 2xl:col-span-8">
                     <div className="rounded-2xl border border-line bg-surface p-2 shadow-xs">
-                      <CandleChart limit={500} />
+                      <CandleChart limit={500} symbol={selectedSymbol} />
                     </div>
                   </div>
                   <div className="space-y-6 lg:col-span-5 xl:col-span-5 2xl:col-span-4">
@@ -417,7 +451,7 @@ export default function Page() {
                   <OrderBookWidget
                     orderBook={ws.orderBook}
                     wsConnected={ws.status === 'connected'}
-                    symbol={price?.symbol ?? 'ETH/USDT'}
+                    symbol={selectedSymbol}
                   />
                 </div>
                 <OrderHistory
@@ -440,7 +474,7 @@ export default function Page() {
             {activeSidebarNav === 'chart' && (
               <div className="space-y-6">
                 <div className="rounded-2xl border border-line bg-surface p-3 shadow-xs">
-                  <CandleChart limit={1000} />
+                  <CandleChart limit={1000} symbol={selectedSymbol} />
                 </div>
                 {latest && <IndicatorPanel indicators={latest.indicators} />}
               </div>
@@ -575,7 +609,7 @@ export default function Page() {
               }`}
             >
               <div className="rounded-2xl border border-line bg-surface p-2 shadow-xs">
-                <CandleChart limit={500} />
+                <CandleChart limit={500} symbol={selectedSymbol} />
               </div>
               <div className="rounded-2xl border border-line bg-surface p-1 shadow-xs">
                 <BacktestPanel />
@@ -624,7 +658,7 @@ export default function Page() {
           {/* Dominant Deep-Immersion Chart Canvas with Floating HUD */}
           <div className="relative rounded-3xl border border-line bg-surface/40 backdrop-blur-sm overflow-hidden p-3 shadow-md">
             <div className="w-full">
-              <CandleChart limit={500} />
+              <CandleChart limit={500} symbol={selectedSymbol} />
             </div>
 
             {/* Floating Glass Inspector HUD / Cockpit Dock */}
@@ -739,7 +773,7 @@ export default function Page() {
                   <OrderBookWidget
                     orderBook={ws.orderBook}
                     wsConnected={ws.status === 'connected'}
-                    symbol={price?.symbol ?? 'ETH/USDT'}
+                    symbol={selectedSymbol}
                   />
                 )}
                 {activeInspectorTab === 'assets' && (
@@ -780,7 +814,7 @@ export default function Page() {
               <OrderBookWidget
                 orderBook={ws.orderBook}
                 wsConnected={ws.status === 'connected'}
-                symbol={price?.symbol ?? 'ETH/USDT'}
+                symbol={selectedSymbol}
               />
             </div>
             <OrderHistory
@@ -841,7 +875,7 @@ export default function Page() {
                   Binance + Chainlink
                 </span>
               </div>
-              <CandleChart limit={500} />
+              <CandleChart limit={500} symbol={selectedSymbol} />
             </div>
 
             {/* Bento Cell 2: Actionable Trade Plan (4 cols) */}
@@ -880,7 +914,7 @@ export default function Page() {
               <OrderBookWidget
                 orderBook={ws.orderBook}
                 wsConnected={ws.status === 'connected'}
-                symbol={price?.symbol ?? 'ETH/USDT'}
+                symbol={selectedSymbol}
               />
             </div>
 
@@ -958,7 +992,7 @@ export default function Page() {
                   </div>
                   <span className="text-xs font-mono text-subtle">15m Candles</span>
                 </div>
-                <CandleChart limit={500} />
+                <CandleChart limit={500} symbol={selectedSymbol} />
               </div>
 
               <div className="rounded-3xl border border-line bg-surface p-2 shadow-xs">
@@ -990,7 +1024,7 @@ export default function Page() {
                 <OrderBookWidget
                   orderBook={ws.orderBook}
                   wsConnected={ws.status === 'connected'}
-                  symbol={price?.symbol ?? 'ETH/USDT'}
+                  symbol={selectedSymbol}
                 />
               </div>
               <OrderHistory

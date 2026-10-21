@@ -211,3 +211,28 @@ export async function fetchOrderBook(
   }
 }
 
+export type MiniTicker = {
+  price: number
+  change24h: number
+}
+
+/** Fetch multiple coin tickers in batch. */
+export async function fetchMultipleTickers(symbols: string[]): Promise<Record<string, MiniTicker>> {
+  const exchange = getClient()
+  try {
+    const raw = await exchange.fetchTickers(symbols)
+    const result: Record<string, MiniTicker> = {}
+    for (const [sym, t] of Object.entries(raw)) {
+      if (t) {
+        result[sym] = {
+          price: Number(t.last ?? t.close ?? 0),
+          change24h: Number(t.percentage ?? 0),
+        }
+      }
+    }
+    return result
+  } catch {
+    return {}
+  }
+}
+

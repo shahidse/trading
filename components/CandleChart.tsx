@@ -118,7 +118,7 @@ function baseOptions(container: HTMLElement, height: number, palette: Palette) {
   }
 }
 
-export function CandleChart({ limit = 500 }: { limit?: number }) {
+export function CandleChart({ limit = 500, symbol }: { limit?: number; symbol?: string }) {
   const [payload, setPayload] = useState<ChartPayload | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -147,7 +147,8 @@ export function CandleChart({ limit = 500 }: { limit?: number }) {
     let cancelled = false
     setLoading(true)
 
-    fetch(`/api/chart?limit=${limit}`)
+    const symQuery = symbol ? `&symbol=${encodeURIComponent(symbol)}` : ''
+    fetch(`/api/chart?limit=${limit}${symQuery}`)
       .then((response) => readJson<ChartPayload>(response))
       .then((json) => {
         if (!cancelled) {
@@ -165,7 +166,7 @@ export function CandleChart({ limit = 500 }: { limit?: number }) {
     return () => {
       cancelled = true
     }
-  }, [limit])
+  }, [limit, symbol])
 
   // ---- build the charts once data arrives -------------------------------
   useEffect(() => {

@@ -13,26 +13,31 @@ import { isTelegramConfigured } from '@/lib/notify/telegram'
  * (Vercel Cron / a worker / Docker) means calling `runAnalysis()` on a schedule.
  */
 const SCHEDULE = process.env.CRON_SCHEDULE ?? '*/15 * * * *'
+const TARGET_SYMBOLS = process.env.SYMBOLS
+  ? process.env.SYMBOLS.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean)
+  : [config.symbol]
 
 async function tick(): Promise<void> {
   const at = new Date().toISOString()
-  try {
-    const result = await runAnalysis()
-    const s = result.signal
-    console.log(
-      `[${at}] ${s.plan.action} (${s.direction}) · score ${s.score} · $${s.price.toLocaleString()}` +
-        `${result.actionChanged ? ' · ACTION CHANGED' : ''}` +
-        `${result.emailSent ? ' · email sent' : ''}` +
-        `${result.telegramSent ? ' · telegram sent' : ''}` +
-        `${result.trade ? ` · trade ${result.trade.status}` : ''}`,
-    )
-  } catch (error) {
-    console.error(`[${at}] analysis failed:`, error instanceof Error ? error.message : error)
+  for (const sym of TARGET_SYMBOLS) {
+    try {
+      const result = await runAnalysis({ symbol: sym })
+      const s = result.signal
+      console.log(
+        `[${at}] [${sym}] ${s.plan.action} (${s.direction}) · score ${s.score} · $${s.price.toLocaleString()}` +
+          `${result.actionChanged ? ' · ACTION CHANGED' : ''}` +
+          `${result.emailSent ? ' · email sent' : ''}` +
+          `${result.telegramSent ? ' · telegram sent' : ''}` +
+          `${result.trade ? ` · trade ${result.trade.status}` : ''}`,
+      )
+    } catch (error) {
+      console.error(`[${at}] [${sym}] analysis failed:`, error instanceof Error ? error.message : error)
+    }
   }
 }
 
 async function main(): Promise<void> {
-  console.log(`ETH signal scheduler — ${config.symbol} ${config.timeframe}`)
+  console.log(`Crypto signal scheduler — ${TARGET_SYMBOLS.join(', ')} (default: ${config.symbol}) ${config.timeframe}`)
   console.log(
     `Schedule: ${SCHEDULE}   Email: ${isEmailConfigured() ? 'configured' : 'not configured'}` +
       `   Telegram: ${isTelegramConfigured() ? 'configured' : 'not configured'}`,

@@ -231,7 +231,17 @@ export function saveSignal(signal: Signal): number {
   return row?.id ?? 0
 }
 
-export function getRecentSignals(limit = 50): StoredSignal[] {
+export function getRecentSignals(limit = 50, symbol?: string): StoredSignal[] {
+  if (symbol) {
+    return getDb()
+      .select()
+      .from(signals)
+      .where(eq(signals.symbol, symbol))
+      .orderBy(desc(signals.id))
+      .limit(limit)
+      .all()
+      .map(toStored)
+  }
   return getDb()
     .select()
     .from(signals)
@@ -241,7 +251,17 @@ export function getRecentSignals(limit = 50): StoredSignal[] {
     .map(toStored)
 }
 
-export function getLastSignal(): StoredSignal | null {
+export function getLastSignal(symbol?: string): StoredSignal | null {
+  if (symbol) {
+    const row = getDb()
+      .select()
+      .from(signals)
+      .where(eq(signals.symbol, symbol))
+      .orderBy(desc(signals.id))
+      .limit(1)
+      .get()
+    return row ? toStored(row) : null
+  }
   const row = getDb().select().from(signals).orderBy(desc(signals.id)).limit(1).get()
   return row ? toStored(row) : null
 }
@@ -285,31 +305,106 @@ export function getRecentTradeOrders(limit = 50): StoredTradeOrder[] {
   return getDb().select().from(tradeOrders).orderBy(desc(tradeOrders.id)).limit(limit).all()
 }
 
-/** Sum of realised P&L recorded at or after `since` (Unix ms). */
-export function realisedPnlSince(since: number): number {
-  const rows = getDb()
-    .select({ pnl: tradeOrders.realisedPnlUsd })
-    .from(tradeOrders)
-    .where(gt(tradeOrders.createdAt, since))
-    .all()
+/** Sum of realised P&L recorded at or after `since` (Unix ms), optionally filtered by symbol. */
+export function realisedPnlSince(since: number, symbol?: string): number {
+  try {
+    const conditions = [gt(tradeOrders.createdAt, since)]
+    if (symbol) conditions.push(eq(tradeOrders.symbol, symbol))
+    const rows = getDb()
+      .select({ pnl: tradeOrders.realisedPnlUsd })
+      .from(tradeOrders)
+      .where(and(...conditions))
+      .all()
 
-  return rows.reduce((sum, row) => sum + (row.pnl ?? 0), 0)
+    return rows.reduce((sum, row) => sum + (row.pnl ?? 0), 0)
+  } catch {
+    return 0
+  }
 }
 
-/** Number of buy trade entries placed (or dry-run simulated) since `since` (Unix ms). */
-export function countTradesSince(since: number): number {
-  const rows = getDb()
-    .select({ id: tradeOrders.id })
-    .from(tradeOrders)
-    .where(
-      and(
-        gt(tradeOrders.createdAt, since),
-        eq(tradeOrders.side, 'BUY'),
-      ),
-    )
-    .all()
+/** Number of buy trade entries placed (or dry-run simulated) since `since` (Unix ms), optionally filtered by symbol. */
+export function countTradesSince(since: number, symbol?: string): number {
+  try {
+    const conditions = [
+      gt(tradeOrders.createdAt, since),
+      eq(tradeOrders.side, 'BUY'),
+    ]
+    if (symbol) conditions.push(eq(tradeOrders.symbol, symbol))
+    const rows = getDb()
+      .select({ id: tradeOrders.id })
+      .from(tradeOrders)
+      .where(and(...conditions))
+      .all()
 
-  return rows.length
+    return rows.length
+  } catch {
+    return 0
+  }
+}
+
+export type CoinTradeStats = {
+  symbol: string
+  totalOrders: number
+  totalBuys: number
+  totalSells: number
+  winningTrades: number
+  losingTrades: number
+  winRatePct: number
+  realisedPnlUsd: number
+}
+
+/** Aggregate trading performance and win-rate for a specific symbol. */
+export function getCoinTradeStats(symbol: string): CoinTradeStats {
+  try {
+    const rows = getDb()
+      .select()
+      .from(tradeOrders)
+      .where(eq(tradeOrders.symbol, symbol))
+      .all()
+
+    let buys = 0
+    let sells = 0
+    let wins = 0
+    let losses = 0
+    let pnl = 0
+
+    for (const r of rows) {
+      if (r.side === 'BUY') buys++
+      if (r.side === 'SELL') {
+        sells++
+        if (r.realisedPnlUsd !== null && r.realisedPnlUsd !== undefined) {
+          pnl += r.realisedPnlUsd
+          if (r.realisedPnlUsd > 0) wins++
+          else if (r.realisedPnlUsd < 0) losses++
+        }
+      }
+    }
+
+    const closed = wins + losses
+    const winRatePct = closed > 0 ? (wins / closed) * 100 : 0
+
+    return {
+      symbol,
+      totalOrders: rows.length,
+      totalBuys: buys,
+      totalSells: sells,
+      winningTrades: wins,
+      losingTrades: losses,
+      winRatePct,
+      realisedPnlUsd: pnl,
+    }
+  } catch {
+    return {
+      symbol,
+      totalOrders: 0,
+      totalBuys: 0,
+      totalSells: 0,
+      winningTrades: 0,
+      losingTrades: 0,
+      winRatePct: 0,
+      realisedPnlUsd: 0,
+    }
+  }
 }
 
 /**

@@ -5,9 +5,11 @@ import {
   getOpenDryRunPosition,
   realisedPnlSince,
   recordTradeOrder,
+  type StoredTradeOrder,
 } from '@/lib/db/client'
 import {
   assertWithdrawalsDisabled,
+  fetchLivePosition,
   getTradingExchange,
   minimumNotional,
   normaliseQuantity,
@@ -19,6 +21,15 @@ import {
   type ExchangeSettings,
 } from '@/lib/exchange/settings'
 import type { TradeAction, TradeLevels } from '@/lib/types'
+
+/**
+ * In-memory position tracking for dry-run and stateless container environments.
+ * Ensures order execution operates reliably even without database persistence.
+ */
+export const inMemoryDryRunPositions = new Map<
+  string,
+  { side: TradeSide; quantity: number; price: number; notionalUsd: number; timestamp: number }
+>()
 
 /**
  * Automatic order placement.
@@ -185,15 +196,54 @@ export async function executeTrade(
   const settings = getExchangeSettings()
   const environment = environmentLabel(settings)
 
-  const openPosition = getOpenBuyPosition(intent.symbol)
-  const openDryRun = settings.dryRun ? getOpenDryRunPosition(intent.symbol) : null
+  let openPosition: StoredTradeOrder | null = null
+  try {
+    openPosition = getOpenBuyPosition(intent.symbol)
+  } catch {
+    // DB not available or empty in stateless deployment
+  }
+
+  let openDryRun = inMemoryDryRunPositions.get(intent.symbol)
+    ? {
+        side: inMemoryDryRunPositions.get(intent.symbol)!.side,
+        order: inMemoryDryRunPositions.get(intent.symbol)!,
+      }
+    : null
+  if (!openDryRun && settings.dryRun) {
+    try {
+      const dbDry = getOpenDryRunPosition(intent.symbol)
+      if (dbDry) {
+        openDryRun = {
+          side: dbDry.side,
+          order: {
+            side: dbDry.side,
+            quantity: dbDry.order.quantity,
+            price: dbDry.order.price ?? 0,
+            notionalUsd: dbDry.order.notionalUsd,
+            timestamp: dbDry.order.createdAt,
+          },
+        }
+      }
+    } catch {}
+  }
 
   // A SELL is sized from the position we actually hold, not the configured notional.
-  // In dry run mode, if closing an open position it uses that position's size; otherwise the configured notional.
+  // In live/testnet mode, query live position on Binance directly.
   let notionalUsd = intent.notionalUsd
+  let liveBaseFree = 0
   if (!settings.dryRun) {
     if (intent.side === 'SELL') {
-      notionalUsd = openPosition?.notionalUsd ?? 0
+      try {
+        const exchange = await getTradingExchange()
+        const livePos = await fetchLivePosition(exchange, intent.symbol)
+        liveBaseFree = livePos.baseFree
+        notionalUsd =
+          livePos.notionalUsd > 0
+            ? livePos.notionalUsd
+            : (openPosition?.notionalUsd ?? intent.notionalUsd)
+      } catch {
+        notionalUsd = openPosition?.notionalUsd ?? intent.notionalUsd
+      }
     }
   } else {
     if (openDryRun) {
@@ -201,11 +251,20 @@ export async function executeTrade(
     }
   }
 
+  let realisedPnl24h = 0
+  let tradesCount24h = 0
+  try {
+    realisedPnl24h = realisedPnlSince(Date.now() - DAY_MS, intent.symbol)
+    tradesCount24h = countTradesSince(Date.now() - DAY_MS, intent.symbol)
+  } catch {
+    // Stateless deployment fallback
+  }
+
   const guard = checkGuards({
     settings,
     notionalUsd,
-    realisedPnl24h: realisedPnlSince(Date.now() - DAY_MS),
-    tradesCount24h: countTradesSince(Date.now() - DAY_MS),
+    realisedPnl24h,
+    tradesCount24h,
   })
 
   const log = (fields: {
@@ -218,21 +277,27 @@ export async function executeTrade(
     reason: string
     realisedPnlUsd?: number | null
     response?: unknown
-  }) =>
-    recordTradeOrder({
-      symbol: intent.symbol,
-      side: fields.side ?? intent.side,
-      type: fields.type ?? 'market',
-      quantity: fields.quantity ?? 0,
-      price: fields.price ?? null,
-      notionalUsd: fields.notionalUsd ?? notionalUsd,
-      status: fields.status,
-      reason: fields.reason,
-      environment,
-      realisedPnlUsd: fields.realisedPnlUsd ?? null,
-      response: fields.response === undefined ? null : JSON.stringify(fields.response),
-      signalId,
-    })
+  }) => {
+    try {
+      return recordTradeOrder({
+        symbol: intent.symbol,
+        side: fields.side ?? intent.side,
+        type: fields.type ?? 'market',
+        quantity: fields.quantity ?? 0,
+        price: fields.price ?? null,
+        notionalUsd: fields.notionalUsd ?? notionalUsd,
+        status: fields.status,
+        reason: fields.reason,
+        environment,
+        realisedPnlUsd: fields.realisedPnlUsd ?? null,
+        response: fields.response === undefined ? null : JSON.stringify(fields.response),
+        signalId,
+      })
+    } catch (err) {
+      console.warn('[trader] DB record skipped (stateless mode):', err)
+      return 0
+    }
+  }
 
   const outcome = (
     status: TradeStatus,
@@ -256,10 +321,24 @@ export async function executeTrade(
     return outcome('refused', guard.reason, { notionalUsd })
   }
 
-  if (!settings.dryRun && intent.side === 'SELL' && !openPosition) {
-    const reason = 'No open position of ours to close'
-    log({ status: 'skipped', reason })
-    return outcome('skipped', reason)
+  if (!settings.dryRun && intent.side === 'SELL') {
+    // First cancel any open orders (e.g. active OCO bracket) so held tokens are unlocked and free to sell
+    try {
+      const exchange = await getTradingExchange()
+      await exchange.cancelAllOrders(intent.symbol).catch(() => {})
+      const balance = await exchange.fetchBalance()
+      const { base } = pairCurrencies(intent.symbol)
+      const freeMap = (balance.free as unknown as Record<string, number | undefined>) ?? {}
+      liveBaseFree = Number(freeMap[base] ?? 0)
+    } catch {
+      // Exchange error will be caught below
+    }
+
+    if (liveBaseFree <= 0 && (!openPosition || openPosition.quantity <= 0)) {
+      const reason = 'No open position of ours on exchange to close'
+      log({ status: 'skipped', reason })
+      return outcome('skipped', reason)
+    }
   }
 
   try {
@@ -276,8 +355,14 @@ export async function executeTrade(
 
     let rawQuantity: number
     if (!settings.dryRun) {
-      rawQuantity =
-        intent.side === 'BUY' ? intent.notionalUsd / marketPrice : openPosition!.quantity
+      if (intent.side === 'BUY') {
+        rawQuantity = intent.notionalUsd / marketPrice
+      } else {
+        rawQuantity =
+          liveBaseFree > 0
+            ? liveBaseFree
+            : (openPosition?.quantity ?? intent.notionalUsd / marketPrice)
+      }
     } else {
       if (openDryRun) {
         rawQuantity = openDryRun.order.quantity
@@ -343,6 +428,19 @@ export async function executeTrade(
         reason,
         realisedPnlUsd,
       })
+
+      // Track dry-run in memory for stateless deployment
+      if (intent.side === 'BUY') {
+        inMemoryDryRunPositions.set(intent.symbol, {
+          side: 'BUY',
+          quantity,
+          price: marketPrice,
+          notionalUsd: estimatedCost,
+          timestamp: Date.now(),
+        })
+      } else if (intent.side === 'SELL') {
+        inMemoryDryRunPositions.delete(intent.symbol)
+      }
 
       // Simulate OCO bracket placement for dry-run
       if (
@@ -448,33 +546,71 @@ export async function executeTrade(
 /**
  * Entry point used by the analysis pipeline.
  *
- * Returns null when trading is not armed, so the pipeline stays a no-op for
- * anyone who has not opted in.
+ * Uses the Binance SDK directly as the authoritative source of truth for live position
+ * and open orders, making execution completely independent of local database persistence.
  */
 export async function runAutoTrade(
   previousAction: TradeAction | null,
   nextAction: TradeAction,
   signalId: number | null,
   levels?: TradeLevels | null,
+  symbol: string = config.symbol,
 ): Promise<TradeOutcome | null> {
   const settings = getExchangeSettings()
   if (!isTradingArmed(settings)) return null
 
   const isDryRun = settings.dryRun
-  const openBuy = getOpenBuyPosition(config.symbol)
-  const openDryRun = isDryRun ? getOpenDryRunPosition(config.symbol) : null
+  let hasOpenPosition = false
+  let openPositionSide: TradeSide | null = null
 
-  const hasOpenPosition = isDryRun ? openDryRun !== null : openBuy !== null
-  const openPositionSide = isDryRun
-    ? (openDryRun?.side ?? null)
-    : (openBuy !== null ? 'BUY' : null)
+  if (!isDryRun) {
+    // Authoritative check via Binance SDK (zero DB dependency)
+    try {
+      const exchange = await getTradingExchange()
+      const livePos = await fetchLivePosition(exchange, symbol)
+      hasOpenPosition = livePos.hasPosition || livePos.hasOpenOrders
+      openPositionSide = hasOpenPosition ? 'BUY' : null
+    } catch (err) {
+      console.warn(
+        '[trader] Could not query live position from Binance, falling back to DB/cache:',
+        err,
+      )
+      let openBuy = null
+      try {
+        openBuy = getOpenBuyPosition(symbol)
+      } catch {}
+      hasOpenPosition = openBuy !== null
+      openPositionSide = openBuy !== null ? 'BUY' : null
+    }
+  } else {
+    // In dry-run mode: check in-memory cache first, then fallback to DB
+    const memPos = inMemoryDryRunPositions.get(symbol)
+    if (memPos) {
+      hasOpenPosition = true
+      openPositionSide = memPos.side
+    } else {
+      let openDry = null
+      try {
+        openDry = getOpenDryRunPosition(symbol)
+      } catch {}
+      hasOpenPosition = openDry !== null
+      openPositionSide = openDry?.side ?? null
+    }
+  }
+
+  // In stateless environments (or after restarts), if Binance has NO open position
+  // and the strategy generates a BUY signal, do not allow a stale DB previousAction to block entry.
+  const effectivePrev =
+    !hasOpenPosition && nextAction === 'BUY' && previousAction === 'BUY'
+      ? 'STAY_OUT'
+      : previousAction
 
   const intent = decideTrade(
-    previousAction,
+    effectivePrev,
     nextAction,
     hasOpenPosition,
     settings.notionalUsd,
-    config.symbol,
+    symbol,
     isDryRun,
     openPositionSide,
   )

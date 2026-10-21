@@ -9,7 +9,9 @@ import { runAnalysis } from '@/lib/pipeline'
  */
 async function main(): Promise<void> {
   const started = Date.now()
-  const result = await runAnalysis()
+  const cliSymbol = process.argv[2]
+  const symbol = cliSymbol && cliSymbol.trim() ? cliSymbol.trim().toUpperCase() : config.symbol
+  const result = await runAnalysis({ symbol })
   const s = result.signal
 
   const arrow = s.direction === 'LONG' ? '▲' : s.direction === 'SHORT' ? '▼' : '■'

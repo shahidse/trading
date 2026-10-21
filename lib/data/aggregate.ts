@@ -40,7 +40,7 @@ export async function getMarketSnapshot(options: SnapshotOptions = {}): Promise<
     fetchCandles(symbol, timeframe, limit),
     fetchMacro ? fetchCandles(symbol, '1h', 100).catch(() => []) : Promise.resolve([]),
     fetchLastPrice(symbol),
-    fetchChainlinkEthUsd().catch(() => null),
+    symbol === 'ETH/USDT' ? fetchChainlinkEthUsd().catch(() => null) : Promise.resolve(null),
   ])
 
   if (candles.length === 0) {

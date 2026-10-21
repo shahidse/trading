@@ -1,5 +1,5 @@
 import { getMarketSnapshot, type SnapshotOptions } from '@/lib/data/aggregate'
-import { getLastSignal, markEmailed, saveSignal } from '@/lib/db/client'
+import { getLastSignal, markEmailed, saveSignal, type StoredSignal } from '@/lib/db/client'
 import { getExchangeSettings } from '@/lib/exchange/settings'
 import { runAutoTrade, type TradeOutcome } from '@/lib/exchange/trader'
 import { getNotifySettings } from '@/lib/notify/settings'
@@ -40,6 +40,8 @@ export type AnalysisResult = {
  * tells you to do: a LONG direction that the trend gate blocks stays STAY_OUT,
  * so it never produces a misleading alert.
  */
+const inMemoryLastSignals = new Map<string, Signal>()
+
 export async function runAnalysis(options: SnapshotOptions = {}): Promise<AnalysisResult> {
   const snapshot = await getMarketSnapshot(options)
   const exchangeSettings = getExchangeSettings()
@@ -55,7 +57,16 @@ export async function runAnalysis(options: SnapshotOptions = {}): Promise<Analys
     macroCandles: snapshot.macroCandles,
   })
 
-  const previous = getLastSignal()
+  let previous: StoredSignal | Signal | null = null
+  try {
+    previous = getLastSignal(snapshot.symbol)
+  } catch {
+    // Stateless deployment without persistent DB
+  }
+  if (!previous) {
+    previous = inMemoryLastSignals.get(snapshot.symbol) ?? null
+  }
+
   const settings = getNotifySettings()
 
   const previousAction = previous?.plan.action ?? null
@@ -70,17 +81,33 @@ export async function runAnalysis(options: SnapshotOptions = {}): Promise<Analys
     : null
   const nextState: NotifyState = { action: signal.plan.action, direction: signal.direction }
 
-  const id = saveSignal(signal)
+  let id = 0
+  try {
+    id = saveSignal(signal)
+  } catch (err) {
+    console.warn('[pipeline] DB saveSignal skipped (stateless mode):', err)
+  }
+  inMemoryLastSignals.set(snapshot.symbol, signal)
 
   // Automatic order placement. A no-op unless trading is armed in /settings,
   // and every guard runs inside `runAutoTrade` before any signed request.
-  const trade = await runAutoTrade(previousAction, signal.plan.action, id, signal.plan.levels)
+  const trade = await runAutoTrade(
+    previousAction,
+    signal.plan.action,
+    id,
+    signal.plan.levels,
+    snapshot.symbol,
+  )
 
   let emailSent = false
   if (shouldNotify(settings.email.mode, previousState, nextState) && isEmailConfigured()) {
     try {
       emailSent = await sendSignalEmail(signal)
-      if (emailSent) markEmailed(id)
+      if (emailSent && id > 0) {
+        try {
+          markEmailed(id)
+        } catch {}
+      }
     } catch (error) {
       console.error('[notify] failed to send email:', error)
     }

@@ -6,10 +6,13 @@ import { fetchChainlinkEthUsd } from '@/lib/data/chainlink'
 export const dynamic = 'force-dynamic'
 
 /** Live price snapshot: Binance ticker + Chainlink oracle reading. */
-export async function GET() {
+export async function GET(request: Request) {
+  const url = new URL(request.url)
+  const symbol = url.searchParams.get('symbol') ?? config.symbol
+
   const [price, chainlink] = await Promise.all([
-    fetchLastPrice().catch(() => null),
-    fetchChainlinkEthUsd().catch(() => null),
+    fetchLastPrice(symbol).catch(() => null),
+    symbol === 'ETH/USDT' ? fetchChainlinkEthUsd().catch(() => null) : Promise.resolve(null),
   ])
 
   const divergencePct =
@@ -18,7 +21,7 @@ export async function GET() {
       : null
 
   return NextResponse.json({
-    symbol: config.symbol,
+    symbol,
     timeframe: config.timeframe,
     price,
     chainlink,

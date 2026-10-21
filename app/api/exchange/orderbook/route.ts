@@ -7,8 +7,9 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
+    const symbol = searchParams.get('symbol') ?? config.symbol
     const limit = Math.min(Math.max(Number(searchParams.get('limit') ?? 15), 5), 50)
-    const book = await fetchOrderBook(config.symbol, limit)
+    const book = await fetchOrderBook(symbol, limit)
 
     return NextResponse.json(book)
   } catch (error) {

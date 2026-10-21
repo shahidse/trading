@@ -264,3 +264,55 @@ export async function fetchLiveOrders(
   }
 }
 
+export type LivePositionInfo = {
+  hasPosition: boolean
+  baseHeld: number
+  baseFree: number
+  baseLocked: number
+  price: number
+  notionalUsd: number
+  hasOpenOrders: boolean
+  openOrdersCount: number
+}
+
+/**
+ * Authoritative check of position and open orders directly via Binance SDK.
+ * Completely independent of local database persistence.
+ */
+export async function fetchLivePosition(
+  exchange: Exchange,
+  symbol = 'ETH/USDT',
+): Promise<LivePositionInfo> {
+  const [base = '', quote = ''] = symbol.split('/')
+  const [balance, ticker, openOrders] = await Promise.all([
+    exchange.fetchBalance(),
+    exchange.fetchTicker(symbol).catch(() => null),
+    exchange.fetchOpenOrders(symbol, undefined, 10).catch(() => []),
+  ])
+
+  const free = (balance.free as unknown as Record<string, number | undefined>) ?? {}
+  const total = (balance.total as unknown as Record<string, number | undefined>) ?? {}
+  const used = (balance.used as unknown as Record<string, number | undefined>) ?? {}
+
+  const baseFree = Number(free[base] ?? 0)
+  const baseTotal = Number(total[base] ?? 0)
+  const baseLocked = Number(used[base] ?? 0)
+  const price = Number(ticker?.last ?? ticker?.close ?? 0)
+  const notionalUsd = baseTotal * price
+  const minCost = minimumNotional(exchange, symbol) || 5
+
+  const hasPosition = notionalUsd >= minCost
+  const hasOpenOrders = openOrders.length > 0
+
+  return {
+    hasPosition,
+    baseHeld: baseTotal,
+    baseFree,
+    baseLocked,
+    price,
+    notionalUsd,
+    hasOpenOrders,
+    openOrdersCount: openOrders.length,
+  }
+}
+
