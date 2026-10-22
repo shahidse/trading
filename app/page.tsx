@@ -50,6 +50,7 @@ type TradesResponse = {
     openOrders: LiveOrder[]
     recentOrders: LiveOrder[]
   } | null
+  exchangeError?: string | null
 }
 
 const REFRESH_MS = 60_000
@@ -453,6 +454,7 @@ export default function Page() {
                     ethPrice={ws.ticker?.price ?? price?.price}
                     onRefresh={load}
                     loading={loading}
+                    exchangeError={tradesData?.exchangeError}
                   />
                   <OrderBookWidget
                     orderBook={ws.orderBook}
@@ -789,6 +791,7 @@ export default function Page() {
                     ethPrice={ws.ticker?.price ?? price?.price}
                     onRefresh={load}
                     loading={loading}
+                    exchangeError={tradesData?.exchangeError}
                   />
                 )}
                 {activeInspectorTab === 'orders' && (
@@ -816,6 +819,7 @@ export default function Page() {
                 ethPrice={ws.ticker?.price ?? price?.price}
                 onRefresh={load}
                 loading={loading}
+                exchangeError={tradesData?.exchangeError}
               />
               <OrderBookWidget
                 orderBook={ws.orderBook}
@@ -912,6 +916,7 @@ export default function Page() {
                 ethPrice={ws.ticker?.price ?? price?.price}
                 onRefresh={load}
                 loading={loading}
+                exchangeError={tradesData?.exchangeError}
               />
             </div>
 
@@ -1026,6 +1031,7 @@ export default function Page() {
                   ethPrice={ws.ticker?.price ?? price?.price}
                   onRefresh={load}
                   loading={loading}
+                  exchangeError={tradesData?.exchangeError}
                 />
                 <OrderBookWidget
                   orderBook={ws.orderBook}

@@ -10,6 +10,7 @@ export type WalletAssetsCardProps = {
   ethPrice?: number | null
   onRefresh?: () => void
   loading?: boolean
+  exchangeError?: string | null
 }
 
 const PAGE_SIZE = 20
@@ -20,6 +21,7 @@ export function WalletAssetsCard({
   ethPrice = 0,
   onRefresh,
   loading = false,
+  exchangeError,
 }: WalletAssetsCardProps) {
   const [collapsed, setCollapsed] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -76,14 +78,20 @@ export function WalletAssetsCard({
                 {testnet ? 'Spot Testnet' : 'Live Mainnet'}
               </span>
             </div>
-            <p className="text-xs text-muted">
-              {activeBalances.length > 0
-                ? `Est. Portfolio: ~$${totalUsd.toLocaleString('en-US', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })} · ${activeBalances.length} assets`
-                : 'No API credentials or empty wallet'}
-            </p>
+            {exchangeError ? (
+              <p className="text-xs text-rose-400 font-medium truncate max-w-sm" title={exchangeError}>
+                ⚠️ {exchangeError}
+              </p>
+            ) : (
+              <p className="text-xs text-muted">
+                {activeBalances.length > 0
+                  ? `Est. Portfolio: ~$${totalUsd.toLocaleString('en-US', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })} · ${activeBalances.length} assets`
+                  : 'No API credentials or empty wallet'}
+              </p>
+            )}
           </div>
         </div>
 

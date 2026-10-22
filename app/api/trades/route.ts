@@ -46,6 +46,7 @@ export async function GET(request: Request) {
 
     let liveBalances = null
     let liveOrders = null
+    let exchangeError: string | null = null
 
     if (settings.apiKey && settings.secret) {
       try {
@@ -54,6 +55,7 @@ export async function GET(request: Request) {
         liveOrders = await fetchLiveOrders(exchange, symbol, 20)
       } catch (err) {
         console.warn('Could not fetch live exchange data:', err)
+        exchangeError = err instanceof Error ? err.message : String(err)
       }
     }
 
@@ -65,6 +67,7 @@ export async function GET(request: Request) {
       symbol,
       liveBalances,
       liveOrders,
+      exchangeError,
     })
   } catch (error) {
     return NextResponse.json(

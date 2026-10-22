@@ -166,8 +166,16 @@ export const config = {
     dryRun: bool(process.env.TRADING_DRY_RUN ?? process.env.DRY_RUN, true),
     /** Binance Spot Testnet (fake funds) rather than mainnet. */
     testnet: bool(process.env.EXCHANGE_TESTNET ?? process.env.BINANCE_TESTNET, true),
-    apiKey: process.env.BINANCE_API_KEY ?? '',
-    secret: process.env.BINANCE_SECRET ?? process.env.BINANCE_API_SECRET ?? '',
+    apiKey:
+      process.env.BINANCE_API_KEY ??
+      process.env.BINANCE_KEY ??
+      process.env.BINANCE_APIKEY ??
+      '',
+    secret:
+      process.env.BINANCE_SECRET ??
+      process.env.BINANCE_API_SECRET ??
+      process.env.BINANCE_SECRET_KEY ??
+      '',
     /** Fixed notional per entry, in quote currency. */
     notionalUsd: num(process.env.TRADE_NOTIONAL_USD, 100),
     /** Hard cap — refuse any single order above this. */
