@@ -52,6 +52,7 @@ export type PublicExchangeSettings = {
   secretSet: boolean
   credentialSource: 'env' | 'fast-connect' | 'none'
   hasEnvCredentials: boolean
+  keyMasked?: string
 }
 
 const SETTINGS_KEY = 'exchange'
@@ -164,6 +165,7 @@ export function publicExchangeSettings(
     secretSet: Boolean(settings.secret),
     credentialSource: source,
     hasEnvCredentials: hasEnv,
+    keyMasked: settings.apiKey ? `${settings.apiKey.slice(0, 4)}...${settings.apiKey.slice(-4)}` : undefined,
   }
 }
 

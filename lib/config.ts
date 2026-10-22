@@ -16,6 +16,15 @@ function bool(value: string | undefined, fallback: boolean): boolean {
   return value === 'true' || value === '1'
 }
 
+function cleanKey(value: string | undefined): string {
+  if (!value) return ''
+  let s = value.trim()
+  if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
+    s = s.slice(1, -1).trim()
+  }
+  return s
+}
+
 export const config = {
   symbol: process.env.BINANCE_SYMBOL ?? 'ETH/USDT',
   timeframe: process.env.CANDLE_INTERVAL ?? '15m',
@@ -166,16 +175,16 @@ export const config = {
     dryRun: bool(process.env.TRADING_DRY_RUN ?? process.env.DRY_RUN, true),
     /** Binance Spot Testnet (fake funds) rather than mainnet. */
     testnet: bool(process.env.EXCHANGE_TESTNET ?? process.env.BINANCE_TESTNET, true),
-    apiKey:
+    apiKey: cleanKey(
       process.env.BINANCE_API_KEY ??
       process.env.BINANCE_KEY ??
-      process.env.BINANCE_APIKEY ??
-      '',
-    secret:
+      process.env.BINANCE_APIKEY
+    ),
+    secret: cleanKey(
       process.env.BINANCE_SECRET ??
       process.env.BINANCE_API_SECRET ??
-      process.env.BINANCE_SECRET_KEY ??
-      '',
+      process.env.BINANCE_SECRET_KEY
+    ),
     /** Fixed notional per entry, in quote currency. */
     notionalUsd: num(process.env.TRADE_NOTIONAL_USD, 100),
     /** Hard cap — refuse any single order above this. */

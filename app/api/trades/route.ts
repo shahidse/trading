@@ -48,7 +48,9 @@ export async function GET(request: Request) {
     let liveOrders = null
     let exchangeError: string | null = null
 
-    if (settings.apiKey && settings.secret) {
+    if (!settings.apiKey || !settings.secret) {
+      exchangeError = `Binance credentials missing (apiKey: ${settings.apiKey ? 'configured' : 'NOT FOUND'}, secret: ${settings.secret ? 'configured' : 'NOT FOUND'}). Check Netlify Functions environment variables.`
+    } else {
       try {
         const exchange = await getTradingExchange()
         liveBalances = await fetchAccountBalances(exchange)
