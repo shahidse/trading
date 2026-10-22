@@ -5,12 +5,10 @@ import { getExchangeSettings } from '@/lib/exchange/settings'
 
 export const dynamic = 'force-dynamic'
 
-const TARGET_SYMBOLS = (
-  process.env.SYMBOLS ?? 'ETH/USDT,BTC/USDT,SOL/USDT,HYPE/USDT,BNB/USDT'
-)
-  .split(',')
-  .map((s) => s.trim().toUpperCase())
-  .filter(Boolean)
+const DEFAULT_TOP_SYMBOLS = ['ETH/USDT', 'BTC/USDT', 'SOL/USDT', 'HYPE/USDT', 'BNB/USDT']
+const TARGET_SYMBOLS = process.env.SYMBOLS
+  ? process.env.SYMBOLS.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean)
+  : DEFAULT_TOP_SYMBOLS
 
 export async function GET() {
   try {

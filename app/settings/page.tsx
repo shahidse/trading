@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { ExchangeSettingsCard } from '@/components/ExchangeSettingsCard'
+import { VenueSelector } from '@/components/VenueSelector'
 import { ThemeToggle, useTheme } from '@/components/ThemeToggle'
 import { LAYOUT_OPTIONS, type LayoutType } from '@/lib/theme'
 import { readJson } from '@/lib/utils'
@@ -489,6 +490,23 @@ export default function SettingsPage() {
 
             {channelStatus('telegram')}
             {actions('telegram')}
+          </section>
+
+          {/* ---- Execution Venue Selection ---- */}
+          <section className="rounded-2xl border border-line bg-surface p-6 shadow-xs">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
+                  Active Execution Venue
+                </h2>
+                <p className="mt-1 text-xs text-subtle">
+                  Choose between Binance Spot (Default CEX), Hyperliquid L1 DEX (Agent Wallet, zero API keys), or Solana DEX (Phantom + Jupiter Aggregator).
+                </p>
+              </div>
+            </div>
+            <div className="mt-4">
+              <VenueSelector />
+            </div>
           </section>
 
           {/* ---- Automatic trading ---- */}

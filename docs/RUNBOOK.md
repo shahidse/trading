@@ -28,7 +28,7 @@ CHAINLINK_ETH_USD_FEED="0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419"
 
 # Email Alerts (Resend) - Optional
 RESEND_API_KEY=""
-ALERT_EMAIL_FROM="onboarding@resend.dev"
+ALERT_EMAIL_FROM=""
 ALERT_EMAIL_TO=""
 
 # Telegram Alerts - Optional

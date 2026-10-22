@@ -14,6 +14,7 @@ import { TradePlanCard } from '@/components/TradePlanCard'
 import { TradingControls } from '@/components/TradingControls'
 import { WalletConnect } from '@/components/WalletConnect'
 import { WalletAssetsCard } from '@/components/WalletAssetsCard'
+import { VenueSelector } from '@/components/VenueSelector'
 import { OrderBookWidget } from '@/components/OrderBookWidget'
 import { useBinanceWebSocket } from '@/hooks/useBinanceWebSocket'
 import type { AssetBalance, LiveOrder } from '@/lib/exchange/client'
@@ -229,6 +230,11 @@ export default function Page() {
             {running ? 'Evaluating…' : `▶ Analyze ${selectedSymbol.split('/')[0]}`}
           </button>
         </div>
+      </div>
+
+      {/* Execution Venue Selector (Binance Default / Hyperliquid Agent / Solana Jupiter) */}
+      <div className="mt-2.5">
+        <VenueSelector />
       </div>
 
       {/* Action Controls & Market Price Strip (Mobile Optimised) */}
