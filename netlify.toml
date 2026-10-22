@@ -3,6 +3,9 @@
   publish = ".next"
   functions = "netlify/functions"
 
+[functions]
+  region = "fra"
+
 [build.environment]
   NODE_VERSION = "20"
   SECRETS_SCAN_ENABLED = "false"

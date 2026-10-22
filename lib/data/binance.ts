@@ -18,6 +18,10 @@ function getClient(): Exchange {
         },
       },
     })
+    const proxy = process.env.BINANCE_PROXY_URL ?? process.env.HTTPS_PROXY ?? process.env.HTTP_PROXY
+    if (proxy) {
+      client.httpsProxy = proxy
+    }
   }
   return client
 }

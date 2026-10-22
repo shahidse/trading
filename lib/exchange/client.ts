@@ -28,6 +28,11 @@ export async function getTradingExchange(): Promise<Exchange> {
     },
   })
 
+  const proxy = process.env.BINANCE_PROXY_URL ?? process.env.HTTPS_PROXY ?? process.env.HTTP_PROXY
+  if (proxy) {
+    exchange.httpsProxy = proxy
+  }
+
   // Binance Spot Testnet — fake funds, real signed-API flow.
   if (settings.testnet) exchange.setSandboxMode(true)
 
