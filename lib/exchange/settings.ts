@@ -33,6 +33,7 @@ export type ExchangeSettings = {
   useOcoBracket: boolean
   /** Reversal scalping mode: capture intraday bullish candle bounces in downtrends. */
   reversalScalpMode: boolean
+  credentialSource?: 'env' | 'fast-connect' | 'none'
 }
 
 /** What the browser may see: credentials become set/unset flags. */
@@ -49,11 +50,14 @@ export type PublicExchangeSettings = {
   reversalScalpMode: boolean
   apiKeySet: boolean
   secretSet: boolean
+  credentialSource: 'env' | 'fast-connect' | 'none'
+  hasEnvCredentials: boolean
 }
 
 const SETTINGS_KEY = 'exchange'
 
 function envDefaults(): ExchangeSettings {
+  const hasEnv = Boolean(config.exchange.apiKey && config.exchange.apiKey.trim() !== '')
   return {
     enabled: config.exchange.enabled,
     killSwitch: config.exchange.killSwitch,
@@ -67,6 +71,7 @@ function envDefaults(): ExchangeSettings {
     maxDailyTrades: config.exchange.maxDailyTrades,
     useOcoBracket: config.exchange.useOcoBracket,
     reversalScalpMode: config.exchange.reversalScalpMode,
+    credentialSource: hasEnv ? 'env' : 'none',
   }
 }
 
@@ -79,24 +84,34 @@ const num = (value: unknown, fallback: number): number =>
 const str = (value: unknown, fallback: string): string =>
   typeof value === 'string' && value.trim() !== '' ? value : fallback
 
-/** Stored fields win when present; an empty string deliberately clears a secret. */
-function mergeStored(raw: unknown, base: ExchangeSettings): ExchangeSettings {
+/**
+ * ENV key is ALWAYS the primary default.
+ * If base.apiKey (from process.env) is set, it unconditionally wins.
+ * If base.apiKey is empty, stored Fast Connect credentials are used as the 2nd option.
+ */
+export function mergeStored(raw: unknown, base: ExchangeSettings): ExchangeSettings {
   if (!raw || typeof raw !== 'object') return base
   const r = raw as Record<string, unknown>
+
+  const hasEnvKey = Boolean(base.apiKey && base.apiKey.trim() !== '')
+  const apiKey = hasEnvKey ? base.apiKey : str(r.apiKey, '')
+  const secret = hasEnvKey ? base.secret : str(r.secret, '')
+  const credentialSource = hasEnvKey ? 'env' : (apiKey ? 'fast-connect' : 'none')
 
   return {
     enabled: bool(r.enabled, base.enabled),
     killSwitch: bool(r.killSwitch, base.killSwitch),
     dryRun: bool(r.dryRun, base.dryRun),
     testnet: bool(r.testnet, base.testnet),
-    apiKey: str(r.apiKey, base.apiKey),
-    secret: str(r.secret, base.secret),
+    apiKey,
+    secret,
     notionalUsd: num(r.notionalUsd, base.notionalUsd),
     maxNotionalUsd: num(r.maxNotionalUsd, base.maxNotionalUsd),
     dailyLossLimitUsd: num(r.dailyLossLimitUsd, base.dailyLossLimitUsd),
     maxDailyTrades: num(r.maxDailyTrades, base.maxDailyTrades),
     useOcoBracket: bool(r.useOcoBracket, base.useOcoBracket),
     reversalScalpMode: bool(r.reversalScalpMode, base.reversalScalpMode),
+    credentialSource,
   }
 }
 
@@ -131,6 +146,9 @@ export function saveExchangeSettings(patch: Partial<ExchangeSettings>): Exchange
 export function publicExchangeSettings(
   settings: ExchangeSettings = getExchangeSettings(),
 ): PublicExchangeSettings {
+  const hasEnv = Boolean(config.exchange.apiKey && config.exchange.apiKey.trim() !== '')
+  const source = hasEnv ? 'env' : (settings.apiKey ? 'fast-connect' : 'none')
+
   return {
     enabled: settings.enabled,
     killSwitch: settings.killSwitch,
@@ -144,6 +162,8 @@ export function publicExchangeSettings(
     reversalScalpMode: settings.reversalScalpMode,
     apiKeySet: Boolean(settings.apiKey),
     secretSet: Boolean(settings.secret),
+    credentialSource: source,
+    hasEnvCredentials: hasEnv,
   }
 }
 

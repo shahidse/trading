@@ -22,6 +22,7 @@ export async function getTradingExchange(): Promise<Exchange> {
     secret: settings.secret,
     options: {
       defaultType: 'spot',
+      fetchMarkets: ['spot'],
       adjustForTimeDifference: true,
       fetchCurrencies: false,
     },

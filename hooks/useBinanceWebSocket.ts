@@ -76,9 +76,9 @@ export function useBinanceWebSocket({
     if (!enabled || typeof window === 'undefined') return
 
     let isMounted = true
-    const baseUrl = isTestnet
-      ? 'wss://stream.binance.vision:9443/stream'
-      : 'wss://stream.binance.com:9443/stream'
+    const testnetBaseUrl = 'wss://stream.testnet.binance.vision:9443/stream'
+    const liveBaseUrl = 'wss://stream.binance.com/stream'
+    let currentBaseUrl = isTestnet ? testnetBaseUrl : liveBaseUrl
 
     const streams = [
       `${cleanSymbol}@ticker`,
@@ -86,13 +86,12 @@ export function useBinanceWebSocket({
       `${cleanSymbol}@kline_15m`,
     ].join('/')
 
-    const fullUrl = `${baseUrl}?streams=${streams}`
-
     function connect() {
       if (!isMounted) return
 
       try {
         setState((prev) => ({ ...prev, status: 'connecting' }))
+        const fullUrl = `${currentBaseUrl}?streams=${streams}`
         const ws = new WebSocket(fullUrl)
         wsRef.current = ws
 
@@ -194,6 +193,10 @@ export function useBinanceWebSocket({
 
         ws.onerror = () => {
           if (!isMounted) return
+          // If testnet stream fails or has network issues, fall back to live public stream
+          if (currentBaseUrl === testnetBaseUrl) {
+            currentBaseUrl = liveBaseUrl
+          }
           setState((prev) => ({ ...prev, status: 'error' }))
         }
 

@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import { EXECUTION_VENUES, DEFAULT_VENUE, type ExecutionVenue } from '@/lib/constants/venues'
+import { BinanceFastConnectModal } from '@/components/BinanceFastConnectModal'
 import { HyperliquidAgentModal } from '@/components/HyperliquidAgentModal'
 import { SolanaWalletModal } from '@/components/SolanaWalletModal'
 
 export function VenueSelector() {
   const [activeVenue, setActiveVenue] = useState<ExecutionVenue>(DEFAULT_VENUE)
   const [loading, setLoading] = useState(false)
+  const [binanceModalOpen, setBinanceModalOpen] = useState(false)
   const [hlModalOpen, setHlModalOpen] = useState(false)
   const [solModalOpen, setSolModalOpen] = useState(false)
 
@@ -79,6 +81,15 @@ export function VenueSelector() {
           )
         })}
 
+        {activeVenue === 'binance' && (
+          <button
+            onClick={() => setBinanceModalOpen(true)}
+            className="ml-auto rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-2 py-0.8 text-[11px] font-medium text-yellow-400 hover:bg-yellow-500/20"
+          >
+            ⚡ Fast Connect
+          </button>
+        )}
+
         {activeVenue === 'hyperliquid' && (
           <button
             onClick={() => setHlModalOpen(true)}
@@ -97,6 +108,11 @@ export function VenueSelector() {
           </button>
         )}
       </div>
+
+      <BinanceFastConnectModal
+        open={binanceModalOpen}
+        onClose={() => setBinanceModalOpen(false)}
+      />
 
       <HyperliquidAgentModal
         open={hlModalOpen}

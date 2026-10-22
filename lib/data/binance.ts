@@ -11,7 +11,7 @@ function getClient(): Exchange {
   if (!client) {
     client = new binance({
       enableRateLimit: true,
-      options: { defaultType: 'spot', fetchCurrencies: false },
+      options: { defaultType: 'spot', fetchMarkets: ['spot'], fetchCurrencies: false },
       urls: {
         api: {
           public: 'https://data-api.binance.vision/api/v3',
