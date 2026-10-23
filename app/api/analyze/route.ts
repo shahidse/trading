@@ -7,16 +7,24 @@ export const dynamic = 'force-dynamic'
 export async function POST(request: Request) {
   try {
     let symbol: string | undefined
+    let timeframe: string | undefined
     try {
-      const body = (await request.json()) as { symbol?: string } | null
+      const body = (await request.json()) as { symbol?: string; timeframe?: string } | null
       if (body?.symbol) symbol = body.symbol
+      if (body?.timeframe) timeframe = body.timeframe
     } catch {
       // Body not provided or not JSON
     }
-    const urlSymbol = new URL(request.url).searchParams.get('symbol')
+    const url = new URL(request.url)
+    const urlSymbol = url.searchParams.get('symbol')
     if (urlSymbol) symbol = urlSymbol
+    const urlTf = url.searchParams.get('timeframe')
+    if (urlTf) timeframe = urlTf
 
-    const result = await runAnalysis(symbol ? { symbol } : {})
+    const result = await runAnalysis({
+      ...(symbol ? { symbol } : {}),
+      ...(timeframe ? { timeframe } : {}),
+    })
     return NextResponse.json(result)
   } catch (error) {
     return NextResponse.json(

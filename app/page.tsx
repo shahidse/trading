@@ -16,6 +16,7 @@ import { WalletConnect } from '@/components/WalletConnect'
 import { WalletAssetsCard } from '@/components/WalletAssetsCard'
 import { VenueSelector } from '@/components/VenueSelector'
 import { OrderBookWidget } from '@/components/OrderBookWidget'
+import { HotCoinsRadar } from '@/components/HotCoinsRadar'
 import { useBinanceWebSocket } from '@/hooks/useBinanceWebSocket'
 import type { AssetBalance, LiveOrder } from '@/lib/exchange/client'
 import type { StoredTradeOrder } from '@/lib/db/client'
@@ -58,6 +59,7 @@ const REFRESH_MS = 60_000
 export default function Page() {
   const { themeStyle, layoutType } = useTheme()
   const [selectedSymbol, setSelectedSymbol] = useState<string>('ETH/USDT')
+  const [selectedTimeframe, setSelectedTimeframe] = useState<string>('15m')
   const [signals, setSignals] = useState<StoredSignal[]>([])
   const [price, setPrice] = useState<PriceResponse | null>(null)
   const [tradesData, setTradesData] = useState<TradesResponse | null>(null)
@@ -85,11 +87,11 @@ export default function Page() {
   const [mobileInspectorOpen, setMobileInspectorOpen] = useState(true)
   const [splitScreenMobileTab, setSplitScreenMobileTab] = useState<'both' | 'chart' | 'confluence' | 'orders'>('both')
 
-  const load = useCallback(async (sym: string = selectedSymbol) => {
+  const load = useCallback(async (sym: string = selectedSymbol, tf: string = selectedTimeframe) => {
     try {
       const [signalsResponse, priceResponse, tradesResponse] = await Promise.all([
         fetch(`/api/signals?limit=50&symbol=${encodeURIComponent(sym)}`),
-        fetch(`/api/price?symbol=${encodeURIComponent(sym)}`),
+        fetch(`/api/price?symbol=${encodeURIComponent(sym)}&timeframe=${encodeURIComponent(tf)}`),
         fetch(`/api/trades?symbol=${encodeURIComponent(sym)}`),
       ])
 
@@ -107,17 +109,22 @@ export default function Page() {
     } finally {
       setLoading(false)
     }
-  }, [selectedSymbol])
+  }, [selectedSymbol, selectedTimeframe])
 
   useEffect(() => {
-    void load(selectedSymbol)
-    const timer = setInterval(() => void load(selectedSymbol), REFRESH_MS)
+    void load(selectedSymbol, selectedTimeframe)
+    const timer = setInterval(() => void load(selectedSymbol, selectedTimeframe), REFRESH_MS)
     return () => clearInterval(timer)
-  }, [load, selectedSymbol])
+  }, [load, selectedSymbol, selectedTimeframe])
 
   function handleSelectSymbol(sym: string) {
     setSelectedSymbol(sym)
-    void load(sym)
+    void load(sym, selectedTimeframe)
+  }
+
+  function handleSelectTimeframe(tf: string) {
+    setSelectedTimeframe(tf)
+    void load(selectedSymbol, tf)
   }
 
   async function runAnalysis() {
@@ -127,11 +134,11 @@ export default function Page() {
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ symbol: selectedSymbol }),
+        body: JSON.stringify({ symbol: selectedSymbol, timeframe: selectedTimeframe }),
       })
       const json = await response.json()
       if (!response.ok) throw new Error(json.error ?? 'Analysis failed')
-      await load(selectedSymbol)
+      await load(selectedSymbol, selectedTimeframe)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Analysis failed')
     } finally {
@@ -213,6 +220,38 @@ export default function Page() {
       {/* Top 50 Coin Switcher & Market Action Bar */}
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-surface/80 p-2.5 shadow-xs">
         <CoinSelector activeSymbol={selectedSymbol} onSelectSymbol={handleSelectSymbol} />
+
+        {/* Strategy Timeframe Mode Selector */}
+        <div className="flex flex-wrap items-center gap-1 rounded-xl border border-line bg-surface-2/60 p-1">
+          {[
+            { tf: '1m', label: '1m', badge: 'Scalp', desc: '1m High-Freq Scalping (15m Macro Anchor)' },
+            { tf: '15m', label: '15m', badge: 'Intraday', desc: '15m Intraday Momentum (1h Macro Anchor)' },
+            { tf: '1h', label: '1h', badge: 'Swing', desc: '1h Swing Trading (4h Macro Anchor)' },
+            { tf: '4h', label: '4h', badge: 'Macro', desc: '4h Macro Swing (1d Daily Macro Anchor)' },
+          ].map(({ tf, label, badge, desc }) => (
+            <button
+              key={tf}
+              type="button"
+              onClick={() => handleSelectTimeframe(tf)}
+              title={desc}
+              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition ${
+                selectedTimeframe === tf
+                  ? 'bg-accent text-white shadow-xs'
+                  : 'text-subtle hover:text-ink hover:bg-surface'
+              }`}
+            >
+              <span>{label}</span>
+              <span
+                className={`text-[9px] font-semibold uppercase tracking-wider ${
+                  selectedTimeframe === tf ? 'text-white/80' : 'text-muted'
+                }`}
+              >
+                {badge}
+              </span>
+            </button>
+          ))}
+        </div>
+
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -228,7 +267,7 @@ export default function Page() {
                 : 'rounded-lg bg-indigo-500 text-white hover:bg-indigo-400'
             }`}
           >
-            {running ? 'Evaluating…' : `▶ Analyze ${selectedSymbol.split('/')[0]}`}
+            {running ? 'Evaluating…' : `▶ Analyze ${selectedSymbol.split('/')[0]} (${selectedTimeframe})`}
           </button>
         </div>
       </div>
@@ -236,6 +275,11 @@ export default function Page() {
       {/* Execution Venue Selector (Binance Default / Hyperliquid Agent / Solana Jupiter) */}
       <div className="mt-2.5">
         <VenueSelector />
+      </div>
+
+      {/* Hot Coins & Breakout Radar */}
+      <div className="mt-3.5">
+        <HotCoinsRadar activeSymbol={selectedSymbol} onSelectSymbol={handleSelectSymbol} />
       </div>
 
       {/* Action Controls & Market Price Strip (Mobile Optimised) */}
@@ -438,7 +482,12 @@ export default function Page() {
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
                   <div className="space-y-6 lg:col-span-7 xl:col-span-7 2xl:col-span-8">
                     <div className="rounded-2xl border border-line bg-surface p-2 shadow-xs">
-                      <CandleChart limit={500} symbol={selectedSymbol} />
+                      <CandleChart
+                        limit={500}
+                        symbol={selectedSymbol}
+                        timeframe={selectedTimeframe}
+                        onTimeframeChange={handleSelectTimeframe}
+                      />
                     </div>
                   </div>
                   <div className="space-y-6 lg:col-span-5 xl:col-span-5 2xl:col-span-4">
@@ -482,7 +531,12 @@ export default function Page() {
             {activeSidebarNav === 'chart' && (
               <div className="space-y-6">
                 <div className="rounded-2xl border border-line bg-surface p-3 shadow-xs">
-                  <CandleChart limit={1000} symbol={selectedSymbol} />
+                  <CandleChart
+                    limit={1000}
+                    symbol={selectedSymbol}
+                    timeframe={selectedTimeframe}
+                    onTimeframeChange={handleSelectTimeframe}
+                  />
                 </div>
                 {latest && <IndicatorPanel indicators={latest.indicators} />}
               </div>
@@ -617,7 +671,12 @@ export default function Page() {
               }`}
             >
               <div className="rounded-2xl border border-line bg-surface p-2 shadow-xs">
-                <CandleChart limit={500} symbol={selectedSymbol} />
+                <CandleChart
+                  limit={500}
+                  symbol={selectedSymbol}
+                  timeframe={selectedTimeframe}
+                  onTimeframeChange={handleSelectTimeframe}
+                />
               </div>
               <div className="rounded-2xl border border-line bg-surface p-1 shadow-xs">
                 <BacktestPanel />
@@ -666,7 +725,12 @@ export default function Page() {
           {/* Dominant Deep-Immersion Chart Canvas with Floating HUD */}
           <div className="relative rounded-3xl border border-line bg-surface/40 backdrop-blur-sm overflow-hidden p-3 shadow-md">
             <div className="w-full">
-              <CandleChart limit={500} symbol={selectedSymbol} />
+              <CandleChart
+                limit={500}
+                symbol={selectedSymbol}
+                timeframe={selectedTimeframe}
+                onTimeframeChange={handleSelectTimeframe}
+              />
             </div>
 
             {/* Floating Glass Inspector HUD / Cockpit Dock */}
@@ -885,7 +949,12 @@ export default function Page() {
                   Binance + Chainlink
                 </span>
               </div>
-              <CandleChart limit={500} symbol={selectedSymbol} />
+              <CandleChart
+                limit={500}
+                symbol={selectedSymbol}
+                timeframe={selectedTimeframe}
+                onTimeframeChange={handleSelectTimeframe}
+              />
             </div>
 
             {/* Bento Cell 2: Actionable Trade Plan (4 cols) */}
@@ -1003,7 +1072,12 @@ export default function Page() {
                   </div>
                   <span className="text-xs font-mono text-subtle">15m Candles</span>
                 </div>
-                <CandleChart limit={500} symbol={selectedSymbol} />
+                <CandleChart
+                  limit={500}
+                  symbol={selectedSymbol}
+                  timeframe={selectedTimeframe}
+                  onTimeframeChange={handleSelectTimeframe}
+                />
               </div>
 
               <div className="rounded-3xl border border-line bg-surface p-2 shadow-xs">

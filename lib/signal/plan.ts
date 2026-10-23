@@ -126,25 +126,32 @@ export function trendRead(bundle: IndicatorBundle): TrendRead {
 }
 
 /** ATR-based entry / stop / target with staged multi-tier take-profits. */
-function buildLevels(price: number, atrValue: number | null): TradeLevels | null {
+function buildLevels(price: number, atrValue: number | null, timeframe = '15m'): TradeLevels | null {
   if (!atrValue || atrValue <= 0 || price <= 0) return null
 
-  const stopDistance = atrValue * config.trade.stopAtrMultiple
+  // For swing timeframes (1h, 4h), widen targets for multi-day expansion
+  const isSwing = timeframe === '1h' || timeframe === '4h' || timeframe === '1d'
+  const isMicroScalp = timeframe === '1m' || timeframe === '3m' || timeframe === '5m'
+
+  const stopMultiplier = isSwing ? 3.0 : isMicroScalp ? 1.8 : config.trade.stopAtrMultiple
+  const rewardMultiple = isSwing ? 2.8 : isMicroScalp ? 1.6 : config.trade.rewardMultiple
+
+  const stopDistance = atrValue * stopMultiplier
   const stopLoss = price - stopDistance
   if (stopLoss <= 0) return null
 
-  const rewardDistance = stopDistance * config.trade.rewardMultiple
+  const rewardDistance = stopDistance * rewardMultiple
   const takeProfit = price + rewardDistance
 
-  // Multi-tier staged targets:
-  // Tier 1: 50% scale-out at 1.5R stop distance -> triggers Breakeven Stop
-  const tp1Distance = stopDistance * 1.5
+  const tp1Multiplier = isSwing ? 1.8 : 1.5
+  const tp2Multiplier = isSwing ? 3.0 : 2.6
+  const tp3Multiplier = isSwing ? 4.5 : 3.5
+
+  const tp1Distance = stopDistance * tp1Multiplier
   const tp1Price = round(price + tp1Distance, 2)
-  // Tier 2: 30% scale-out at 2.6R stop distance -> trails with SuperTrend
-  const tp2Distance = stopDistance * 2.6
+  const tp2Distance = stopDistance * tp2Multiplier
   const tp2Price = round(price + tp2Distance, 2)
-  // Tier 3: 20% trailing runner at 3.5R stop distance
-  const runnerDistance = stopDistance * 3.5
+  const runnerDistance = stopDistance * tp3Multiplier
   const runnerPrice = round(price + runnerDistance, 2)
 
   const stagedTargets = [
@@ -153,7 +160,7 @@ function buildLevels(price: number, atrValue: number | null): TradeLevels | null
       price: tp1Price,
       distancePct: round((tp1Distance / price) * 100, 2),
       sizePct: 50,
-      riskReward: 1.5,
+      riskReward: tp1Multiplier,
       action: 'breakeven-stop' as const,
     },
     {
@@ -161,7 +168,7 @@ function buildLevels(price: number, atrValue: number | null): TradeLevels | null
       price: tp2Price,
       distancePct: round((tp2Distance / price) * 100, 2),
       sizePct: 30,
-      riskReward: 2.6,
+      riskReward: tp2Multiplier,
       action: 'trail-stop' as const,
     },
     {
@@ -169,7 +176,7 @@ function buildLevels(price: number, atrValue: number | null): TradeLevels | null
       price: runnerPrice,
       distancePct: round((runnerDistance / price) * 100, 2),
       sizePct: 20,
-      riskReward: 3.5,
+      riskReward: tp3Multiplier,
       action: 'close-runner' as const,
     },
   ]
@@ -178,7 +185,7 @@ function buildLevels(price: number, atrValue: number | null): TradeLevels | null
     entry: round(price, 2),
     stopLoss: round(stopLoss, 2),
     takeProfit: round(takeProfit, 2),
-    riskReward: round(config.trade.rewardMultiple, 2),
+    riskReward: round(rewardMultiple, 2),
     stopDistancePct: round((stopDistance / price) * 100, 2),
     targetDistancePct: round((rewardDistance / price) * 100, 2),
     stagedTargets,
@@ -203,26 +210,49 @@ export type TradePlanInput = {
   supertrend?: IndicatorBundle['supertrend']
   macroTrend?: MacroTrendInfo
   reversalScalpMode?: boolean
+  timeframe?: string
 }
 
-/** Tight scalp levels with dynamic target based on 1h macro trend alignment (~0.8% stop, ~1.0-1.4% target). */
-function buildScalpLevels(price: number, macroVerdict: 'bullish' | 'bearish' | 'neutral' = 'neutral'): TradeLevels | null {
+/** Tight scalp levels with dynamic target based on timeframe and macro trend alignment. */
+function buildScalpLevels(
+  price: number,
+  macroVerdict: 'bullish' | 'bearish' | 'neutral' = 'neutral',
+  timeframe = '15m',
+): TradeLevels | null {
   if (price <= 0) return null
-  const stopDistancePct = config.scalp.stopDistancePct
-  // 1h Macro Trend alignment tuning:
-  // - Bullish macro: allow 1.4% target expansion with macro tailwind
-  // - Bearish macro: take quick 1.0% profit before macro pressure resumes
-  // - Neutral: standard 1.2% target
-  const targetDistancePct =
-    macroVerdict === 'bullish'
-      ? Math.max(config.scalp.targetDistancePct, 1.4)
-      : macroVerdict === 'bearish'
-      ? Math.min(config.scalp.targetDistancePct, 1.0)
+
+  // Timeframe adaptive scalping parameters:
+  // 1m: ultra-tight 0.4% stop, 0.6% - 0.8% target (high-frequency micro-flips)
+  // 15m: standard 0.8% stop, 1.0% - 1.4% target (intraday momentum scalp)
+  // 1h+: swing bounce 1.4% stop, 2.0% - 2.8% target
+  const baseStopPct =
+    timeframe === '1m'
+      ? 0.4
+      : timeframe === '3m' || timeframe === '5m'
+      ? 0.6
+      : timeframe === '1h' || timeframe === '4h' || timeframe === '1d'
+      ? 1.4
+      : config.scalp.stopDistancePct
+
+  const baseTargetPct =
+    timeframe === '1m'
+      ? 0.7
+      : timeframe === '3m' || timeframe === '5m'
+      ? 1.0
+      : timeframe === '1h' || timeframe === '4h' || timeframe === '1d'
+      ? 2.2
       : config.scalp.targetDistancePct
 
-  const stopLoss = round(price * (1 - stopDistancePct / 100), 2)
+  const targetDistancePct =
+    macroVerdict === 'bullish'
+      ? Math.max(baseTargetPct, round(baseTargetPct * 1.25, 2))
+      : macroVerdict === 'bearish'
+      ? Math.min(baseTargetPct, round(baseTargetPct * 0.85, 2))
+      : baseTargetPct
+
+  const stopLoss = round(price * (1 - baseStopPct / 100), 2)
   const takeProfit = round(price * (1 + targetDistancePct / 100), 2)
-  const riskReward = round(targetDistancePct / stopDistancePct, 2)
+  const riskReward = round(targetDistancePct / baseStopPct, 2)
 
   // Staged Scalp targets:
   // Tier 1: 70% at 75% of target -> ratchet to breakeven
@@ -234,7 +264,7 @@ function buildScalpLevels(price: number, macroVerdict: 'bullish' | 'bearish' | '
       price: tp1Price,
       distancePct: round(targetDistancePct * 0.75, 2),
       sizePct: 70,
-      riskReward: round((targetDistancePct * 0.75) / stopDistancePct, 2),
+      riskReward: round((targetDistancePct * 0.75) / baseStopPct, 2),
       action: 'breakeven-stop' as const,
     },
     {
@@ -252,7 +282,7 @@ function buildScalpLevels(price: number, macroVerdict: 'bullish' | 'bearish' | '
     stopLoss,
     takeProfit,
     riskReward,
-    stopDistancePct,
+    stopDistancePct: baseStopPct,
     targetDistancePct,
     stagedTargets,
     breakevenPrice: tp1Price,
@@ -277,6 +307,7 @@ export function buildTradePlan(input: TradePlanInput): TradePlan {
     supertrend = null,
     macroTrend,
     reversalScalpMode = false,
+    timeframe = '15m',
   } = input
   const atrValue = regime.atrValue
 
@@ -297,10 +328,11 @@ export function buildTradePlan(input: TradePlanInput): TradePlan {
       : (supertrendStop ?? baseProtectiveStop)
 
   const macroVerdict = macroTrend?.verdict ?? 'neutral'
+  const macroTfLabel = macroTrend?.timeframe ?? '1h'
   const context: string[] = [
     regime.detail,
     confluence.detail,
-    ...(macroTrend ? [`Macro (1h): ${macroTrend.detail} (${macroTrend.verdict})`] : []),
+    ...(macroTrend ? [`Macro (${macroTfLabel}): ${macroTrend.detail} (${macroTrend.verdict})`] : []),
   ]
 
   // Check if there is an active bullish candle pattern, SuperTrend flip, or oversold bounce setup
@@ -334,30 +366,33 @@ export function buildTradePlan(input: TradePlanInput): TradePlan {
 
   // ---------- LONG ----------
   if (direction === 'LONG') {
+    const macroCounter = macroVerdict === 'bearish'
     const counterTrend =
       config.trade.blockCounterTrend &&
       regime.regime !== 'ranging' &&
       (trend.verdict === 'down' ||
+        macroCounter ||
         (regime.regime === 'trending' && regime.direction === 'bearish'))
 
     if (counterTrend) {
       // If Reversal Scalping Mode is active and bullish setup confirms, execute scalp BUY
       if (reversalScalpMode && (hasBullishPattern || supertrendFlip || score >= 20)) {
-        const scalpLevels = buildScalpLevels(price, macroVerdict)
+        const scalpLevels = buildScalpLevels(price, macroVerdict, timeframe)
         const macroTag =
           macroVerdict === 'bullish'
-            ? ' (1h Macro Aligned)'
+            ? ` (${macroTfLabel} Aligned)`
             : macroVerdict === 'bearish'
-            ? ' (Counter-Macro)'
+            ? ' (Counter-Macro Scalp)'
             : ''
+        const modeLabel = timeframe === '1m' ? 'High-Freq Scalp' : timeframe === '1h' || timeframe === '4h' ? 'Swing Bounce' : 'Reversal Scalp'
         return {
           action: 'BUY',
           gate: 'scalp-open',
           headline: scalpLevels
-            ? `Reversal Scalp Long${macroTag} ~${money(scalpLevels.entry)} · tight stop ${money(
+            ? `${modeLabel} Long${macroTag} ~${money(scalpLevels.entry)} · tight stop ${money(
                 scalpLevels.stopLoss,
               )} · target ${money(scalpLevels.takeProfit)} (+${scalpLevels.targetDistancePct}%)`
-            : 'Reversal Scalp Long at market',
+            : `${modeLabel} Long at market`,
           forFlat: scalpLevels
             ? `Scalp bullish bounce. Buy near ${money(scalpLevels.entry)} with tight stop ${money(
                 scalpLevels.stopLoss,
@@ -373,9 +408,9 @@ export function buildTradePlan(input: TradePlanInput): TradePlan {
           protectiveStop,
           rationale: [
             ...context,
-            `Reversal Scalping Mode active: ${scalpTriggerReason} during downtrend.`,
+            `Reversal Scalping Mode active: ${scalpTriggerReason} during ${macroCounter ? `${macroTfLabel} macro downtrend` : 'downtrend'}.`,
             macroVerdict === 'bullish'
-              ? '1h Macro Trend is bullish — scalp operates with higher timeframe support.'
+              ? `${macroTfLabel} Macro Trend is bullish — scalp operates with higher timeframe support.`
               : 'Executing quick-profit scalp order with tight risk controls.',
           ],
         }
@@ -384,21 +419,26 @@ export function buildTradePlan(input: TradePlanInput): TradePlan {
       return {
         action: 'STAY_OUT',
         gate: 'blocked-by-trend',
-        headline: 'Do not buy — bullish score blocked by a bearish trend',
+        headline:
+          macroCounter && trend.verdict !== 'down'
+            ? `Do not buy — ${timeframe} bullish setup blocked by 1h bearish macro trend`
+            : 'Do not buy — bullish score blocked by a bearish trend',
         forFlat:
-          'Stay out. Wait for the trend group (EMA stack / cloud / MACD) to stop pointing down, or enable Reversal Scalp Mode.',
+          `Stay out. Wait for the macro trend (${macroTfLabel} EMAs / SuperTrend) to align, or enable Reversal Scalp Mode.`,
         forHolder: 'Consider trimming. Do not add to this position.',
         levels: null,
         protectiveStop,
         rationale: [
           ...context,
-          `Composite is bullish (${score}) but the trend gate is closed: ${trend.evidence.join(', ')}.`,
+          macroCounter && trend.verdict !== 'down'
+            ? `Composite is bullish (${score}) but ${macroTfLabel} macro trend is bearish (${macroTrend?.detail ?? 'macro downtrend'}).`
+            : `Composite is bullish (${score}) but the trend gate is closed: ${trend.evidence.join(', ')}.`,
           'Trend filter active — to trade intraday bounces, enable Reversal Scalping Mode in Settings.',
         ],
       }
     }
 
-    const levels = buildLevels(price, atrValue)
+    const levels = buildLevels(price, atrValue, timeframe)
 
     return {
       action: 'BUY',
@@ -420,6 +460,9 @@ export function buildTradePlan(input: TradePlanInput): TradePlan {
       rationale: [
         ...context,
         `Composite ${score} clears the LONG threshold; trend group agrees (${trend.evidence.join(', ') || 'neutral'}).`,
+        ...(macroVerdict === 'bullish'
+          ? [`🎯 ${macroTfLabel} Macro Trend is aligned (bullish momentum) — trade operates with higher-timeframe expansion edge.`]
+          : []),
         levels
           ? `Risk is defined by the stop ${levels.stopDistancePct}% away, targeting ${levels.targetDistancePct}% (${levels.riskReward}R).`
           : 'Levels could not be derived because ATR was unavailable.',
@@ -431,10 +474,10 @@ export function buildTradePlan(input: TradePlanInput): TradePlan {
   if (direction === 'SHORT') {
     // Even during SHORT reading, if user enabled Reversal Scalp Mode and strong bullish reversal triggers
     if (scalpTriggered && (hasBullishPattern || supertrendFlip)) {
-      const scalpLevels = buildScalpLevels(price, macroVerdict)
+      const scalpLevels = buildScalpLevels(price, macroVerdict, timeframe)
       const macroTag =
         macroVerdict === 'bullish'
-          ? ' (1h Macro Aligned)'
+          ? ` (${macroTfLabel} Macro Aligned)`
           : macroVerdict === 'bearish'
           ? ' (Counter-Macro)'
           : ''
@@ -453,14 +496,14 @@ export function buildTradePlan(input: TradePlanInput): TradePlan {
           : 'Quick scalp on bullish reversal pattern.',
         forHolder:
           macroVerdict === 'bullish'
-            ? 'Macro 1h is bullish — scalp with trailing stop.'
+            ? `Macro ${macroTfLabel} is bullish — scalp with trailing stop.`
             : 'Take fast profit at target; overall macro trend is still downward.',
         levels: scalpLevels,
         protectiveStop,
         rationale: [
           ...context,
           `Reversal Scalping Mode: ${scalpTriggerReason} detected despite negative composite ${score}.`,
-          `Targeting quick +${scalpLevels?.targetDistancePct ?? config.scalp.targetDistancePct}% profit with tight stop −${config.scalp.stopDistancePct}%.`,
+          `Targeting quick +${scalpLevels?.targetDistancePct ?? config.scalp.targetDistancePct}% profit with tight stop −${scalpLevels?.stopDistancePct ?? config.scalp.stopDistancePct}%.`,
         ],
       }
     }
@@ -478,6 +521,11 @@ export function buildTradePlan(input: TradePlanInput): TradePlan {
       rationale: [
         ...context,
         `Composite ${score} is below the SHORT threshold.`,
+        ...(macroVerdict === 'bullish'
+          ? [`⚠️ ${macroTfLabel} Macro trend is bullish — caution: this pullback may find support soon.`]
+          : macroVerdict === 'bearish'
+            ? [`🎯 ${macroTfLabel} Macro trend is bearish — full macro alignment on downside exit.`]
+            : []),
         trend.verdict === 'down'
           ? `Trend group confirms the downside: ${trend.evidence.join(', ')}.`
           : 'Trend group is not confirming, so treat this as a defensive exit rather than a short entry.',
@@ -487,10 +535,10 @@ export function buildTradePlan(input: TradePlanInput): TradePlan {
 
   // ---------- NEUTRAL ----------
   if (scalpTriggered) {
-    const scalpLevels = buildScalpLevels(price, macroVerdict)
+    const scalpLevels = buildScalpLevels(price, macroVerdict, timeframe)
     const macroTag =
       macroVerdict === 'bullish'
-        ? ' (1h Macro Aligned)'
+        ? ` (${macroTfLabel} Macro Aligned)`
         : macroVerdict === 'bearish'
         ? ' (Counter-Macro)'
         : ''
@@ -509,7 +557,7 @@ export function buildTradePlan(input: TradePlanInput): TradePlan {
         : 'Enter scalp long on bullish candle bounce.',
       forHolder:
         macroVerdict === 'bullish'
-          ? '1h Macro is bullish — hold and trail stop for expansion.'
+          ? `${macroTfLabel} Macro is bullish — hold and trail stop for expansion.`
           : 'Hold and take profit at scalp target.',
       levels: scalpLevels,
       protectiveStop,
@@ -517,7 +565,7 @@ export function buildTradePlan(input: TradePlanInput): TradePlan {
         ...context,
         `Reversal Scalp triggered in neutral market: ${scalpTriggerReason}.`,
         macroVerdict === 'bullish'
-          ? `1h Macro trend is bullish — aligned with higher timeframe flow. Aiming for +${scalpLevels?.targetDistancePct}%.`
+          ? `${macroTfLabel} Macro trend is bullish — aligned with higher timeframe flow. Aiming for +${scalpLevels?.targetDistancePct}%.`
           : `Aiming for intraday gain of +${scalpLevels?.targetDistancePct ?? config.scalp.targetDistancePct}%.`,
       ],
     }

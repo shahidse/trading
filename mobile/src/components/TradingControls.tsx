@@ -179,7 +179,7 @@ export const TradingControls: React.FC<Props> = ({ state, onRefresh }) => {
               { color: openPosition.side === 'BUY' ? colors.bullish : colors.bearish },
             ]}
           >
-            ACTIVE {openPosition.side} POSITION ({openPosition.quantity.toFixed(4)} ETH)
+            ACTIVE {openPosition.side} POSITION ({openPosition.quantity.toFixed(4)} {state.symbol?.split('/')[0] || 'ETH'})
           </Text>
           <Text style={[styles.posText, { color: colors.text }]}>
             Filled at {formatPrice(openPosition.price)} · Size: {formatPrice(openPosition.notionalUsd)}
@@ -189,6 +189,57 @@ export const TradingControls: React.FC<Props> = ({ state, onRefresh }) => {
               SL: {formatPrice(openPosition.stopLossPrice)} | TP: {formatPrice(openPosition.takeProfitPrice)}
             </Text>
           )}
+        </View>
+      )}
+
+      {/* Live Exchange Balances */}
+      {state.liveBalances?.balances && state.liveBalances.balances.length > 0 && (
+        <View
+          style={[
+            styles.balancesBanner,
+            {
+              backgroundColor: colors.surface2,
+              borderColor: colors.borderSubtle,
+              borderWidth: colors.borderWidth,
+              borderRadius: colors.borderRadius,
+            },
+          ]}
+        >
+          <Text style={[styles.balanceTitle, { color: colors.textSubtle }]}>
+            LIVE BINANCE SPOT BALANCES {state.liveBalances.testnet ? '(TESTNET)' : '(MAINNET)'}
+          </Text>
+          <View style={styles.balancesList}>
+            {state.liveBalances.balances.map((b) => (
+              <View key={b.asset} style={styles.balanceItem}>
+                <Text style={[styles.balanceAsset, { color: colors.text }]}>{b.asset}</Text>
+                <Text style={[styles.balanceVal, { color: colors.bullish }]}>
+                  {b.total < 1 ? b.total.toFixed(4) : b.total.toFixed(2)}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* Exchange Diagnostic / Error */}
+      {state.exchangeError && (
+        <View
+          style={[
+            styles.errorBanner,
+            {
+              backgroundColor: colors.warningBg,
+              borderColor: colors.warningBorder,
+              borderWidth: colors.borderWidth,
+              borderRadius: colors.borderRadius,
+            },
+          ]}
+        >
+          <Text style={[styles.errorTitle, { color: colors.warning }]}>
+            EXCHANGE DIAGNOSTIC WARNING
+          </Text>
+          <Text style={[styles.errorDetail, { color: colors.textMuted }]} numberOfLines={3}>
+            {state.exchangeError}
+          </Text>
         </View>
       )}
 
@@ -290,6 +341,48 @@ const styles = StyleSheet.create({
   posSub: {
     fontSize: 11,
     marginTop: 2,
+  },
+  balancesBanner: {
+    padding: 10,
+    marginBottom: 12,
+  },
+  balanceTitle: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    marginBottom: 6,
+  },
+  balancesList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  balanceItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  balanceAsset: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  balanceVal: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  errorBanner: {
+    padding: 10,
+    marginBottom: 12,
+  },
+  errorTitle: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    marginBottom: 4,
+  },
+  errorDetail: {
+    fontSize: 10,
+    lineHeight: 14,
   },
   buttonsRow: {
     flexDirection: 'row',

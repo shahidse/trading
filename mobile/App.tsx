@@ -14,7 +14,7 @@ import {
 } from 'react-native'
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { api } from './src/services/api'
-import { Candle, ChartPayload, PriceResponse, Signal, TradingStateResponse } from './src/types'
+import { Candle, ChartPayload, CoinInfo, PriceResponse, Signal, TradingStateResponse } from './src/types'
 import {
   ThemeProvider,
   useTheme,
@@ -30,12 +30,18 @@ import { OrderHistory } from './src/components/OrderHistory'
 import { SignalHistory } from './src/components/SignalHistory'
 import { SettingsModal } from './src/components/SettingsModal'
 import { ThemeSelector } from './src/components/ThemeSelector'
+import { CoinSelectorModal } from './src/components/CoinSelectorModal'
+import { HotCoinsRadar } from './src/components/HotCoinsRadar'
 
 function MainScreen() {
   const { colors, colorMode, themeStyle, refreshInterval, showIndicators } = useTheme()
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
+  const [selectedSymbol, setSelectedSymbol] = useState('ETH/USDT')
+  const [selectedTimeframe, setSelectedTimeframe] = useState<'1m' | '15m' | '1h' | '4h'>('15m')
+  const [coins, setCoins] = useState<CoinInfo[]>([])
+  const [showCoinSelector, setShowCoinSelector] = useState(false)
   const [priceData, setPriceData] = useState<PriceResponse | null>(null)
   const [signals, setSignals] = useState<Signal[]>([])
   const [chartData, setChartData] = useState<ChartPayload | null>(null)
@@ -44,35 +50,37 @@ function MainScreen() {
   const [showSettings, setShowSettings] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
-  // Active tab for Playful (Social-Fi) and Neofuturistic tabbed cockpit
-  const [activeTab, setActiveTab] = useState<'alpha' | 'chart' | 'indicators' | 'guards' | 'orders'>('alpha')
+  // Active tab for Neofuturistic tabbed cockpit
+  const [activeTab, setActiveTab] = useState<'alpha' | 'radar' | 'chart' | 'indicators' | 'guards' | 'orders'>('alpha')
 
   const loadData = useCallback(async () => {
     try {
       setErrorMsg(null)
-      const [pRes, sRes, cRes, tRes] = await Promise.all([
-        api.getPrice().catch((e) => {
+      const [pRes, sRes, cRes, tRes, coinsRes] = await Promise.all([
+        api.getPrice(selectedSymbol, selectedTimeframe).catch((e) => {
           console.warn('Price fetch error:', e.message)
           return null
         }),
-        api.getSignals(30).catch((e) => {
+        api.getSignals(30, selectedSymbol).catch((e) => {
           console.warn('Signals fetch error:', e.message)
           return { signals: [] }
         }),
-        api.getChart(50).catch((e) => {
+        api.getChart(50, selectedSymbol, selectedTimeframe).catch((e) => {
           console.warn('Chart fetch error:', e.message)
           return null
         }),
-        api.getTrades().catch((e) => {
+        api.getTrades(selectedSymbol).catch((e) => {
           console.warn('Trades fetch error:', e.message)
           return null
         }),
+        api.getCoins().catch(() => null),
       ])
 
       if (pRes) setPriceData(pRes)
       if (sRes?.signals) setSignals(sRes.signals)
       if (cRes) setChartData(cRes)
       if (tRes) setTradingState(tRes)
+      if (coinsRes?.coins) setCoins(coinsRes.coins)
 
       setLastUpdated(Date.now())
     } catch (err: any) {
@@ -81,7 +89,7 @@ function MainScreen() {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [])
+  }, [selectedSymbol, selectedTimeframe])
 
   useEffect(() => {
     loadData()
@@ -100,9 +108,12 @@ function MainScreen() {
     try {
       setAnalyzing(true)
       setErrorMsg(null)
-      await api.runAnalyze()
+      await api.runAnalyze(selectedSymbol, selectedTimeframe)
       await loadData()
-      Alert.alert('Analysis Complete', 'Generated new 15m signal and evaluated safety guards.')
+      Alert.alert(
+        'Analysis Complete',
+        `Generated new ${selectedTimeframe.toUpperCase()} signal for ${selectedSymbol} with macro trend alignment.`
+      )
     } catch (err: any) {
       Alert.alert('Analysis Failed', err.message)
     } finally {
@@ -162,6 +173,23 @@ function MainScreen() {
         <View style={styles.navActions}>
           <TouchableOpacity
             style={[
+              styles.coinSelectorBtn,
+              {
+                backgroundColor: colors.surface2,
+                borderColor: colors.border,
+                borderWidth: colors.borderWidth,
+                borderRadius: colors.borderRadiusSm,
+              },
+            ]}
+            onPress={() => setShowCoinSelector(true)}
+          >
+            <Text style={[styles.coinSelectorText, { color: colors.primary }]}>
+              {selectedSymbol} <Text style={{ color: colors.textSubtle }}>▼</Text>
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
               styles.settingsBtn,
               {
                 backgroundColor: colors.surface2,
@@ -175,6 +203,54 @@ function MainScreen() {
             <Text style={[styles.settingsBtnText, { color: colors.text }]}>⚙ Config</Text>
           </TouchableOpacity>
         </View>
+      </View>
+
+      {/* Strategy Timeframe Bar */}
+      <View
+        style={[
+          styles.timeframeBar,
+          {
+            backgroundColor: colors.surface,
+            borderBottomColor: colors.borderSubtle,
+            borderBottomWidth: colors.borderWidth,
+          },
+        ]}
+      >
+        {[
+          { tf: '1m', label: '1m Scalp', icon: '⚡' },
+          { tf: '15m', label: '15m Intraday', icon: '🎯' },
+          { tf: '1h', label: '1h Swing', icon: '📈' },
+          { tf: '4h', label: '4h Macro', icon: '🏔' },
+        ].map(({ tf, icon }) => {
+          const isSelected = selectedTimeframe === tf
+          return (
+            <TouchableOpacity
+              key={tf}
+              onPress={() => setSelectedTimeframe(tf as any)}
+              style={[
+                styles.tfButton,
+                {
+                  backgroundColor: isSelected ? colors.primary : colors.surface2,
+                  borderColor: isSelected ? colors.primary : colors.borderSubtle,
+                  borderWidth: colors.borderWidth,
+                  borderRadius: colors.borderRadiusSm,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.tfButtonText,
+                  {
+                    color: isSelected ? '#ffffff' : colors.textMuted,
+                    fontWeight: isSelected ? '800' : '600',
+                  },
+                ]}
+              >
+                {icon} {tf.toUpperCase()}
+              </Text>
+            </TouchableOpacity>
+          )
+        })}
       </View>
 
       {/* Main Content Area */}
@@ -223,7 +299,7 @@ function MainScreen() {
             {/* Ultra-dense inline ticker row */}
             <View style={[styles.tickerRowDataDriven, { borderColor: colors.border, backgroundColor: colors.surface }]}>
               <View style={styles.tickerItem}>
-                <Text style={[styles.tickerLabel, { color: colors.textSubtle }]}>BINANCE ETH</Text>
+                <Text style={[styles.tickerLabel, { color: colors.textSubtle }]}>BINANCE {selectedSymbol.split('/')[0]}</Text>
                 <Text style={[styles.tickerVal, { color: colors.text }]}>{formatPrice(priceData?.price)}</Text>
               </View>
               <View style={[styles.tickerDivider, { backgroundColor: colors.borderSubtle }]} />
@@ -248,7 +324,7 @@ function MainScreen() {
                 {analyzing ? (
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                  <Text style={styles.denseActionBtnText}>▶ RUN 15M QUANT PIPELINE</Text>
+                  <Text style={styles.denseActionBtnText}>▶ RUN {selectedTimeframe.toUpperCase()} QUANT PIPELINE</Text>
                 )}
               </TouchableOpacity>
               <TouchableOpacity
@@ -259,12 +335,20 @@ function MainScreen() {
               </TouchableOpacity>
             </View>
 
+            {/* Hot Coins & Breakout Radar */}
+            <HotCoinsRadar
+              activeSymbol={selectedSymbol}
+              onSelectSymbol={(sym) => setSelectedSymbol(sym)}
+            />
+
             {/* Candlestick Chart High Priority */}
             {chartData && (
               <MiniCandleChart
                 candles={chartData.series?.candles || []}
                 levels={latestSignal?.plan?.levels}
                 height={200}
+                symbol={selectedSymbol}
+                timeframe={selectedTimeframe}
               />
             )}
 
@@ -309,14 +393,14 @@ function MainScreen() {
                 {analyzing ? (
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                  <Text style={styles.hudScanBtnText}>⚡ EXECUTE AI CONFLUENCE SYNTHESIS</Text>
+                  <Text style={styles.hudScanBtnText}>⚡ EXECUTE {selectedTimeframe.toUpperCase()} AI CONFLUENCE</Text>
                 )}
               </TouchableOpacity>
             </View>
 
             {/* Interactive Segments Bar */}
             <View style={styles.segmentBar}>
-              {(['alpha', 'chart', 'indicators', 'guards', 'orders'] as const).map((tab) => {
+              {(['alpha', 'radar', 'chart', 'indicators', 'guards', 'orders'] as const).map((tab) => {
                 const active = activeTab === tab
                 return (
                   <TouchableOpacity
@@ -342,11 +426,22 @@ function MainScreen() {
 
             {/* Segment Content */}
             {activeTab === 'alpha' && latestSignal && <SignalCard signal={latestSignal} />}
+            {activeTab === 'radar' && (
+              <HotCoinsRadar
+                activeSymbol={selectedSymbol}
+                onSelectSymbol={(sym) => {
+                  setSelectedSymbol(sym)
+                  setActiveTab('alpha')
+                }}
+              />
+            )}
             {activeTab === 'chart' && chartData && (
               <MiniCandleChart
                 candles={chartData.series?.candles || []}
                 levels={latestSignal?.plan?.levels}
                 height={260}
+                symbol={selectedSymbol}
+                timeframe={selectedTimeframe}
               />
             )}
             {activeTab === 'indicators' && latestSignal && (
@@ -376,7 +471,7 @@ function MainScreen() {
             {latestSignal ? (
               <View style={[styles.playfulAlphaCard, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: colors.borderWidth, borderRadius: colors.borderRadiusCard }]}>
                 <View style={styles.playfulTopRow}>
-                  <Text style={styles.playfulTag}>🔥 SIGNAL ALERT</Text>
+                  <Text style={styles.playfulTag}>🔥 SIGNAL ALERT · {selectedSymbol}</Text>
                   <Text style={[styles.playfulActionBadge, { color: latestSignal.plan.action === 'BUY' ? colors.bullish : colors.bearish }]}>
                     {latestSignal.plan.action}
                   </Text>
@@ -391,11 +486,17 @@ function MainScreen() {
                   {analyzing ? (
                     <ActivityIndicator color="#fff" size="small" />
                   ) : (
-                    <Text style={styles.playfulCtaText}>🚀 SCAN ALPHA NOW</Text>
+                    <Text style={styles.playfulCtaText}>🚀 SCAN {selectedTimeframe.toUpperCase()} ALPHA NOW</Text>
                   )}
                 </TouchableOpacity>
               </View>
             ) : null}
+
+            {/* Hot Coins Radar */}
+            <HotCoinsRadar
+              activeSymbol={selectedSymbol}
+              onSelectSymbol={(sym) => setSelectedSymbol(sym)}
+            />
 
             {/* Candlestick Chart */}
             {chartData && (
@@ -403,6 +504,8 @@ function MainScreen() {
                 candles={chartData.series?.candles || []}
                 levels={latestSignal?.plan?.levels}
                 height={230}
+                symbol={selectedSymbol}
+                timeframe={selectedTimeframe}
               />
             )}
 
@@ -428,14 +531,14 @@ function MainScreen() {
             {/* Raw Headline Strip */}
             <View style={[styles.brutalistStrip, { backgroundColor: colors.primary, borderColor: colors.border }]}>
               <Text style={styles.brutalistStripText}>
-                ETH SPOT CONFLUENCE PROTOCOL // ACTIVE
+                {selectedSymbol} SPOT CONFLUENCE PROTOCOL // ACTIVE
               </Text>
             </View>
 
             {/* Big Heavy Price Box */}
             <View style={[styles.brutalistPriceBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <Text style={[styles.brutalistPriceTitle, { color: colors.textSubtle }]}>
-                SPOT ETH/USDT:
+                SPOT {selectedSymbol}:
               </Text>
               <Text style={[styles.brutalistPriceValue, { color: colors.text }]}>
                 {formatPrice(priceData?.price)}
@@ -447,10 +550,16 @@ function MainScreen() {
                 disabled={analyzing}
               >
                 <Text style={[styles.brutalistBtnText, { color: colors.text }]}>
-                  {analyzing ? '[COMPUTING...]' : '[EXECUTE SIGNAL PIPELINE]'}
+                  {analyzing ? '[COMPUTING...]' : `[EXECUTE ${selectedTimeframe.toUpperCase()} PIPELINE]`}
                 </Text>
               </TouchableOpacity>
             </View>
+
+            {/* Hot Coins Radar */}
+            <HotCoinsRadar
+              activeSymbol={selectedSymbol}
+              onSelectSymbol={(sym) => setSelectedSymbol(sym)}
+            />
 
             {/* Chart with thick brutal border */}
             {chartData && (
@@ -459,6 +568,8 @@ function MainScreen() {
                   candles={chartData.series?.candles || []}
                   levels={latestSignal?.plan?.levels}
                   height={220}
+                  symbol={selectedSymbol}
+                  timeframe={selectedTimeframe}
                 />
               </View>
             )}
@@ -492,6 +603,15 @@ function MainScreen() {
           }}
         />
       </Modal>
+
+      {/* Coin Selector Modal */}
+      <CoinSelectorModal
+        visible={showCoinSelector}
+        onClose={() => setShowCoinSelector(false)}
+        coins={coins}
+        selectedSymbol={selectedSymbol}
+        onSelectCoin={(sym) => setSelectedSymbol(sym)}
+      />
     </SafeAreaView>
   )
 }
@@ -527,6 +647,31 @@ const styles = StyleSheet.create({
   navActions: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  coinSelectorBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    marginRight: 6,
+  },
+  coinSelectorText: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  timeframeBar: {
+    flexDirection: 'row',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 6,
+  },
+  tfButton: {
+    flex: 1,
+    paddingVertical: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tfButtonText: {
+    fontSize: 10,
+    letterSpacing: 0.3,
   },
   settingsBtn: {
     paddingHorizontal: 10,

@@ -218,6 +218,138 @@ describe('buildTradePlan', () => {
     expect(plan.protectiveStop).toBeNull()
     expect(plan.headline).toContain('market')
   })
+
+  it('refuses to BUY when 15m trend is up but 1h macro trend is bearish', () => {
+    const plan = buildTradePlan({
+      direction: 'LONG',
+      price: 2000,
+      score: 50,
+      regime: bullishRegime,
+      confluence,
+      trend: { verdict: 'up', evidence: ['EMAs stacked bullish'] },
+      macroTrend: {
+        timeframe: '1h',
+        verdict: 'bearish',
+        supertrendDirection: 'bearish',
+        supertrendValue: 2050,
+        emaAlignment: 'bearish',
+        alignmentWithSignal: 'counter-trend',
+        detail: '1h SuperTrend bearish · 1h EMAs stacked bearish',
+      },
+      reversalScalpMode: false,
+    })
+
+    expect(plan.action).toBe('STAY_OUT')
+    expect(plan.gate).toBe('blocked-by-trend')
+    expect(plan.headline).toContain('blocked by 1h bearish macro trend')
+    expect(plan.rationale.join(' ')).toContain('1h macro trend is bearish')
+  })
+
+  it('executes a tight counter-macro scalp when reversalScalpMode is enabled during 1h bearish trend', () => {
+    const plan = buildTradePlan({
+      direction: 'LONG',
+      price: 2000,
+      score: 50,
+      regime: bullishRegime,
+      confluence,
+      trend: { verdict: 'up', evidence: ['EMAs stacked bullish'] },
+      macroTrend: {
+        timeframe: '1h',
+        verdict: 'bearish',
+        supertrendDirection: 'bearish',
+        supertrendValue: 2050,
+        emaAlignment: 'bearish',
+        alignmentWithSignal: 'counter-trend',
+        detail: '1h SuperTrend bearish',
+      },
+      reversalScalpMode: true,
+    })
+
+    expect(plan.action).toBe('BUY')
+    expect(plan.gate).toBe('scalp-open')
+    expect(plan.headline).toContain('Counter-Macro Scalp')
+    expect(plan.levels).not.toBeNull()
+    expect(plan.levels?.stagedTargets?.[0]?.action).toBe('breakeven-stop')
+  })
+
+  it('records macro alignment when 1h macro trend is bullish and 15m is LONG', () => {
+    const plan = buildTradePlan({
+      direction: 'LONG',
+      price: 2000,
+      score: 50,
+      regime: bullishRegime,
+      confluence,
+      trend: { verdict: 'up', evidence: ['EMAs stacked bullish'] },
+      macroTrend: {
+        timeframe: '1h',
+        verdict: 'bullish',
+        supertrendDirection: 'bullish',
+        supertrendValue: 1950,
+        emaAlignment: 'bullish',
+        alignmentWithSignal: 'aligned',
+        detail: '1h SuperTrend bullish · 1h EMAs stacked bullish',
+      },
+    })
+
+    expect(plan.action).toBe('BUY')
+    expect(plan.gate).toBe('open')
+    expect(plan.rationale.join(' ')).toContain('🎯 1h Macro Trend is aligned')
+  })
+
+  it('adapts levels for 1m High-Frequency Scalping with tight 0.4% stop', () => {
+    const plan = buildTradePlan({
+      direction: 'LONG',
+      price: 2000,
+      score: 50,
+      regime: bullishRegime,
+      confluence,
+      trend: { verdict: 'down', evidence: ['EMAs down'] },
+      macroTrend: {
+        timeframe: '15m',
+        verdict: 'bearish',
+        supertrendDirection: 'bearish',
+        supertrendValue: 2020,
+        emaAlignment: 'bearish',
+        alignmentWithSignal: 'counter-trend',
+        detail: '15m SuperTrend bearish',
+      },
+      reversalScalpMode: true,
+      timeframe: '1m',
+    })
+
+    expect(plan.action).toBe('BUY')
+    expect(plan.gate).toBe('scalp-open')
+    expect(plan.headline).toContain('High-Freq Scalp')
+    expect(plan.levels).not.toBeNull()
+    expect(plan.levels?.stopDistancePct).toBe(0.4)
+  })
+
+  it('adapts levels for 1h/4h Swing Trading with wider multi-day reward targets', () => {
+    const plan = buildTradePlan({
+      direction: 'LONG',
+      price: 2000,
+      score: 50,
+      regime: bullishRegime,
+      confluence,
+      trend: { verdict: 'up', evidence: ['EMAs stacked bullish'] },
+      macroTrend: {
+        timeframe: '4h',
+        verdict: 'bullish',
+        supertrendDirection: 'bullish',
+        supertrendValue: 1850,
+        emaAlignment: 'bullish',
+        alignmentWithSignal: 'aligned',
+        detail: '4h SuperTrend bullish',
+      },
+      timeframe: '1h',
+    })
+
+    expect(plan.action).toBe('BUY')
+    expect(plan.gate).toBe('open')
+    expect(plan.levels).not.toBeNull()
+    expect(plan.levels?.riskReward).toBe(2.8)
+    expect(plan.rationale.join(' ')).toContain('🎯 4h Macro Trend is aligned')
+  })
 })
 
 describe('isActionable', () => {

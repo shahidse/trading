@@ -118,7 +118,24 @@ function baseOptions(container: HTMLElement, height: number, palette: Palette) {
   }
 }
 
-export function CandleChart({ limit = 500, symbol }: { limit?: number; symbol?: string }) {
+export const TIMEFRAME_OPTIONS = [
+  { tf: '1m', label: '1m', desc: '1m High-Freq Scalp (15m Anchor)' },
+  { tf: '15m', label: '15m', desc: '15m Intraday Momentum (1h Anchor)' },
+  { tf: '1h', label: '1h', desc: '1h Swing Fast (4h Anchor)' },
+  { tf: '4h', label: '4h', desc: '4h Swing Macro (1d Anchor)' },
+] as const
+
+export function CandleChart({
+  limit = 500,
+  symbol,
+  timeframe = '15m',
+  onTimeframeChange,
+}: {
+  limit?: number
+  symbol?: string
+  timeframe?: string
+  onTimeframeChange?: (tf: string) => void
+}) {
   const [payload, setPayload] = useState<ChartPayload | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -148,7 +165,8 @@ export function CandleChart({ limit = 500, symbol }: { limit?: number; symbol?: 
     setLoading(true)
 
     const symQuery = symbol ? `&symbol=${encodeURIComponent(symbol)}` : ''
-    fetch(`/api/chart?limit=${limit}${symQuery}`)
+    const tfQuery = timeframe ? `&timeframe=${encodeURIComponent(timeframe)}` : ''
+    fetch(`/api/chart?limit=${limit}${symQuery}${tfQuery}`)
       .then((response) => readJson<ChartPayload>(response))
       .then((json) => {
         if (!cancelled) {
@@ -166,7 +184,7 @@ export function CandleChart({ limit = 500, symbol }: { limit?: number; symbol?: 
     return () => {
       cancelled = true
     }
-  }, [limit, symbol])
+  }, [limit, symbol, timeframe])
 
   // ---- build the charts once data arrives -------------------------------
   useEffect(() => {
@@ -479,9 +497,29 @@ export function CandleChart({ limit = 500, symbol }: { limit?: number; symbol?: 
   return (
     <section className="rounded-2xl border border-line bg-surface p-4 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
-          Price chart
-        </h2>
+        <div className="flex flex-wrap items-center gap-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
+            Price chart
+          </h2>
+          <div className="flex items-center gap-1 rounded-xl border border-line bg-surface-2/80 p-0.5">
+            {TIMEFRAME_OPTIONS.map(({ tf, label, desc }) => (
+              <button
+                key={tf}
+                type="button"
+                onClick={() => onTimeframeChange?.(tf)}
+                title={desc}
+                className={
+                  'rounded-lg px-2.5 py-1 text-xs font-bold transition ' +
+                  (timeframe === tf
+                    ? 'bg-accent text-white shadow-xs'
+                    : 'text-subtle hover:text-ink hover:bg-surface')
+                }
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="flex flex-wrap items-center gap-1.5 max-w-full overflow-x-auto pb-1">
           {TOGGLE_LABELS.map(({ key, label }) => (
             <button

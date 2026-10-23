@@ -171,6 +171,26 @@ export type TradeOrder = {
   executedAt?: number
 }
 
+export type AssetBalance = {
+  asset: string
+  free: number
+  locked: number
+  total: number
+  usdValue: number
+}
+
+export type LiveOrder = {
+  id: string
+  symbol: string
+  type: string
+  side: 'buy' | 'sell'
+  price: number
+  amount: number
+  cost: number
+  status: string
+  timestamp: number
+}
+
 export type TradingStateResponse = {
   settings: {
     enabled: boolean
@@ -192,6 +212,16 @@ export type TradingStateResponse = {
   openPosition: TradeOrder | null
   realisedPnl24h: number
   symbol: string
+  liveBalances?: {
+    balances: AssetBalance[]
+    testnet: boolean
+    updatedAt: number
+  } | null
+  liveOrders?: {
+    openOrders: LiveOrder[]
+    recentOrders: LiveOrder[]
+  } | null
+  exchangeError?: string | null
 }
 
 export type NotifySettings = {
@@ -209,3 +239,64 @@ export type NotifySettings = {
     trigger: string
   }
 }
+
+export type CoinInfo = {
+  symbol: string
+  base: string
+  quote: string
+  name: string
+  category: 'Major' | 'Layer 1' | 'Layer 2' | 'DeFi' | 'Meme' | 'AI / Data' | 'Infrastructure' | 'Fan Token'
+  price?: number | null
+  change24h?: number | null
+}
+
+export type ScannedHotCoin = {
+  symbol: string
+  base: string
+  name: string
+  category: string
+  price: number
+  change24h: number
+  quoteVolume: number
+  high24h: number
+  low24h: number
+  rangePositionPct: number
+  volatilityPct: number
+  heatScore: number
+  signalType: 'BREAKOUT_IMMINENT' | 'MOMENTUM_SURGE' | 'PRE_PUMP_ACCUMULATION' | 'PULLBACK_BOUNCE' | 'NEUTRAL'
+  signalHeadline: string
+  predictedUpsidePct: number
+  predictedUpsideMaxPct: number
+  targetPrice: number
+  targetPriceHigh: number
+  expectedPumpTime: string
+  pumpTimeframeShort: string
+  pumpWindow: 'IMMINENT_15M' | 'SHORT_TERM_1H' | 'ACCUMULATION_4H' | 'SWING_24H'
+  expectedGainPer1k: number
+  expectedGainMaxPer1k: number
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH'
+  rank: number
+}
+
+export type ScannerResult = {
+  timestamp: number
+  allCoins: ScannedHotCoin[]
+  hotCoins: ScannedHotCoin[]
+  topGainers: ScannedHotCoin[]
+  breakoutWatchlist: ScannedHotCoin[]
+  prePumpWatchlist: ScannedHotCoin[]
+  pullbackWatchlist: ScannedHotCoin[]
+}
+
+export type OrderBookEntry = { price: number; quantity: number }
+
+export type OrderBookSnapshot = {
+  symbol: string
+  bids: OrderBookEntry[]
+  asks: OrderBookEntry[]
+  spread: number
+  spreadPct: number
+  midPrice: number
+  timestamp: number
+}
+

@@ -218,24 +218,68 @@ export async function fetchOrderBook(
 export type MiniTicker = {
   price: number
   change24h: number
+  quoteVolume?: number
+  high?: number
+  low?: number
 }
 
 /** Fetch multiple coin tickers in batch. */
 export async function fetchMultipleTickers(symbols: string[]): Promise<Record<string, MiniTicker>> {
   const exchange = getClient()
   try {
-    const raw = await exchange.fetchTickers(symbols)
+    let raw: Record<string, any>
+    try {
+      raw = await exchange.fetchTickers(symbols)
+    } catch {
+      // If a BadSymbol error happened or markets weren't loaded, load markets and filter
+      try {
+        await exchange.loadMarkets()
+        const markets = exchange.markets ?? {}
+        const validSymbols = symbols.filter((s) => s in markets)
+        raw = validSymbols.length > 0 ? await exchange.fetchTickers(validSymbols) : await exchange.fetchTickers()
+      } catch {
+        raw = await exchange.fetchTickers()
+      }
+    }
+
     const result: Record<string, MiniTicker> = {}
     for (const [sym, t] of Object.entries(raw)) {
       if (t) {
         result[sym] = {
           price: Number(t.last ?? t.close ?? 0),
           change24h: Number(t.percentage ?? 0),
+          quoteVolume: Number(t.quoteVolume ?? 0),
+          high: Number(t.high ?? 0),
+          low: Number(t.low ?? 0),
         }
       }
     }
     return result
-  } catch {
+  } catch (error) {
+    if (isGeoBlocked(error)) {
+      try {
+        const fallback = getFallbackExchange()
+        await fallback.loadMarkets()
+        const fallbackMarkets = fallback.markets ?? {}
+        const validFallback = symbols.filter((s) => s in fallbackMarkets)
+        const raw = await fallback.fetchTickers(validFallback)
+        const result: Record<string, MiniTicker> = {}
+        for (const [sym, t] of Object.entries(raw)) {
+          if (t) {
+            result[sym] = {
+              price: Number(t.last ?? t.close ?? 0),
+              change24h: Number(t.percentage ?? 0),
+              quoteVolume: Number(t.quoteVolume ?? 0),
+              high: Number(t.high ?? 0),
+              low: Number(t.low ?? 0),
+            }
+          }
+        }
+        return result
+      } catch {
+        return {}
+      }
+    }
     return {}
   }
 }

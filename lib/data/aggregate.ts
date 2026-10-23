@@ -7,6 +7,7 @@ import { fetchChainlinkEthUsd, type ChainlinkPrice } from './chainlink'
 export type MarketSnapshot = {
   symbol: string
   timeframe: string
+  macroTimeframe: string
   candles: Candle[]
   macroCandles?: Candle[]
   /** Exchange last price (Binance). */
@@ -24,6 +25,28 @@ export type SnapshotOptions = {
   fetchMacro?: boolean
 }
 
+/** Determine higher-timeframe anchor for any trading timeframe. */
+export function getMacroTimeframe(primaryTimeframe: string): string {
+  switch (primaryTimeframe) {
+    case '1m':
+    case '3m':
+    case '5m':
+      return '15m'
+    case '15m':
+    case '30m':
+      return '1h'
+    case '1h':
+    case '2h':
+      return '4h'
+    case '4h':
+      return '1d'
+    case '1d':
+      return '1w'
+    default:
+      return '1h'
+  }
+}
+
 /**
  * Aggregate market data for one analysis run.
  *
@@ -35,10 +58,11 @@ export async function getMarketSnapshot(options: SnapshotOptions = {}): Promise<
   const timeframe = options.timeframe ?? config.timeframe
   const limit = options.limit ?? config.candleLimit
   const fetchMacro = options.fetchMacro ?? true
+  const macroTimeframe = getMacroTimeframe(timeframe)
 
   const [candles, macroCandles, price, chainlink] = await Promise.all([
     fetchCandles(symbol, timeframe, limit),
-    fetchMacro ? fetchCandles(symbol, '1h', 100).catch(() => []) : Promise.resolve([]),
+    fetchMacro ? fetchCandles(symbol, macroTimeframe, 220).catch(() => []) : Promise.resolve([]),
     fetchLastPrice(symbol),
     symbol === 'ETH/USDT' ? fetchChainlinkEthUsd().catch(() => null) : Promise.resolve(null),
   ])
@@ -55,6 +79,7 @@ export async function getMarketSnapshot(options: SnapshotOptions = {}): Promise<
   return {
     symbol,
     timeframe,
+    macroTimeframe,
     candles,
     macroCandles: macroCandles.length > 0 ? macroCandles : undefined,
     price,

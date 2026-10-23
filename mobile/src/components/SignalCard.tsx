@@ -81,6 +81,45 @@ export const SignalCard: React.FC<Props> = ({ signal }) => {
               <Text style={[styles.scalpText, { color: colors.primary }]}>⚡ SCALP</Text>
             </View>
           )}
+          {signal.macroTrend && (
+            <View
+              style={[
+                styles.macroBadge,
+                {
+                  backgroundColor:
+                    signal.macroTrend.verdict === 'bullish'
+                      ? colors.bullishBg
+                      : signal.macroTrend.verdict === 'bearish'
+                      ? colors.bearishBg
+                      : colors.neutralBg,
+                  borderColor:
+                    signal.macroTrend.verdict === 'bullish'
+                      ? colors.bullishBorder
+                      : signal.macroTrend.verdict === 'bearish'
+                      ? colors.bearishBorder
+                      : colors.neutralBorder,
+                  borderWidth: colors.borderWidth,
+                  borderRadius: colors.borderRadiusSm,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.macroText,
+                  {
+                    color:
+                      signal.macroTrend.verdict === 'bullish'
+                        ? colors.bullish
+                        : signal.macroTrend.verdict === 'bearish'
+                        ? colors.bearish
+                        : colors.neutral,
+                  },
+                ]}
+              >
+                {signal.macroTrend.timeframe.toUpperCase()} {signal.macroTrend.verdict.toUpperCase()}
+              </Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.scoreContainer}>
@@ -92,6 +131,27 @@ export const SignalCard: React.FC<Props> = ({ signal }) => {
       </View>
 
       <Text style={[styles.headline, { color: colors.text }]}>{signal.plan.headline}</Text>
+
+      {signal.macroTrend && (
+        <View
+          style={[
+            styles.macroRow,
+            {
+              backgroundColor: colors.surface2,
+              borderColor: colors.borderSubtle,
+              borderWidth: colors.borderWidth,
+              borderRadius: colors.borderRadiusSm,
+            },
+          ]}
+        >
+          <Text style={[styles.macroLabel, { color: colors.textSubtle }]}>
+            {signal.macroTrend.timeframe.toUpperCase()} MACRO BIAS:
+          </Text>
+          <Text style={[styles.macroReason, { color: colors.textMuted }]} numberOfLines={1}>
+            {signal.macroTrend.detail}
+          </Text>
+        </View>
+      )}
 
       {/* Stats Grid */}
       <View
@@ -234,6 +294,32 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontSize: 10,
     letterSpacing: 0.5,
+  },
+  macroBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+  },
+  macroText: {
+    fontWeight: '800',
+    fontSize: 10,
+    letterSpacing: 0.5,
+  },
+  macroRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginBottom: 12,
+    gap: 6,
+  },
+  macroLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  macroReason: {
+    fontSize: 11,
+    flex: 1,
   },
   scoreContainer: {
     alignItems: 'flex-end',

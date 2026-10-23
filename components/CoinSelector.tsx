@@ -19,7 +19,7 @@ const QUICK_COINS = [
   'XRP/USDT',
 ]
 
-const CATEGORIES = ['All', 'Major', 'Layer 1', 'Meme', 'AI / Data', 'Layer 2', 'DeFi'] as const
+const CATEGORIES = ['All', 'Major', 'Layer 1', 'Meme', 'Fan Token', 'AI / Data', 'Layer 2', 'DeFi'] as const
 
 export function CoinSelector({ activeSymbol, onSelectSymbol }: CoinSelectorProps) {
   const [modalOpen, setModalOpen] = useState(false)

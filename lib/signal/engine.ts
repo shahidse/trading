@@ -10,6 +10,7 @@ import { scoreIndicators } from './scoring'
 export type SignalContext = {
   symbol?: string
   timeframe?: string
+  macroTimeframe?: string
   /** Overrides the last candle close (e.g. a live ticker price). */
   price?: number
   chainlinkPrice?: number | null
@@ -19,15 +20,21 @@ export type SignalContext = {
   macroCandles?: Candle[]
 }
 
-/** Compute higher timeframe (1h) macro trend filter. */
+/** Compute higher timeframe macro trend filter (e.g. 15m for 1m scalp, 1h for 15m intraday, 4h/1d for swing). */
 export function computeMacroTrend(
   macroCandles: Candle[] | undefined,
   currentDirection: SignalDirection,
+  macroTf = '1h',
 ): MacroTrendInfo | undefined {
   if (!macroCandles || macroCandles.length < 25) return undefined
 
   const st = supertrend(macroCandles, { period: 10, multiplier: 3 })
-  const ema = emaTrend(macroCandles, { fast: 20, mid: 50, slow: 200 })
+  const ema =
+    macroCandles.length >= 205
+      ? emaTrend(macroCandles, { fast: 20, mid: 50, slow: 200 })
+      : macroCandles.length >= 55
+        ? emaTrend(macroCandles, { fast: 10, mid: 25, slow: 50 })
+        : null
 
   let up = 0
   let down = 0
@@ -36,20 +43,31 @@ export function computeMacroTrend(
   if (st) {
     if (st.direction === 'bullish') {
       up++
-      evidence.push(`1h SuperTrend bullish ($${st.value})`)
+      evidence.push(`${macroTf} SuperTrend bullish ($${st.value})`)
     } else {
       down++
-      evidence.push(`1h SuperTrend bearish ($${st.value})`)
+      evidence.push(`${macroTf} SuperTrend bearish ($${st.value})`)
     }
   }
 
   if (ema) {
     if (ema.alignment === 'bullish') {
       up++
-      evidence.push('1h EMAs stacked bullish')
+      evidence.push(`${macroTf} EMAs stacked bullish`)
     } else if (ema.alignment === 'bearish') {
       down++
-      evidence.push('1h EMAs stacked bearish')
+      evidence.push(`${macroTf} EMAs stacked bearish`)
+    }
+
+    const lastClose = macroCandles[macroCandles.length - 1].close
+    if (ema.emaSlow > 0) {
+      if (lastClose > ema.emaSlow) {
+        up++
+        evidence.push(`Price above ${macroTf} slow EMA ($${round(ema.emaSlow, 1)})`)
+      } else {
+        down++
+        evidence.push(`Price below ${macroTf} slow EMA ($${round(ema.emaSlow, 1)})`)
+      }
     }
   }
 
@@ -62,10 +80,10 @@ export function computeMacroTrend(
     alignmentWithSignal = verdict === 'bearish' ? 'aligned' : verdict === 'bullish' ? 'counter-trend' : 'neutral'
   }
 
-  const detail = evidence.length > 0 ? evidence.join(' · ') : '1h macro trend neutral'
+  const detail = evidence.length > 0 ? evidence.join(' · ') : `${macroTf} macro trend neutral`
 
   return {
-    timeframe: '1h',
+    timeframe: macroTf,
     verdict,
     supertrendDirection: st?.direction ?? null,
     supertrendValue: st?.value ?? null,
@@ -105,13 +123,25 @@ export function generateSignal(candles: Candle[], ctx: SignalContext = {}): Sign
 
   const last = candles[candles.length - 1]
   const price = ctx.price ?? last?.close ?? 0
+  const timeframe = ctx.timeframe ?? config.timeframe
 
   // ATR makes the bar for a signal higher when volatility is elevated.
   const thresholdsUsed = effectiveThresholds(regime)
   const direction = decideDirection(composite, thresholdsUsed)
 
-  // 1h Macro Trend Filter
-  const macroTrend = computeMacroTrend(ctx.macroCandles, direction)
+  // Determine appropriate higher timeframe filter (15m for 1m scalp, 1h for 15m, 4h/1d for swing)
+  const defaultMacroTf =
+    timeframe === '1m' || timeframe === '3m' || timeframe === '5m'
+      ? '15m'
+      : timeframe === '1h' || timeframe === '2h'
+      ? '4h'
+      : timeframe === '4h'
+      ? '1d'
+      : '1h'
+  const macroTf = ctx.macroTimeframe ?? defaultMacroTf
+
+  // Macro Trend Filter
+  const macroTrend = computeMacroTrend(ctx.macroCandles, direction, macroTf)
 
   // Concrete, actionable levels — including the trend gate that refuses to buy
   // into a confirmed downtrend, and the Reversal Scalper for bullish candle bounces.
@@ -128,6 +158,7 @@ export function generateSignal(candles: Candle[], ctx: SignalContext = {}): Sign
     supertrend: bundle.supertrend,
     macroTrend,
     reversalScalpMode: ctx.reversalScalpMode ?? config.exchange.reversalScalpMode,
+    timeframe,
   })
 
   const summary: string[] = []

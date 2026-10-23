@@ -21,11 +21,12 @@ export const maxDuration = 60
 export async function GET(request: Request) {
   const url = new URL(request.url)
   const symbol = url.searchParams.get('symbol') ?? config.symbol
+  const timeframe = url.searchParams.get('timeframe') ?? config.timeframe
   const limitParam = url.searchParams.get('limit')
   const limit = Math.min(Math.max(Number(limitParam ?? 500) || 500, 100), 1500)
 
   try {
-    const candles = await fetchCandles(symbol, config.timeframe, limit)
+    const candles = await fetchCandles(symbol, timeframe, limit)
     const series = computeChartSeries(candles)
 
     // Markers come from persisted signals. Keep only actionable directions so
@@ -45,7 +46,7 @@ export async function GET(request: Request) {
 
     const payload: ChartPayload = {
       symbol,
-      timeframe: config.timeframe,
+      timeframe,
       limit,
       generatedAt: Date.now(),
       series,

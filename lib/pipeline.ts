@@ -49,6 +49,7 @@ export async function runAnalysis(options: SnapshotOptions = {}): Promise<Analys
   const signal = generateSignal(snapshot.candles, {
     symbol: snapshot.symbol,
     timeframe: snapshot.timeframe,
+    macroTimeframe: snapshot.macroTimeframe,
     price: snapshot.price,
     chainlinkPrice: snapshot.chainlink?.price ?? null,
     divergencePct: snapshot.divergencePct,

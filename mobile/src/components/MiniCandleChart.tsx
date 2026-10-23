@@ -8,9 +8,17 @@ interface Props {
   candles: Candle[]
   levels?: TradeLevels | null
   height?: number
+  symbol?: string
+  timeframe?: string
 }
 
-export const MiniCandleChart: React.FC<Props> = ({ candles, levels, height = 220 }) => {
+export const MiniCandleChart: React.FC<Props> = ({
+  candles,
+  levels,
+  height = 220,
+  symbol = 'ETH/USDT',
+  timeframe = '15m',
+}) => {
   const { colors, chartCandles } = useTheme()
 
   if (!candles || candles.length === 0) {
@@ -74,7 +82,7 @@ export const MiniCandleChart: React.FC<Props> = ({ candles, levels, height = 220
     >
       <View style={styles.header}>
         <Text style={[styles.chartTitle, { color: colors.textSubtle }]}>
-          ETH/USDT · 15M CANDLESTICK ENGINE
+          {symbol} · {timeframe.toUpperCase()} CANDLESTICK ENGINE
         </Text>
         <Text style={[styles.latestPrice, { color: colors.text }]}>
           {formatPrice(visible[visible.length - 1]?.close)}
