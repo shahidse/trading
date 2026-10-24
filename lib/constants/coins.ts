@@ -142,6 +142,7 @@ export const TOP_COINS: CoinInfo[] = [
   { symbol: 'BARD/USDT', base: 'BARD', quote: 'USDT', name: 'Bard AI', category: 'AI / Data' },
   { symbol: 'SAHARA/USDT', base: 'SAHARA', quote: 'USDT', name: 'Sahara AI', category: 'AI / Data' },
   { symbol: 'SXT/USDT', base: 'SXT', quote: 'USDT', name: 'Space and Time', category: 'AI / Data' },
+  { symbol: 'BMT/USDT', base: 'BMT', quote: 'USDT', name: 'Bubblemaps', category: 'AI / Data' },
   { symbol: '1MBABYDOGE/USDT', base: '1MBABYDOGE', quote: 'USDT', name: 'Baby Doge Coin', category: 'Meme' },
   { symbol: 'GIGGLE/USDT', base: 'GIGGLE', quote: 'USDT', name: 'Giggle Academy', category: 'Meme' },
   { symbol: 'PUMP/USDT', base: 'PUMP', quote: 'USDT', name: 'Pump.fun', category: 'Meme' },
@@ -177,11 +178,22 @@ export const SYMBOL_ALIASES: Record<string, string> = {
   'IMBABY/USDT': '1MBABYDOGE/USDT',
   'BABY/USDT': '1MBABYDOGE/USDT',
   'SAHARAPUNDIX/USDT': 'SAHARA/USDT',
+  'BUBBLEMAPS/USDT': 'BMT/USDT',
+  'BUBBLE/USDT': 'BMT/USDT',
+  'BMT': 'BMT/USDT',
+  'BMTUSDT': 'BMT/USDT',
 }
 
 export function normalizeSymbol(symbol: string): string {
   const upper = symbol.trim().toUpperCase()
-  return SYMBOL_ALIASES[upper] ?? upper
+  if (SYMBOL_ALIASES[upper]) return SYMBOL_ALIASES[upper]
+  if (!upper.includes('/')) {
+    const withSlash = upper.endsWith('USDT')
+      ? `${upper.slice(0, -4)}/USDT`
+      : `${upper}/USDT`
+    return SYMBOL_ALIASES[withSlash] ?? withSlash
+  }
+  return upper
 }
 
 export function getCoinBySymbol(symbol: string): CoinInfo | undefined {

@@ -148,11 +148,12 @@ export function BinanceFastConnectModal({ open, onClose }: Props) {
                   <span>⚡</span> Active: Binance Fast Connect (Option #2)
                 </div>
                 <button
+                  type="button"
                   onClick={handleDisconnect}
                   disabled={connecting}
-                  className="text-xs text-rose-400 hover:text-rose-300 underline font-medium"
+                  className="text-xs text-rose-400 hover:text-rose-300 underline font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Disconnect
+                  {connecting ? 'Disconnecting…' : 'Disconnect'}
                 </button>
               </div>
               <p className="text-xs text-slate-300 mt-1 leading-relaxed">
@@ -233,11 +234,12 @@ export function BinanceFastConnectModal({ open, onClose }: Props) {
               </div>
 
               <button
+                type="button"
                 onClick={handlePairFastConnect}
-                disabled={connecting || !inputKey || !inputSecret}
-                className="w-full mt-2 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 px-4 py-2.5 text-xs font-bold text-slate-950 hover:brightness-110 active:scale-[0.99] transition-all disabled:opacity-50"
+                disabled={connecting || !inputKey.trim() || !inputSecret.trim()}
+                className="w-full mt-2 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 px-4 py-2.5 text-xs font-bold text-slate-950 hover:brightness-110 active:scale-[0.99] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {connecting ? 'Verifying Zero-Withdrawal Guard...' : '⚡ Authorize Fast Connect'}
+                {connecting ? 'Verifying Zero-Withdrawal Guard…' : '⚡ Authorize Fast Connect'}
               </button>
             </div>
           )}

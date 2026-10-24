@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { readJson } from '@/lib/utils'
 import { Spinner } from '@/components/Loader'
+import { SettingsButton } from '@/components/SettingsButton'
 
 type PublicExchangeSettings = {
   enabled: boolean
@@ -26,6 +27,7 @@ type PublicExchangeSettings = {
 export function TradingControls() {
   const [settings, setSettings] = useState<PublicExchangeSettings | null>(null)
   const [busy, setBusy] = useState(false)
+  const [pendingAction, setPendingAction] = useState<'halt' | 'resume' | 'arm' | 'disarm' | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -44,6 +46,7 @@ export function TradingControls() {
 
   async function postAction(action: 'halt' | 'resume' | 'arm' | 'disarm') {
     setBusy(true)
+    setPendingAction(action)
     try {
       const response = await fetch('/api/trades', {
         method: 'POST',
@@ -54,6 +57,7 @@ export function TradingControls() {
       await load()
     } finally {
       setBusy(false)
+      setPendingAction(null)
     }
   }
 
@@ -81,45 +85,45 @@ export function TradingControls() {
 
   return (
     <div className="flex items-center gap-2">
-      <Link
-        href="/settings"
+      <SettingsButton
         className={`rounded-lg border px-3 py-2 text-xs font-medium transition ${tone}`}
         title={`Status: ${label} · Click to open Trading & Alert Settings`}
+        loadingLabel={`${label}…`}
       >
         {label}
-      </Link>
+      </SettingsButton>
 
       {!settings.enabled ? (
         <button
           type="button"
           onClick={() => void postAction('arm')}
           disabled={busy}
-          className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-medium text-warn transition hover:bg-amber-500/20 disabled:opacity-50 flex items-center gap-1.5"
+          className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-medium text-warn transition hover:bg-amber-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
           title="Enable automated trading in safe Dry Run mode"
         >
-          {busy ? <Spinner size="xs" color="accent" /> : null}
-          <span>Arm Dry Run</span>
+          {busy && pendingAction === 'arm' ? <Spinner size="xs" color="accent" /> : null}
+          <span>{busy && pendingAction === 'arm' ? 'Arming…' : 'Arm Dry Run'}</span>
         </button>
       ) : settings.killSwitch ? (
         <button
           type="button"
           onClick={() => void postAction('resume')}
           disabled={busy}
-          className="rounded-lg border border-line px-3 py-2 text-xs font-medium text-ink transition hover:bg-surface-2 disabled:opacity-50 flex items-center gap-1.5"
+          className="rounded-lg border border-line px-3 py-2 text-xs font-medium text-ink transition hover:bg-surface-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
         >
-          {busy ? <Spinner size="xs" color="accent" /> : null}
-          <span>Resume</span>
+          {busy && pendingAction === 'resume' ? <Spinner size="xs" color="accent" /> : null}
+          <span>{busy && pendingAction === 'resume' ? 'Resuming…' : 'Resume'}</span>
         </button>
       ) : (
         <button
           type="button"
           onClick={() => void postAction('halt')}
           disabled={busy}
-          className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs font-medium text-down transition hover:bg-rose-500/20 disabled:opacity-50 flex items-center gap-1.5"
+          className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs font-medium text-down transition hover:bg-rose-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
           title="Emergency Stop — halts automatic order placement"
         >
-          {busy ? <Spinner size="xs" color="accent" /> : null}
-          <span>Halt</span>
+          {busy && pendingAction === 'halt' ? <Spinner size="xs" color="accent" /> : null}
+          <span>{busy && pendingAction === 'halt' ? 'Halting…' : 'Halt'}</span>
         </button>
       )}
     </div>

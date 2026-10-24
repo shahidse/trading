@@ -24,6 +24,7 @@ export async function getTradingExchange(): Promise<Exchange> {
       defaultType: 'spot',
       fetchMarkets: ['spot'],
       adjustForTimeDifference: true,
+      recvWindow: 60000,
       fetchCurrencies: false,
     },
   })
@@ -37,6 +38,14 @@ export async function getTradingExchange(): Promise<Exchange> {
   if (settings.testnet) exchange.setSandboxMode(true)
 
   await exchange.loadMarkets()
+
+  try {
+    if (exchange.has['fetchTime']) {
+      await exchange.loadTimeDifference()
+    }
+  } catch (err) {
+    console.warn('Could not load Binance time difference:', err)
+  }
 
   cached = { key: cacheKey, exchange }
   return exchange
@@ -189,7 +198,18 @@ export type AccountBalancesResult = {
  * Fetch all assets with non-zero balances from Binance (mainnet or testnet).
  */
 export async function fetchAccountBalances(exchange: Exchange): Promise<AccountBalancesResult> {
-  const raw = await exchange.fetchBalance()
+  let raw
+  try {
+    raw = await exchange.fetchBalance()
+  } catch (err: unknown) {
+    const msg = String(err)
+    if (msg.includes('-1021') || msg.includes('recvWindow')) {
+      await exchange.loadTimeDifference().catch(() => {})
+      raw = await exchange.fetchBalance()
+    } else {
+      throw err
+    }
+  }
   const balances: AssetBalance[] = []
 
   const total = (raw.total as unknown as Record<string, number | undefined>) ?? {}

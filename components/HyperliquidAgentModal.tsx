@@ -189,7 +189,7 @@ export function HyperliquidAgentModal({ open, onClose }: Props) {
             <button
               onClick={handleAuthorizeAgent}
               disabled={signing}
-              className={`flex-1 rounded-xl py-2.5 text-xs font-bold transition shadow-sm ${
+              className={`flex-1 rounded-xl py-2.5 text-xs font-bold transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed ${
                 authorized
                   ? 'bg-up text-surface hover:opacity-90'
                   : 'bg-accent text-accent-ink hover:opacity-90'

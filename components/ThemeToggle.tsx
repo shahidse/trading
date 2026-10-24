@@ -204,7 +204,7 @@ export function ThemeStyleMenu() {
       </button>
 
       {open && (
-        <div className="absolute right-0 z-50 mt-1.5 w-64 origin-top-right rounded-2xl border border-line bg-surface p-2 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-100">
+        <div className="absolute right-0 z-50 mt-1.5 w-64 origin-top-right rounded-2xl border border-line bg-surface p-2 shadow-2xl animate-in fade-in zoom-in-95 duration-100">
           <div className="px-2.5 py-1.5 border-b border-line-soft mb-1">
             <span className="text-[10px] font-bold uppercase tracking-wider text-subtle">
               Color Theme Palettes (10)
@@ -324,7 +324,7 @@ export function AmbientLightMenu() {
       </button>
 
       {open && (
-        <div className="absolute right-0 z-50 mt-1.5 w-68 origin-top-right rounded-2xl border border-line bg-surface p-2 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-100">
+        <div className="absolute right-0 z-50 mt-1.5 w-68 origin-top-right rounded-2xl border border-line bg-surface p-2 shadow-2xl animate-in fade-in zoom-in-95 duration-100">
           <div className="px-2.5 py-1.5 border-b border-line-soft mb-1">
             <span className="text-[10px] font-bold uppercase tracking-wider text-subtle">
               Ambient Room Lighting (8 Setups)

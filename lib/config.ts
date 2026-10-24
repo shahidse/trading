@@ -215,6 +215,22 @@ export const config = {
     oversoldRsiThreshold: 35,
   },
 
+  /** Hot Coins automated breakout and pump execution */
+  hotCoins: {
+    enabled: bool(process.env.HOT_COINS_AUTO_BUY, false),
+    topCoinsCount: num(process.env.HOT_COINS_TOP_COUNT, 3),
+    minHeatScore: num(process.env.HOT_COINS_MIN_HEAT_SCORE, 70),
+    orderNotionalUsd: num(process.env.HOT_COINS_NOTIONAL_USD, 50),
+    maxNotionalUsd: num(process.env.HOT_COINS_MAX_NOTIONAL_USD, 100),
+    dailyLossLimitUsd: num(process.env.HOT_COINS_DAILY_LOSS_LIMIT_USD, 50),
+    maxDailyTrades: num(process.env.HOT_COINS_MAX_DAILY_TRADES, 6),
+    cooldownMinutes: num(process.env.HOT_COINS_COOLDOWN_MINUTES, 60),
+    useOcoBracket: bool(process.env.HOT_COINS_USE_OCO, true),
+    stopLossPct: num(process.env.HOT_COINS_STOP_LOSS_PCT, 3.0),
+    takeProfitPct: num(process.env.HOT_COINS_TAKE_PROFIT_PCT, 6.0),
+    dryRun: bool(process.env.HOT_COINS_DRY_RUN, true),
+  },
+
   db: {
     url: process.env.DATABASE_URL ?? 'file:./data/signals.db',
   },

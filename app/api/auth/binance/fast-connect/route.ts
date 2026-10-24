@@ -58,11 +58,25 @@ export async function POST(request: Request) {
       enableRateLimit: true,
       apiKey: apiKey.trim(),
       secret: secret.trim(),
-      options: { defaultType: 'spot', fetchMarkets: ['spot'], fetchCurrencies: false },
+      options: {
+        defaultType: 'spot',
+        fetchMarkets: ['spot'],
+        adjustForTimeDifference: true,
+        recvWindow: 60000,
+        fetchCurrencies: false,
+      },
     })
 
     if (testnet) {
       testExchange.setSandboxMode(true)
+    }
+
+    try {
+      if (testExchange.has['fetchTime']) {
+        await testExchange.loadTimeDifference()
+      }
+    } catch {
+      // non-fatal
     }
 
     // Verify withdrawal permission is NOT enabled

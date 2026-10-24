@@ -9,8 +9,8 @@ import { IndicatorPanel } from '@/components/IndicatorPanel'
 import { OrderHistory } from '@/components/OrderHistory'
 import { SignalCard } from '@/components/SignalCard'
 import { SignalHistory, type StoredSignal } from '@/components/SignalHistory'
-import { useTheme, AmbientLightMenu, ThemeStyleMenu, AmbientAtmosphereGlow } from '@/components/ThemeToggle'
 import { TradePlanCard } from '@/components/TradePlanCard'
+import { useTheme, AmbientAtmosphereGlow } from '@/components/ThemeToggle'
 import { TradingControls } from '@/components/TradingControls'
 import { WalletConnect } from '@/components/WalletConnect'
 import { WalletAssetsCard } from '@/components/WalletAssetsCard'
@@ -18,7 +18,11 @@ import { AssetsChart } from '@/components/AssetsChart'
 import { VenueSelector } from '@/components/VenueSelector'
 import { OrderBookWidget } from '@/components/OrderBookWidget'
 import { HotCoinsRadar } from '@/components/HotCoinsRadar'
+import { NotificationCenter } from '@/components/NotificationCenter'
+import { ConfigReportButton } from '@/components/ConfigReportModal'
+import { ConfigReportPanel } from '@/components/ConfigReportPanel'
 import { FutureGainersPredictor } from '@/components/FutureGainersPredictor'
+import { SettingsButton } from '@/components/SettingsButton'
 import { useBinanceWebSocket } from '@/hooks/useBinanceWebSocket'
 import type { AssetBalance, LiveOrder } from '@/lib/exchange/client'
 import type { StoredTradeOrder } from '@/lib/db/client'
@@ -77,7 +81,7 @@ export default function Page() {
   >('plan')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [activeSidebarNav, setActiveSidebarNav] = useState<
-    'overview' | 'predictions' | 'assets' | 'chart' | 'plan' | 'indicators' | 'orders' | 'history' | 'backtest'
+    'overview' | 'predictions' | 'assets' | 'chart' | 'plan' | 'indicators' | 'orders' | 'history' | 'backtest' | 'report'
   >('overview')
 
   const isTestnet = Boolean((tradesData?.settings as Record<string, unknown> | undefined)?.testnet)
@@ -172,13 +176,13 @@ export default function Page() {
       <AmbientAtmosphereGlow />
       {/* Top Header Branding & Global Action Bar */}
       <header
-        className={`flex flex-wrap items-center justify-between gap-4 pb-5 ${
+        className={`relative z-30 flex flex-wrap items-center justify-between gap-4 pb-5 ${
           isBrutalist
             ? 'border-b-4 border-line'
             : isPlayful
             ? 'rounded-3xl border-2 border-line bg-surface p-4 shadow-sm'
             : isNeofuturistic
-            ? 'rounded-2xl border border-line bg-surface/70 backdrop-blur-md p-4 shadow-lg'
+            ? 'rounded-2xl border border-line bg-surface/90 backdrop-blur-md p-4 shadow-lg'
             : 'border-b border-line'
         }`}
       >
@@ -226,16 +230,10 @@ export default function Page() {
 
         {/* Global Toolbar */}
         <div className="flex flex-wrap items-center gap-2">
-          <ThemeStyleMenu />
-          <AmbientLightMenu />
+          <NotificationCenter />
+          <ConfigReportButton targetSymbol={selectedSymbol} />
           <TradingControls />
-          <Link
-            href="/settings"
-            className="rounded-lg border border-line px-3 py-1.5 text-xs font-semibold text-muted transition hover:bg-surface-2 hover:text-ink"
-            title="Configure layout, themes, alerts, and trading"
-          >
-            ⚙ Settings
-          </Link>
+          <SettingsButton />
           <WalletConnect />
         </div>
       </header>
@@ -426,6 +424,7 @@ export default function Page() {
                   { id: 'plan', label: 'Trade Plan', icon: '🎯', desc: 'Signals & Levels' },
                   { id: 'indicators', label: 'Indicators', icon: '⚡', desc: '9-Metric Matrix' },
                   { id: 'orders', label: 'Orders', icon: '📋', desc: 'Executions & P&L' },
+                  { id: 'report', label: 'Config Report', icon: '🛡️', desc: 'Limits & Trading Activity' },
                   { id: 'history', label: 'Signal Audit', icon: '📜', desc: 'Signal History' },
                   { id: 'backtest', label: 'Backtester', icon: '🧪', desc: 'Strategy Replay' },
                 ].map((item) => {
@@ -640,8 +639,11 @@ export default function Page() {
               />
             )}
 
-            {/* View: Audit Log */}
+            {/* View: Signal History */}
             {activeSidebarNav === 'history' && <SignalHistory signals={signals} />}
+
+            {/* View: Config & Limits Report */}
+            {activeSidebarNav === 'report' && <ConfigReportPanel targetSymbol={selectedSymbol} />}
 
             {/* View: Backtester */}
             {activeSidebarNav === 'backtest' && <BacktestPanel />}
@@ -657,6 +659,7 @@ export default function Page() {
               { id: 'plan', label: 'Plan', icon: '🎯' },
               { id: 'indicators', label: 'Gauges', icon: '⚡' },
               { id: 'orders', label: 'Orders', icon: '📋' },
+              { id: 'report', label: 'Report', icon: '🛡️' },
               { id: 'history', label: 'Audit', icon: '📜' },
               { id: 'backtest', label: 'Replay', icon: '🧪' },
             ].map((item) => {

@@ -8,6 +8,7 @@ import { isTelegramConfigured, sendSignalTelegram } from '@/lib/notify/telegram'
 import { isBinanceSquareConfigured, publishSignalToSquare } from '@/lib/notify/binance-square'
 import { generateSignal } from '@/lib/signal/engine'
 import { shouldAlert, shouldNotify, type NotifyState } from '@/lib/signal/plan'
+import { notifyImportantEvent } from '@/lib/notify/events'
 import type { NotifyMode, Signal, SignalDirection, TradeAction } from '@/lib/types'
 
 export type AnalysisResult = {
@@ -92,6 +93,17 @@ export async function runAnalysis(options: SnapshotOptions = {}): Promise<Analys
     console.warn('[pipeline] DB saveSignal skipped (stateless mode):', err)
   }
   inMemoryLastSignals.set(snapshot.symbol, signal)
+
+  if (actionChanged && (signal.plan.action === 'BUY' || signal.plan.action === 'SELL')) {
+    void notifyImportantEvent({
+      type: 'signal',
+      level: signal.plan.action === 'BUY' ? 'success' : 'warning',
+      title: `${signal.symbol} Action Flip: ${signal.plan.action}`,
+      message: `${signal.symbol} flipped from ${previousAction ?? 'NONE'} to ${signal.plan.action} (Score: ${signal.score > 0 ? '+' : ''}${signal.score}) · ${signal.plan.headline}`,
+      symbol: signal.symbol,
+      data: { score: signal.score, price: signal.price, levels: signal.plan.levels },
+    }).catch(() => {})
+  }
 
   // Automatic order placement. A no-op unless trading is armed in /settings,
   // and every guard runs inside `runAutoTrade` before any signed request.

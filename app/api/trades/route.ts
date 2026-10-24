@@ -12,6 +12,7 @@ import {
   saveExchangeSettings,
   type ExchangeSettings,
 } from '@/lib/exchange/settings'
+import { notifyImportantEvent } from '@/lib/notify/events'
 
 export const dynamic = 'force-dynamic'
 
@@ -99,6 +100,12 @@ export async function POST(request: Request) {
     switch (body.action) {
       case 'halt':
         saveExchangeSettings({ killSwitch: true })
+        void notifyImportantEvent({
+          type: 'system',
+          level: 'error',
+          title: 'Emergency Kill Switch Engaged',
+          message: '🛑 Master halt engaged — all automatic order placement is frozen immediately.',
+        }).catch(() => {})
         return NextResponse.json({
           settings: publicExchangeSettings(),
           message: 'Trading halted — kill switch engaged',
@@ -106,14 +113,32 @@ export async function POST(request: Request) {
 
       case 'resume':
         saveExchangeSettings({ killSwitch: false })
+        void notifyImportantEvent({
+          type: 'system',
+          level: 'info',
+          title: 'Kill Switch Released',
+          message: '🟢 Kill switch released — trading guards resumed normal monitoring.',
+        }).catch(() => {})
         return NextResponse.json({ settings: publicExchangeSettings(), message: 'Kill switch released' })
 
       case 'arm':
         saveExchangeSettings({ enabled: true, killSwitch: false })
+        void notifyImportantEvent({
+          type: 'system',
+          level: 'success',
+          title: 'Automatic Trading Armed',
+          message: '⚡ Automatic order execution is now armed.',
+        }).catch(() => {})
         return NextResponse.json({ settings: publicExchangeSettings(), message: 'Automatic trading armed' })
 
       case 'disarm':
         saveExchangeSettings({ enabled: false })
+        void notifyImportantEvent({
+          type: 'system',
+          level: 'warning',
+          title: 'Automatic Trading Disarmed',
+          message: '⏸️ Automatic trading was disarmed.',
+        }).catch(() => {})
         return NextResponse.json({ settings: publicExchangeSettings(), message: 'Automatic trading disabled' })
 
       default:

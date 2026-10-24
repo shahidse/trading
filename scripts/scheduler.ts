@@ -39,6 +39,21 @@ async function tick(): Promise<void> {
       console.error(`[${at}] [${sym}] analysis failed:`, error instanceof Error ? error.message : error)
     }
   }
+
+  // Periodic Hot Coins automated breakout entries (if enabled in settings)
+  try {
+    const { getHotCoinSettings } = await import('@/lib/exchange/hot-coins-settings')
+    const { executeHotCoinBuys } = await import('@/lib/exchange/hot-coins-trader')
+    const hotSettings = getHotCoinSettings()
+    if (hotSettings.enabled) {
+      const hotReport = await executeHotCoinBuys()
+      if (hotReport.executedCount > 0) {
+        console.log(`[${at}] [HOT-COINS] ${hotReport.message}`)
+      }
+    }
+  } catch (err) {
+    console.warn(`[${at}] [HOT-COINS] Auto-buy check failed:`, err)
+  }
 }
 
 async function main(): Promise<void> {

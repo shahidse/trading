@@ -43,6 +43,7 @@ const labelClass = 'block text-xs uppercase tracking-wide text-subtle'
 export function ExchangeSettingsCard() {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
+  const [saved, setSaved] = useState(false)
   const [status, setStatus] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)
 
   const [data, setData] = useState<TradesResponse | null>(null)
@@ -126,6 +127,8 @@ export function ExchangeSettingsCard() {
       })
       await readJson(response)
       await load()
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2500)
       setStatus({ kind: 'ok', text: 'Trading settings saved' })
     } catch (error) {
       setStatus({
@@ -319,11 +322,12 @@ export function ExchangeSettingsCard() {
                 />
                 <button
                   type="button"
+                  disabled={busy || (!apiKey && !apiKeySet)}
                   onClick={() => {
                     setApiKey('')
                     setApiKeyTouched(true)
                   }}
-                  className="mt-1 shrink-0 rounded-lg border border-line px-3 text-xs text-muted transition hover:bg-surface-2 hover:text-ink"
+                  className="mt-1 shrink-0 rounded-lg border border-line px-3 text-xs text-muted transition hover:bg-surface-2 hover:text-ink disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Clear
                 </button>
@@ -345,11 +349,12 @@ export function ExchangeSettingsCard() {
                 />
                 <button
                   type="button"
+                  disabled={busy || (!secret && !secretSet)}
                   onClick={() => {
                     setSecret('')
                     setSecretTouched(true)
                   }}
-                  className="mt-1 shrink-0 rounded-lg border border-line px-3 text-xs text-muted transition hover:bg-surface-2 hover:text-ink"
+                  className="mt-1 shrink-0 rounded-lg border border-line px-3 text-xs text-muted transition hover:bg-surface-2 hover:text-ink disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Clear
                 </button>
@@ -396,23 +401,54 @@ export function ExchangeSettingsCard() {
           ) : null}
 
           <div className="mt-5 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => void save()}
-              disabled={busy}
-              className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-400 disabled:opacity-50 flex items-center gap-1.5"
-            >
-              {busy ? <ButtonSpinner label="Saving settings…" size="xs" /> : 'Save'}
-            </button>
+            {(() => {
+              const notionalNum = Number(notionalUsd)
+              const maxNotionalNum = Number(maxNotionalUsd)
+              const isInvalidNotional =
+                Number.isNaN(notionalNum) ||
+                notionalNum <= 0 ||
+                Number.isNaN(maxNotionalNum) ||
+                maxNotionalNum <= 0 ||
+                notionalNum > maxNotionalNum
+
+              return (
+                <button
+                  type="button"
+                  onClick={() => void save()}
+                  disabled={busy || isInvalidNotional}
+                  title={
+                    notionalNum > maxNotionalNum
+                      ? 'Order size cannot exceed max per order'
+                      : notionalNum <= 0
+                      ? 'Order size must be positive'
+                      : 'Save trading settings'
+                  }
+                  className={`rounded-lg px-4 py-2 text-sm font-medium text-white transition flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed ${
+                    saved ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-indigo-500 hover:bg-indigo-400'
+                  }`}
+                >
+                  {busy ? (
+                    <ButtonSpinner label="Saving settings…" size="xs" />
+                  ) : saved ? (
+                    <>
+                      <span>✓</span>
+                      <span>Saved!</span>
+                    </>
+                  ) : (
+                    'Save'
+                  )}
+                </button>
+              )
+            })()}
             {enabled ? (
               <button
                 type="button"
                 onClick={() => void action(killSwitch ? 'resume' : 'halt')}
                 disabled={busy}
-                className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-2 text-sm font-medium text-down transition hover:bg-rose-500/20 disabled:opacity-50 flex items-center gap-1.5"
+                className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-2 text-sm font-medium text-down transition hover:bg-rose-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
               >
                 {busy ? (
-                  <ButtonSpinner label="Updating safety guard…" size="xs" />
+                  <ButtonSpinner label={killSwitch ? 'Releasing kill switch…' : 'Engaging kill switch…'} size="xs" />
                 ) : killSwitch ? (
                   'Release kill switch'
                 ) : (

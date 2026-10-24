@@ -20,6 +20,7 @@ import {
   isTradingArmed,
   type ExchangeSettings,
 } from '@/lib/exchange/settings'
+import { notifyImportantEvent } from '@/lib/notify/events'
 import type { TradeAction, TradeLevels } from '@/lib/types'
 
 /**
@@ -192,8 +193,10 @@ export async function executeTrade(
   intent: TradeIntent,
   signalId: number | null = null,
   levels?: TradeLevels | null,
+  customSettings?: Partial<ExchangeSettings>,
 ): Promise<TradeOutcome> {
-  const settings = getExchangeSettings()
+  const baseSettings = getExchangeSettings()
+  const settings = customSettings ? { ...baseSettings, ...customSettings } : baseSettings
   const environment = environmentLabel(settings)
 
   let openPosition: StoredTradeOrder | null = null
@@ -314,6 +317,15 @@ export async function executeTrade(
 
   if (!guard.ok) {
     log({ status: 'refused', reason: guard.reason })
+    if (guard.reason.includes('limit') || guard.reason.includes('hard cap')) {
+      void notifyImportantEvent({
+        type: 'risk',
+        level: 'warning',
+        title: 'Safety Guard Blocked Order',
+        message: `${guard.reason} (${intent.side} ${intent.symbol})`,
+        symbol: intent.symbol,
+      }).catch(() => {})
+    }
     return outcome('refused', guard.reason, { notionalUsd })
   }
 
@@ -457,6 +469,16 @@ export async function executeTrade(
         })
       }
 
+      void notifyImportantEvent({
+        type: 'trade',
+        level: 'info',
+        title: `Simulated (Dry-Run) ${intent.side}`,
+        message: `${intent.side} ${quantity} ${intent.symbol} @ $${marketPrice.toFixed(2)} (~$${estimatedCost.toFixed(2)})${
+          levels ? ` (TP: $${levels.takeProfit.toFixed(2)}, SL: $${levels.stopLoss.toFixed(2)})` : ''
+        }`,
+        symbol: intent.symbol,
+      }).catch(() => {})
+
       return outcome('dry-run', reason, {
         quantity,
         price: marketPrice,
@@ -523,6 +545,17 @@ export async function executeTrade(
         console.error('[trader] Warning: Failed to attach native Binance OCO order:', ocoErr)
       }
     }
+
+    void notifyImportantEvent({
+      type: 'trade',
+      level: 'success',
+      title: `⚡ Live ${intent.side} Executed`,
+      message: `${intent.side} ${filledQuantity} ${intent.symbol} @ $${fillPrice.toFixed(2)} ($${cost.toFixed(2)})${
+        levels ? ` (TP: $${levels.takeProfit.toFixed(2)}, SL: $${levels.stopLoss.toFixed(2)})` : ''
+      }`,
+      symbol: intent.symbol,
+      data: { orderId: order.id, fillPrice, filledQuantity, cost },
+    }).catch(() => {})
 
     return outcome('placed', intent.reason, {
       quantity: filledQuantity,
@@ -600,6 +633,18 @@ export async function runAutoTrade(
                 signalId,
               })
             } catch {}
+
+            void notifyImportantEvent({
+              type: 'trade',
+              level: pnl && pnl >= 0 ? 'success' : 'warning',
+              title: `🎯 Binance OCO Exit Filled (${pnl && pnl >= 0 ? 'Take-Profit' : 'Stop-Loss'})`,
+              message: `Sold ${closingQty} ${symbol} @ $${closingPrice.toFixed(2)}${
+                pnl != null ? ` (PnL: ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)})` : ''
+              }`,
+              symbol,
+              data: { pnl, closingPrice, closingQty },
+            }).catch(() => {})
+
             hasOpenPosition = false
             openPositionSide = null
           } else {

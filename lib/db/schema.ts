@@ -92,3 +92,21 @@ export const portfolioSnapshots = sqliteTable('portfolio_snapshots', {
 
 export type PortfolioSnapshotRow = typeof portfolioSnapshots.$inferSelect
 export type NewPortfolioSnapshotRow = typeof portfolioSnapshots.$inferInsert
+
+/**
+ * Event-driven application and trading notifications.
+ */
+export const appNotifications = sqliteTable('app_notifications', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  createdAt: integer('created_at').notNull(),
+  type: text('type').notNull(), // 'trade' | 'hot-coin' | 'risk' | 'signal' | 'system'
+  level: text('level').notNull(), // 'info' | 'success' | 'warning' | 'error'
+  title: text('title').notNull(),
+  message: text('message').notNull(),
+  symbol: text('symbol'),
+  data: text('data'),
+  read: integer('read').notNull().default(0),
+})
+
+export type AppNotificationRow = typeof appNotifications.$inferSelect
+export type NewAppNotificationRow = typeof appNotifications.$inferInsert

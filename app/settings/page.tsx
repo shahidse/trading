@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { ExchangeSettingsCard } from '@/components/ExchangeSettingsCard'
+import { HotCoinsAutoTradeCard } from '@/components/HotCoinsAutoTradeCard'
 import { VenueSelector } from '@/components/VenueSelector'
 import { ThemeToggle, useTheme, ThemeStyleGrid } from '@/components/ThemeToggle'
 import { LAYOUT_OPTIONS, LIGHT_MODES, type LayoutType } from '@/lib/theme'
@@ -108,6 +109,7 @@ export default function SettingsPage() {
   const { colorMode, setTheme } = useTheme()
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<{ channel: Channel; action: 'save' | 'test' } | null>(null)
+  const [savedChannel, setSavedChannel] = useState<Channel | null>(null)
   const [status, setStatus] = useState<Status | null>(null)
 
   const [emailEnabled, setEmailEnabled] = useState(false)
@@ -213,6 +215,8 @@ export default function SettingsPage() {
         const json = await readJson<{ settings: PublicSettings }>(response)
 
         apply(json.settings)
+        setSavedChannel(channel)
+        setTimeout(() => setSavedChannel(null), 2500)
         setStatus({ channel, kind: 'ok', text: 'Settings saved' })
       } catch (error) {
         setStatus({
@@ -277,23 +281,69 @@ export default function SettingsPage() {
 
   function actions(channel: Channel) {
     const isBusy = busy?.channel === channel
+    const isAnyBusy = busy !== null
+    const isSaved = savedChannel === channel
+
+    let canTest = false
+    let testTooltip = ''
+
+    if (channel === 'email') {
+      const hasKey = emailKeySet || emailKey.trim().length > 0
+      const hasRecipient = emailTo.trim().length > 0
+      canTest = hasKey && hasRecipient
+      testTooltip = !hasKey
+        ? 'Resend API key is required to send a test'
+        : !hasRecipient
+        ? 'Recipient email is required to send a test'
+        : 'Send a test email using current configuration'
+    } else if (channel === 'telegram') {
+      const hasToken = tgTokenSet || tgToken.trim().length > 0
+      const hasChat = tgChatId.trim().length > 0
+      canTest = hasToken && hasChat
+      testTooltip = !hasToken
+        ? 'Telegram bot token is required to send a test'
+        : !hasChat
+        ? 'Telegram Chat ID is required to send a test'
+        : 'Send a test Telegram message using current configuration'
+    } else {
+      const hasKey = squareKeySet || squareKey.trim().length > 0
+      canTest = hasKey
+      testTooltip = hasKey ? 'Test Binance Square webhook' : 'Creator API key is required'
+    }
+
     return (
       <div className="mt-5 flex flex-wrap gap-2">
         <button
           type="button"
           onClick={() => void save(channel)}
-          disabled={isBusy}
-          className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-400 disabled:opacity-50 flex items-center gap-1.5"
+          disabled={isAnyBusy}
+          className={`rounded-lg px-4 py-2 text-sm font-medium text-white transition flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed ${
+            isSaved ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-indigo-500 hover:bg-indigo-400'
+          }`}
         >
-          {isBusy && busy?.action === 'save' ? <ButtonSpinner label="Saving…" size="xs" /> : 'Save'}
+          {isBusy && busy?.action === 'save' ? (
+            <ButtonSpinner label="Saving…" size="xs" />
+          ) : isSaved ? (
+            <>
+              <span>✓</span>
+              <span>Saved!</span>
+            </>
+          ) : (
+            'Save'
+          )}
         </button>
         <button
           type="button"
           onClick={() => void test(channel)}
-          disabled={isBusy}
-          className="rounded-lg border border-line px-4 py-2 text-sm text-muted transition hover:bg-surface-2 hover:text-ink disabled:opacity-50 flex items-center gap-1.5"
+          disabled={isAnyBusy || !canTest}
+          title={testTooltip}
+          className="rounded-lg border border-line px-4 py-2 text-sm text-muted transition hover:bg-surface-2 hover:text-ink disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
         >
-          {isBusy && busy?.action === 'test' ? <ButtonSpinner label="Sending test…" size="xs" /> : 'Send test'}
+          {isBusy && busy?.action === 'test' ? (
+            <ButtonSpinner label="Sending test…" size="xs" />
+          ) : (
+            'Send test'
+          )}
         </button>
       </div>
     )
@@ -468,11 +518,12 @@ export default function SettingsPage() {
                   />
                   <button
                     type="button"
+                    disabled={Boolean(busy) || (!emailKey && !emailKeySet)}
                     onClick={() => {
                       setEmailKey('')
                       setEmailKeyTouched(true)
                     }}
-                    className="mt-1 shrink-0 rounded-lg border border-line px-3 text-xs text-muted transition hover:bg-surface-2 hover:text-ink"
+                    className="mt-1 shrink-0 rounded-lg border border-line px-3 text-xs text-muted transition hover:bg-surface-2 hover:text-ink disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     Clear
                   </button>
@@ -544,11 +595,12 @@ export default function SettingsPage() {
                   />
                   <button
                     type="button"
+                    disabled={Boolean(busy) || (!tgToken && !tgTokenSet)}
                     onClick={() => {
                       setTgToken('')
                       setTgTokenTouched(true)
                     }}
-                    className="mt-1 shrink-0 rounded-lg border border-line px-3 text-xs text-muted transition hover:bg-surface-2 hover:text-ink"
+                    className="mt-1 shrink-0 rounded-lg border border-line px-3 text-xs text-muted transition hover:bg-surface-2 hover:text-ink disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     Clear
                   </button>
@@ -630,11 +682,12 @@ export default function SettingsPage() {
                   />
                   <button
                     type="button"
+                    disabled={Boolean(busy) || (!squareKey && !squareKeySet)}
                     onClick={() => {
                       setSquareKey('')
                       setSquareKeyTouched(true)
                     }}
-                    className="mt-1 shrink-0 rounded-lg border border-line px-3 text-xs text-muted transition hover:bg-surface-2 hover:text-ink"
+                    className="mt-1 shrink-0 rounded-lg border border-line px-3 text-xs text-muted transition hover:bg-surface-2 hover:text-ink disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     Clear
                   </button>
@@ -665,6 +718,9 @@ export default function SettingsPage() {
 
           {/* ---- Automatic trading ---- */}
           <ExchangeSettingsCard />
+
+          {/* ---- Hot Coins Automated Execution Engine ---- */}
+          <HotCoinsAutoTradeCard />
 
           <p className="text-xs text-subtle">
             Settings are stored in the local SQLite database and take effect immediately for the

@@ -55,7 +55,7 @@ export function VenueSelector() {
               key={v.id}
               onClick={() => selectVenue(v.id)}
               disabled={loading}
-              className={`relative flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+              className={`relative flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed ${
                 isSelected
                   ? 'bg-accent text-accent-ink shadow-sm'
                   : 'text-subtle hover:bg-surface-tint hover:text-ink'

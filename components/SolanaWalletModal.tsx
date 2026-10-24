@@ -150,7 +150,7 @@ export function SolanaWalletModal({ open, onClose }: Props) {
               <button
                 onClick={connectPhantom}
                 disabled={connecting}
-                className="rounded-lg bg-purple-600 px-3 py-1 font-bold text-white transition hover:bg-purple-700"
+                className="rounded-lg bg-purple-600 px-3 py-1 font-bold text-white transition hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {connecting
                   ? 'Connecting…'
@@ -234,7 +234,7 @@ export function SolanaWalletModal({ open, onClose }: Props) {
           <button
             onClick={executeJupiterSwap}
             disabled={!walletAddress || loadingQuote}
-            className={`flex-1 rounded-xl py-2.5 text-xs font-bold text-white transition shadow-sm ${
+            className={`flex-1 rounded-xl py-2.5 text-xs font-bold text-white transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed ${
               walletAddress && !loadingQuote
                 ? 'bg-purple-600 hover:bg-purple-700'
                 : 'cursor-not-allowed bg-purple-600/40 text-white/60'

@@ -14,10 +14,13 @@ import type {
 } from '@/lib/types'
 import * as schema from './schema'
 import {
+  appNotifications,
   portfolioSnapshots,
   settings as settingsTable,
   signals,
   tradeOrders,
+  type AppNotificationRow,
+  type NewAppNotificationRow,
   type PortfolioSnapshotRow,
   type SignalRow,
   type TradeOrderRow,
@@ -109,6 +112,19 @@ CREATE TABLE IF NOT EXISTS portfolio_snapshots (
   environment      TEXT    NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_portfolio_snapshots_created_at ON portfolio_snapshots (created_at DESC);
+
+CREATE TABLE IF NOT EXISTS app_notifications (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  created_at INTEGER NOT NULL,
+  type       TEXT    NOT NULL,
+  level      TEXT    NOT NULL,
+  title      TEXT    NOT NULL,
+  message    TEXT    NOT NULL,
+  symbol     TEXT,
+  data       TEXT,
+  read       INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_app_notifications_created_at ON app_notifications (created_at DESC);
 `
 
 /**
@@ -548,3 +564,86 @@ export function getLatestPortfolioSnapshot(): StoredPortfolioSnapshot | null {
       .get() ?? null
   )
 }
+
+export type StoredAppNotification = AppNotificationRow
+
+// In-memory fallback for stateless deployments
+export const inMemoryNotifications: StoredAppNotification[] = []
+
+export function recordAppNotification(
+  notification: Omit<NewAppNotificationRow, 'createdAt' | 'id'>,
+): number {
+  const item: StoredAppNotification = {
+    id: inMemoryNotifications.length + 1,
+    createdAt: Date.now(),
+    type: notification.type,
+    level: notification.level,
+    title: notification.title,
+    message: notification.message,
+    symbol: notification.symbol ?? null,
+    data: notification.data ?? null,
+    read: notification.read ?? 0,
+  }
+  inMemoryNotifications.unshift(item)
+  if (inMemoryNotifications.length > 100) inMemoryNotifications.pop()
+
+  try {
+    const row = getDb()
+      .insert(appNotifications)
+      .values({ ...notification, createdAt: Date.now() })
+      .returning({ id: appNotifications.id })
+      .get()
+    return row?.id ?? item.id
+  } catch {
+    return item.id
+  }
+}
+
+export function getRecentNotifications(limit = 30): StoredAppNotification[] {
+  try {
+    return getDb()
+      .select()
+      .from(appNotifications)
+      .orderBy(desc(appNotifications.createdAt))
+      .limit(limit)
+      .all()
+  } catch {
+    return inMemoryNotifications.slice(0, limit)
+  }
+}
+
+export function getUnreadNotificationsCount(): number {
+  try {
+    const rows = getDb()
+      .select({ id: appNotifications.id })
+      .from(appNotifications)
+      .where(eq(appNotifications.read, 0))
+      .all()
+    return rows.length
+  } catch {
+    return inMemoryNotifications.filter((n) => n.read === 0).length
+  }
+}
+
+export function markNotificationRead(id: number): void {
+  const mem = inMemoryNotifications.find((n) => n.id === id)
+  if (mem) mem.read = 1
+  try {
+    getDb().update(appNotifications).set({ read: 1 }).where(eq(appNotifications.id, id)).run()
+  } catch {}
+}
+
+export function markAllNotificationsRead(): void {
+  for (const n of inMemoryNotifications) n.read = 1
+  try {
+    getDb().update(appNotifications).set({ read: 1 }).run()
+  } catch {}
+}
+
+export function clearAllNotifications(): void {
+  inMemoryNotifications.length = 0
+  try {
+    getDb().delete(appNotifications).run()
+  } catch {}
+}
+
