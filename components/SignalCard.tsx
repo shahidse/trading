@@ -1,9 +1,48 @@
+'use client'
+
+import { useState } from 'react'
 import { DirectionBadge } from '@/components/DirectionBadge'
 import { directionStyles, formatAge, formatPrice, formatScore, formatTime } from '@/lib/format'
 import type { Signal } from '@/lib/types'
 
 export function SignalCard({ signal }: { signal: Signal & { emailed?: boolean } }) {
   const styles = directionStyles[signal.direction]
+  const [isPosting, setIsPosting] = useState(false)
+  const [postResult, setPostResult] = useState<{ ok: boolean; message: string } | null>(null)
+
+  const handlePostToSquare = async () => {
+    setIsPosting(true)
+    setPostResult(null)
+    try {
+      const res = await fetch('/api/square/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'signal',
+          signal,
+        }),
+      })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        setPostResult({
+          ok: true,
+          message: data.contentId ? `Posted! (ID: ${data.contentId})` : 'Posted to Binance Square!',
+        })
+      } else {
+        setPostResult({
+          ok: false,
+          message: data.error || 'Failed to post to Square',
+        })
+      }
+    } catch (err: unknown) {
+      setPostResult({
+        ok: false,
+        message: err instanceof Error ? err.message : 'Network error posting to Square',
+      })
+    } finally {
+      setIsPosting(false)
+    }
+  }
 
   return (
     <section className={`rounded-2xl border ${styles.border} ${styles.bg} p-6`}>
@@ -54,6 +93,29 @@ export function SignalCard({ signal }: { signal: Signal & { emailed?: boolean } 
           <p className="mt-2 text-xs text-subtle">
             {formatTime(signal.timestamp)} · {formatAge(signal.timestamp)}
           </p>
+          <div className="mt-2.5 flex flex-col items-end gap-1.5">
+            <button
+              type="button"
+              onClick={handlePostToSquare}
+              disabled={isPosting}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-600 transition-all hover:bg-amber-500/20 active:scale-95 disabled:opacity-50 dark:text-amber-400"
+              title="Publish this trade signal directly to Binance Square Creator Social Feed"
+            >
+              <span>📢</span>
+              <span>{isPosting ? 'Posting...' : 'Share on Square'}</span>
+            </button>
+            {postResult && (
+              <span
+                className={`text-[11px] font-medium max-w-[200px] truncate ${
+                  postResult.ok ? 'text-emerald-500' : 'text-rose-400'
+                }`}
+                title={postResult.message}
+              >
+                {postResult.ok ? '✅ ' : '⚠️ '}
+                {postResult.message}
+              </span>
+            )}
+          </div>
         </div>
       </div>
 

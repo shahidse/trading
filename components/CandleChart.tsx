@@ -12,9 +12,10 @@ import {
   type LineData,
   type SeriesMarker,
   type Time,
-  type UTCTimestamp,
+  type UTCTimestamp, 
 } from 'lightweight-charts'
 import { useTheme } from '@/components/ThemeToggle'
+import { ChartSkeleton, Spinner } from '@/components/Loader'
 import type { Theme } from '@/lib/theme'
 import type { ChartPayload, LinePoint } from '@/lib/types'
 import { readJson } from '@/lib/utils'
@@ -48,6 +49,60 @@ const PALETTES: Record<Theme, Palette> = {
     grid: 'rgba(15,23,42,0.06)',
     border: 'rgba(15,23,42,0.12)',
     text: '#64748b',
+  },
+  'warm-light': {
+    up: '#059669',
+    down: '#dc2626',
+    upFill: 'rgba(5,150,105,0.28)',
+    downFill: 'rgba(220,38,38,0.28)',
+    grid: 'rgba(120,113,108,0.07)',
+    border: 'rgba(120,113,108,0.16)',
+    text: '#78716c',
+  },
+  dusk: {
+    up: '#10b981',
+    down: '#f43f5e',
+    upFill: 'rgba(16,185,129,0.32)',
+    downFill: 'rgba(244,63,94,0.32)',
+    grid: 'rgba(100,116,139,0.10)',
+    border: 'rgba(100,116,139,0.20)',
+    text: '#94a3b8',
+  },
+  oled: {
+    up: '#00e676',
+    down: '#ff1744',
+    upFill: 'rgba(0,230,118,0.35)',
+    downFill: 'rgba(255,23,68,0.35)',
+    grid: 'rgba(255,255,255,0.06)',
+    border: 'rgba(255,255,255,0.14)',
+    text: '#a1a1aa',
+  },
+  candlelight: {
+    up: '#10b981',
+    down: '#ef4444',
+    upFill: 'rgba(16,185,129,0.35)',
+    downFill: 'rgba(239,68,68,0.35)',
+    grid: 'rgba(217,119,6,0.10)',
+    border: 'rgba(217,119,6,0.22)',
+    text: '#fde68a',
+  },
+  'aurora-glow': {
+    up: '#00f5d4',
+    down: '#f43f5e',
+    upFill: 'rgba(0,245,212,0.35)',
+    downFill: 'rgba(244,63,94,0.35)',
+    grid: 'rgba(0,245,212,0.08)',
+    border: 'rgba(0,245,212,0.20)',
+    text: '#7dd3fc',
+  },
+  'cyber-glow': {
+    up: '#06b6d4',
+    down: '#ec4899',
+    upFill: 'rgba(6,182,212,0.35)',
+    downFill: 'rgba(236,72,153,0.35)',
+    grid: 'rgba(168,85,247,0.10)',
+    border: 'rgba(168,85,247,0.24)',
+    text: '#a5b4fc',
   },
 }
 
@@ -498,9 +553,12 @@ export function CandleChart({
     <section className="rounded-2xl border border-line bg-surface p-4 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
-            Price chart
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
+              Price chart
+            </h2>
+            {loading && <Spinner size="xs" color="accent" />}
+          </div>
           <div className="flex items-center gap-1 rounded-xl border border-line bg-surface-2/80 p-0.5">
             {TIMEFRAME_OPTIONS.map(({ tf, label, desc }) => (
               <button
@@ -547,7 +605,9 @@ export function CandleChart({
       ) : null}
 
       {loading && !payload ? (
-        <p className="mt-6 text-sm text-subtle">Loading chart…</p>
+        <div className="mt-4">
+          <ChartSkeleton height={380} message={`Streaming ${symbol ?? 'Market'} Candles & Syncing 9 Indicators…`} />
+        </div>
       ) : (
         <div ref={wrapperRef} className="mt-4 space-y-1">
           <div ref={mainContainerRef} className="w-full" />

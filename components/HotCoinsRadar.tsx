@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import type { ScannedHotCoin, ScannerResult } from '@/lib/data/scanner'
 import { readJson } from '@/lib/utils'
+import { HotCoinsRadarSkeleton, Spinner } from '@/components/Loader'
 
 type HotCoinsRadarProps = {
   activeSymbol: string
@@ -100,8 +101,9 @@ export function HotCoinsRadar({ activeSymbol, onSelectSymbol }: HotCoinsRadarPro
             <h2 className="text-base font-bold tracking-tight text-ink flex items-center gap-2">
               🔥 Hot Coins & Breakout Radar
             </h2>
-            <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-amber-400">
-              Live AI Scanner
+            <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+              <span>Live AI Scanner</span>
+              {loading && <Spinner size="xs" color="accent" />}
             </span>
           </div>
           <p className="mt-1 text-xs text-subtle">
@@ -136,7 +138,7 @@ export function HotCoinsRadar({ activeSymbol, onSelectSymbol }: HotCoinsRadarPro
       </div>
 
       {/* Category filter pills */}
-      <div className="mt-3 flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+      <div className="mt-3 flex items-center gap-1.5 overflow-x-auto pb-1.5 text-xs fancy-scrollbar-subtle">
         <span className="text-[11px] font-semibold text-subtle mr-1 shrink-0">Sector:</span>
         {['All', 'Meme', 'Fan Token', 'AI / Data', 'Layer 1', 'DeFi', 'Layer 2'].map((cat) => (
           <button
@@ -154,11 +156,22 @@ export function HotCoinsRadar({ activeSymbol, onSelectSymbol }: HotCoinsRadarPro
         ))}
       </div>
 
-      {/* Coin Grid */}
-      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
+      {/* Coin Grid Container with fancy-scrollbar when expanded */}
+      <div
+        className={`mt-4 transition-all duration-300 ${
+          expanded ? 'max-h-[640px] overflow-y-auto fancy-scrollbar pr-2 p-1 rounded-2xl border border-line-soft bg-surface-2/30 shadow-inner' : ''
+        }`}
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
         {loading && !data ? (
-          <div className="col-span-full py-12 text-center text-sm text-subtle">
-            Scanning 75+ coin order books, volume spikes & breakout zones…
+          <div className="col-span-full space-y-4">
+            <div className="flex items-center justify-center gap-2.5 rounded-2xl border border-line bg-surface-2/70 py-3.5 shadow-xs">
+              <Spinner size="sm" color="accent" />
+              <span className="text-xs font-semibold text-ink">
+                Scanning 75+ coin order books, volume spikes & breakout zones…
+              </span>
+            </div>
+            <HotCoinsRadarSkeleton />
           </div>
         ) : filteredCoins.length === 0 ? (
           <div className="col-span-full py-8 text-center text-sm text-subtle flex flex-col items-center justify-center gap-2">
@@ -280,14 +293,15 @@ export function HotCoinsRadar({ activeSymbol, onSelectSymbol }: HotCoinsRadarPro
                   <span>Vol: {formatVolume(coin.quoteVolume)}</span>
                 </div>
 
-                {/* Expected Pump Timing & Target Expansion */}
-                <div className="mt-2.5 rounded-xl border border-line bg-surface-2/60 p-2.5 space-y-1.5 text-xs">
+                {/* Trade Setup: Entry & Exit Levels */}
+                <div className="mt-2.5 rounded-xl border border-line bg-surface-2/70 p-2.5 space-y-2 text-xs">
+                  {/* Expected Window */}
                   <div className="flex items-center justify-between">
                     <span className="flex items-center gap-1 font-semibold text-subtle text-[11px]">
-                      <span>⏱️</span> Expected Window:
+                      <span>⏱️</span> Timing Window:
                     </span>
                     <span
-                      className={`font-bold text-[11px] px-2 py-0.5 rounded-md border ${
+                      className={`font-bold text-[10px] px-2 py-0.5 rounded-md border ${
                         coin.pumpWindow === 'IMMINENT_15M'
                           ? 'border-amber-500/40 bg-amber-500/10 text-amber-300 animate-pulse'
                           : coin.pumpWindow === 'SHORT_TERM_1H'
@@ -299,23 +313,52 @@ export function HotCoinsRadar({ activeSymbol, onSelectSymbol }: HotCoinsRadarPro
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between border-t border-line/40 pt-1.5">
-                    <span className="flex items-center gap-1 font-semibold text-subtle text-[11px]">
-                      <span>🎯</span> Expected Target:
-                    </span>
-                    <div className="text-right">
-                      <span className="font-bold text-emerald-400 text-[11px]">
+                  {/* Entry & Stop Loss (Risk Exit) Badges */}
+                  <div className="grid grid-cols-2 gap-1.5 border-t border-line/40 pt-2">
+                    <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/5 p-1.5">
+                      <div className="flex items-center justify-between text-[10px] text-emerald-400 font-semibold">
+                        <span>🟢 Entry Zone</span>
+                      </div>
+                      <p className="font-mono text-xs font-bold text-ink mt-0.5">
+                        {formatPrice(coin.entryPrice ?? coin.price)}
+                      </p>
+                    </div>
+
+                    <div className="rounded-lg border border-rose-500/25 bg-rose-500/5 p-1.5">
+                      <div className="flex items-center justify-between text-[10px] text-rose-400 font-semibold">
+                        <span>🔴 Stop Loss</span>
+                        <span className="text-[9px] font-mono">-{coin.stopLossPct ?? 2.0}%</span>
+                      </div>
+                      <p className="font-mono text-xs font-bold text-ink mt-0.5">
+                        {formatPrice(coin.stopLossPrice ?? coin.price * 0.98)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Take-Profit Exit Level */}
+                  <div className="rounded-lg border border-amber-500/25 bg-amber-500/5 p-1.5">
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="font-semibold text-amber-400 flex items-center gap-1">
+                        <span>🎯 Target (Exit)</span>
+                      </span>
+                      <span className="font-bold text-emerald-400 font-mono">
                         +{coin.predictedUpsidePct}% ~ +{coin.predictedUpsideMaxPct}%
                       </span>
-                      <span className="text-[10px] text-muted ml-1 font-mono">
-                        ({formatPrice(coin.targetPrice)})
+                    </div>
+                    <div className="flex items-center justify-between mt-0.5">
+                      <span className="font-mono text-xs font-bold text-ink">
+                        {formatPrice(coin.targetPrice)}
+                      </span>
+                      <span className="text-[10px] font-bold text-cyan-300 font-mono">
+                        1 : {coin.riskRewardRatio ?? 2.5} R:R
                       </span>
                     </div>
                   </div>
 
+                  {/* Est. Return */}
                   <div className="flex items-center justify-between text-[10px] text-subtle border-t border-dashed border-line/40 pt-1">
-                    <span>Est. Return on $1k:</span>
-                    <span className="font-semibold text-ink font-mono">
+                    <span>Gain on $1k:</span>
+                    <span className="font-semibold text-emerald-400 font-mono">
                       +${coin.expectedGainPer1k} ~ +${coin.expectedGainMaxPer1k}
                     </span>
                   </div>
@@ -360,18 +403,19 @@ export function HotCoinsRadar({ activeSymbol, onSelectSymbol }: HotCoinsRadarPro
             )
           })
         )}
-        {filteredCoins.length > 12 && (
-          <div className="col-span-full flex justify-center pt-2">
-            <button
-              type="button"
-              onClick={() => setExpanded(!expanded)}
-              className="inline-flex items-center gap-2 rounded-2xl border border-line bg-surface-2 px-5 py-2.5 text-xs font-bold text-ink hover:border-accent hover:text-accent transition shadow-xs cursor-pointer"
-            >
-              <span>{expanded ? '▲ Collapse Watchlist' : `▼ Show All (${filteredCoins.length}) Breakout Setups`}</span>
-            </button>
-          </div>
-        )}
+        </div>
       </div>
+      {filteredCoins.length > 12 && (
+        <div className="flex justify-center pt-3 border-t border-line/40 mt-3">
+          <button
+            type="button"
+            onClick={() => setExpanded(!expanded)}
+            className="inline-flex items-center gap-2 rounded-2xl border border-line bg-surface-2 px-5 py-2.5 text-xs font-bold text-ink hover:border-accent hover:text-accent transition shadow-xs cursor-pointer"
+          >
+            <span>{expanded ? '▲ Collapse Watchlist' : `▼ Show All (${filteredCoins.length}) Breakout Setups`}</span>
+          </button>
+        </div>
+      )}
     </section>
   )
 }

@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server'
 import { isEmailConfigured, sendTestEmail } from '@/lib/notify/resend'
 import { isTelegramConfigured, sendTelegramText } from '@/lib/notify/telegram'
+import { isBinanceSquareConfigured, sendTestSquarePost } from '@/lib/notify/binance-square'
 
 export const dynamic = 'force-dynamic'
 
 /**
  * Send a test message through one channel so the credentials and the chat /
- * inbox can be verified from the settings page.
+ * inbox / feed can be verified from the settings page.
  *
- * Body: `{ channel: 'email' | 'telegram' }`
+ * Body: `{ channel: 'email' | 'telegram' | 'square' }`
  */
 export async function POST(request: Request) {
   let channel: string | undefined
@@ -39,6 +40,20 @@ export async function POST(request: Request) {
       }
       await sendTelegramText('✅ ETH Signal — test message. Telegram alerts are working.')
       return NextResponse.json({ ok: true, message: 'Test message sent' })
+    }
+
+    if (channel === 'square') {
+      if (!isBinanceSquareConfigured()) {
+        return NextResponse.json(
+          { error: 'Binance Square is not configured (Creator OpenAPI key required)' },
+          { status: 400 },
+        )
+      }
+      const res = await sendTestSquarePost()
+      return NextResponse.json({
+        ok: true,
+        message: `Test post published to Binance Square (Content ID: ${res.contentId ?? 'OK'})`,
+      })
     }
 
     return NextResponse.json({ error: 'Unknown channel' }, { status: 400 })

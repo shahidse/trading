@@ -5,6 +5,7 @@ import { runAutoTrade, type TradeOutcome } from '@/lib/exchange/trader'
 import { getNotifySettings } from '@/lib/notify/settings'
 import { isEmailConfigured, sendSignalEmail } from '@/lib/notify/resend'
 import { isTelegramConfigured, sendSignalTelegram } from '@/lib/notify/telegram'
+import { isBinanceSquareConfigured, publishSignalToSquare } from '@/lib/notify/binance-square'
 import { generateSignal } from '@/lib/signal/engine'
 import { shouldAlert, shouldNotify, type NotifyState } from '@/lib/signal/plan'
 import type { NotifyMode, Signal, SignalDirection, TradeAction } from '@/lib/types'
@@ -21,8 +22,10 @@ export type AnalysisResult = {
   /** Effective trigger mode per channel. */
   emailMode: NotifyMode
   telegramMode: NotifyMode
+  squareMode: NotifyMode
   emailSent: boolean
   telegramSent: boolean
+  squareSent: boolean
   /** Automatic order placement result, or null when trading is not armed. */
   trade: TradeOutcome | null
 }
@@ -123,6 +126,15 @@ export async function runAnalysis(options: SnapshotOptions = {}): Promise<Analys
     }
   }
 
+  let squareSent = false
+  if (shouldNotify(settings.square.mode, previousState, nextState) && isBinanceSquareConfigured()) {
+    try {
+      squareSent = await publishSignalToSquare(signal)
+    } catch (error) {
+      console.error('[notify] failed to publish to Binance Square:', error)
+    }
+  }
+
   return {
     signal,
     id,
@@ -132,8 +144,10 @@ export async function runAnalysis(options: SnapshotOptions = {}): Promise<Analys
     directionChanged,
     emailMode: settings.email.mode,
     telegramMode: settings.telegram.mode,
+    squareMode: settings.square.mode,
     emailSent,
     telegramSent,
+    squareSent,
     trade,
   }
 }

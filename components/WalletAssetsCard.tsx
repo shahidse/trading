@@ -1,8 +1,10 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import type { AssetBalance } from '@/lib/exchange/client'
 import { Pagination } from '@/components/Pagination'
+import { formatUsd, formatPkr, usdToPkr, DEFAULT_PKR_RATE } from '@/lib/currency'
+import { Spinner } from '@/components/Loader'
 
 export type WalletAssetsCardProps = {
   balances?: AssetBalance[] | null
@@ -26,6 +28,27 @@ export function WalletAssetsCard({
   const [collapsed, setCollapsed] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const [currency, setCurrency] = useState<'USD' | 'PKR'>('USD')
+
+  // Listen to currency changes in localStorage or fallback
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('eth_signal_currency')
+      if (saved === 'PKR' || saved === 'USD') setCurrency(saved)
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  const toggleCurrency = () => {
+    const next = currency === 'USD' ? 'PKR' : 'USD'
+    setCurrency(next)
+    try {
+      localStorage.setItem('eth_signal_currency', next)
+    } catch {
+      // ignore
+    }
+  }
 
   const activeBalances = useMemo(
     () => (balances || []).filter((b) => b.total > 0.00001),
@@ -55,6 +78,7 @@ export function WalletAssetsCard({
     }
   }
 
+  const totalPkr = usdToPkr(totalUsd, DEFAULT_PKR_RATE)
   const usdtAsset = activeBalances.find((b) => b.asset === 'USDT')
   const ethAsset = activeBalances.find((b) => b.asset === 'ETH')
 
@@ -84,18 +108,31 @@ export function WalletAssetsCard({
               </p>
             ) : (
               <p className="text-xs text-muted">
-                {activeBalances.length > 0
-                  ? `Est. Portfolio: ~$${totalUsd.toLocaleString('en-US', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })} · ${activeBalances.length} assets`
-                  : 'No API credentials or empty wallet'}
+                {activeBalances.length > 0 ? (
+                  currency === 'PKR' ? (
+                    <>Est. Portfolio: ~{formatPkr(totalPkr)} ({formatUsd(totalUsd)}) · {activeBalances.length} assets</>
+                  ) : (
+                    <>Est. Portfolio: ~{formatUsd(totalUsd)} ({formatPkr(totalPkr, true)}) · {activeBalances.length} assets</>
+                  )
+                ) : (
+                  'No API credentials or empty wallet'
+                )}
               </p>
             )}
           </div>
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Currency Switcher */}
+          <button
+            type="button"
+            onClick={toggleCurrency}
+            title={`Switch currency (Current: ${currency})`}
+            className="rounded-lg border border-line bg-surface-2 px-2 py-1 text-xs font-bold text-muted transition hover:bg-surface hover:text-ink"
+          >
+            {currency === 'USD' ? '💵 USD' : '🇵🇰 PKR'}
+          </button>
+
           {onRefresh && (
             <button
               onClick={onRefresh}
@@ -103,7 +140,7 @@ export function WalletAssetsCard({
               title="Refresh balances from Binance"
               className="rounded-lg border border-line bg-surface-2 p-1.5 text-xs text-muted transition hover:bg-surface hover:text-ink disabled:opacity-50"
             >
-              {loading ? '⏳' : '🔄'}
+              {loading ? <Spinner size="xs" color="accent" /> : '🔄'}
             </button>
           )}
           <button
@@ -118,21 +155,27 @@ export function WalletAssetsCard({
 
       {!collapsed && (
         <div className="mt-4 space-y-3">
-          {/* Quick Spotlight: USDT & ETH */}
+          {/* Quick Spotlight: USDT & ETH with dual currency display */}
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-xl border border-line-soft bg-surface-2 p-3">
               <span className="text-[11px] font-medium text-muted">Free USDT</span>
               <p className="mt-0.5 text-base font-bold text-ink">
-                ${(usdtAsset?.free ?? 0).toLocaleString('en-US', {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
+                {currency === 'PKR'
+                  ? formatPkr(usdToPkr(usdtAsset?.free ?? 0, DEFAULT_PKR_RATE))
+                  : formatUsd(usdtAsset?.free ?? 0)}
               </p>
-              {usdtAsset && usdtAsset.locked > 0 && (
-                <span className="text-[10px] text-subtle">
-                  Locked: ${usdtAsset.locked.toFixed(2)}
+              <div className="mt-0.5 flex flex-wrap gap-x-2 text-[10px] text-subtle">
+                <span>
+                  {currency === 'PKR'
+                    ? formatUsd(usdtAsset?.free ?? 0)
+                    : formatPkr(usdToPkr(usdtAsset?.free ?? 0, DEFAULT_PKR_RATE), true)}
                 </span>
-              )}
+                {usdtAsset && usdtAsset.locked > 0 && (
+                  <span>
+                    Locked: {formatUsd(usdtAsset.locked)}
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="rounded-xl border border-line-soft bg-surface-2 p-3">
@@ -141,9 +184,18 @@ export function WalletAssetsCard({
                 {(ethAsset?.free ?? 0).toFixed(4)} ETH
               </p>
               {ethPrice && ethAsset && (
-                <span className="text-[10px] text-subtle">
-                  ~${(ethAsset.total * ethPrice).toFixed(2)} USD
-                </span>
+                <div className="mt-0.5 flex flex-wrap gap-x-2 text-[10px] text-subtle">
+                  <span>
+                    {currency === 'PKR'
+                      ? formatPkr(usdToPkr(ethAsset.total * ethPrice, DEFAULT_PKR_RATE))
+                      : formatUsd(ethAsset.total * ethPrice)}
+                  </span>
+                  <span>
+                    {currency === 'PKR'
+                      ? formatUsd(ethAsset.total * ethPrice)
+                      : formatPkr(usdToPkr(ethAsset.total * ethPrice, DEFAULT_PKR_RATE), true)}
+                  </span>
+                </div>
               )}
             </div>
           </div>
@@ -183,7 +235,7 @@ export function WalletAssetsCard({
           {/* Full Asset Breakdown Table (scrollable container, default 20 records) */}
           {filteredBalances.length > 0 && (
             <div className="overflow-hidden rounded-xl border border-line-soft">
-              <div className="max-h-[360px] overflow-y-auto">
+              <div className="max-h-[360px] overflow-y-auto fancy-scrollbar">
                 <table className="w-full text-left text-xs">
                   <thead className="sticky top-0 z-10 bg-surface-2 text-[10px] font-semibold uppercase tracking-wider text-muted border-b border-line-soft">
                     <tr>
@@ -228,9 +280,16 @@ export function WalletAssetsCard({
           )}
 
           {activeBalances.length === 0 && (
-            <p className="py-2 text-center text-xs text-subtle">
-              No balances detected. Configure Binance API keys in Settings to connect wallet.
-            </p>
+            loading ? (
+              <div className="flex items-center justify-center gap-2 py-4 text-xs text-muted">
+                <Spinner size="xs" color="accent" />
+                <span>Connecting to exchange & synchronizing balances…</span>
+              </div>
+            ) : (
+              <p className="py-2 text-center text-xs text-subtle">
+                No balances detected. Configure Binance API keys in Settings to connect wallet.
+              </p>
+            )
           )}
         </div>
       )}

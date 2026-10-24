@@ -9,19 +9,22 @@ import { IndicatorPanel } from '@/components/IndicatorPanel'
 import { OrderHistory } from '@/components/OrderHistory'
 import { SignalCard } from '@/components/SignalCard'
 import { SignalHistory, type StoredSignal } from '@/components/SignalHistory'
-import { useTheme } from '@/components/ThemeToggle'
+import { useTheme, AmbientLightMenu, ThemeStyleMenu, AmbientAtmosphereGlow } from '@/components/ThemeToggle'
 import { TradePlanCard } from '@/components/TradePlanCard'
 import { TradingControls } from '@/components/TradingControls'
 import { WalletConnect } from '@/components/WalletConnect'
 import { WalletAssetsCard } from '@/components/WalletAssetsCard'
+import { AssetsChart } from '@/components/AssetsChart'
 import { VenueSelector } from '@/components/VenueSelector'
 import { OrderBookWidget } from '@/components/OrderBookWidget'
 import { HotCoinsRadar } from '@/components/HotCoinsRadar'
+import { FutureGainersPredictor } from '@/components/FutureGainersPredictor'
 import { useBinanceWebSocket } from '@/hooks/useBinanceWebSocket'
 import type { AssetBalance, LiveOrder } from '@/lib/exchange/client'
 import type { StoredTradeOrder } from '@/lib/db/client'
 import { formatAge, formatPrice } from '@/lib/format'
 import { readJson } from '@/lib/utils'
+import { Spinner, ButtonSpinner, CardSkeleton } from '@/components/Loader'
 
 type PriceResponse = {
   symbol: string
@@ -74,7 +77,7 @@ export default function Page() {
   >('plan')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [activeSidebarNav, setActiveSidebarNav] = useState<
-    'overview' | 'chart' | 'plan' | 'indicators' | 'orders' | 'history' | 'backtest'
+    'overview' | 'predictions' | 'assets' | 'chart' | 'plan' | 'indicators' | 'orders' | 'history' | 'backtest'
   >('overview')
 
   const isTestnet = Boolean((tradesData?.settings as Record<string, unknown> | undefined)?.testnet)
@@ -151,6 +154,8 @@ export default function Page() {
   const isBrutalist = themeStyle === 'brutalist'
   const isPlayful = themeStyle === 'playful'
   const isNeofuturistic = themeStyle === 'neofuturistic'
+  const isHyperMatrix = themeStyle === 'hyper-matrix'
+  const isBloodMoon = themeStyle === 'blood-moon'
 
   // Outer container adaptation based on layout and archetype
   const containerClass =
@@ -163,7 +168,8 @@ export default function Page() {
       : 'mx-auto max-w-7xl px-3 sm:px-4 py-4 sm:py-6'
 
   return (
-    <main className={containerClass}>
+    <main className={`${containerClass} relative`}>
+      <AmbientAtmosphereGlow />
       {/* Top Header Branding & Global Action Bar */}
       <header
         className={`flex flex-wrap items-center justify-between gap-4 pb-5 ${
@@ -187,10 +193,25 @@ export default function Page() {
                     ? 'text-2xl font-black text-accent'
                     : isNeofuturistic
                     ? 'text-xl uppercase tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-accent to-up'
+                    : isHyperMatrix
+                    ? 'text-xl font-black uppercase tracking-wider text-accent drop-shadow-[0_0_12px_var(--accent-soft)]'
+                    : isBloodMoon
+                    ? 'text-xl font-black uppercase tracking-wider text-rose-500 drop-shadow-[0_0_12px_rgba(255,0,85,0.3)]'
                     : 'text-lg font-bold tracking-tight'
                 }`}
               >
-                ETH SIGNAL {isBrutalist ? '■' : isPlayful ? '🚀' : isNeofuturistic ? '◈' : ''}
+                ETH SIGNAL{' '}
+                {isBrutalist
+                  ? '■'
+                  : isPlayful
+                  ? '🚀'
+                  : isNeofuturistic
+                  ? '◈'
+                  : isHyperMatrix
+                  ? '⚡'
+                  : isBloodMoon
+                  ? '🩸'
+                  : ''}
               </h1>
               <span className="rounded-md border border-line bg-surface-2 px-2 py-0.5 text-[10px] font-bold uppercase text-subtle">
                 {themeStyle}
@@ -205,6 +226,8 @@ export default function Page() {
 
         {/* Global Toolbar */}
         <div className="flex flex-wrap items-center gap-2">
+          <ThemeStyleMenu />
+          <AmbientLightMenu />
           <TradingControls />
           <Link
             href="/settings"
@@ -299,15 +322,17 @@ export default function Page() {
                 : 'rounded-lg bg-indigo-500 text-white hover:bg-indigo-400'
             }`}
           >
-            {running ? 'Evaluating…' : '▶ Run Analysis'}
+            {running ? <ButtonSpinner label="Evaluating Confluence…" size="xs" /> : '▶ Run Analysis'}
           </button>
 
           <button
             type="button"
             onClick={() => void load()}
-            className="px-3 sm:px-3.5 py-2.5 sm:py-2 rounded-lg border border-line text-xs font-medium text-muted transition hover:bg-surface-2 hover:text-ink shrink-0"
+            disabled={loading}
+            title="Refresh signals & live data"
+            className="px-3 sm:px-3.5 py-2.5 sm:py-2 rounded-lg border border-line text-xs font-medium text-muted transition hover:bg-surface-2 hover:text-ink shrink-0 disabled:opacity-50"
           >
-            ↻
+            {loading ? <Spinner size="xs" color="accent" /> : '↻'}
           </button>
         </div>
 
@@ -389,12 +414,14 @@ export default function Page() {
 
               {/* Navigation Items (Responsive grid on mobile when open, vertical stack on desktop) */}
               <nav
-                className={`gap-1.5 overflow-x-auto pb-1 md:pb-0 md:flex-col ${
+                className={`gap-1.5 overflow-x-auto pb-1 md:pb-0 md:flex-col fancy-scrollbar-subtle ${
                   sidebarCollapsed ? 'hidden md:flex md:items-center' : 'grid grid-cols-2 sm:grid-cols-3 md:flex'
                 }`}
               >
                 {[
                   { id: 'overview', label: 'Overview', icon: '📊', desc: 'Cockpit View' },
+                  { id: 'predictions', label: 'AI Predictor', icon: '🔮', desc: 'Multi-Day Future Gainers' },
+                  { id: 'assets', label: 'Assets & PKR', icon: '💰', desc: 'Net Worth & PKR Conversion' },
                   { id: 'chart', label: 'Chart', icon: '📈', desc: 'Candlestick Analysis' },
                   { id: 'plan', label: 'Trade Plan', icon: '🎯', desc: 'Signals & Levels' },
                   { id: 'indicators', label: 'Indicators', icon: '⚡', desc: '9-Metric Matrix' },
@@ -491,11 +518,28 @@ export default function Page() {
                     </div>
                   </div>
                   <div className="space-y-6 lg:col-span-5 xl:col-span-5 2xl:col-span-4">
-                    {latest && <TradePlanCard plan={latest.plan} />}
-                    {latest && <SignalCard signal={latest} />}
+                    {latest ? (
+                      <>
+                        <TradePlanCard plan={latest.plan} />
+                        <SignalCard signal={latest} />
+                      </>
+                    ) : loading ? (
+                      <div className="space-y-6">
+                        <CardSkeleton lines={4} />
+                        <CardSkeleton lines={5} />
+                      </div>
+                    ) : null}
                   </div>
                 </div>
                 {latest && <IndicatorPanel indicators={latest.indicators} />}
+                <FutureGainersPredictor
+                  activeSymbol={selectedSymbol}
+                  onSelectSymbol={(sym) => {
+                    handleSelectSymbol(sym)
+                    setActiveSidebarNav('chart')
+                  }}
+                />
+                <AssetsChart />
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                   <WalletAssetsCard
                     balances={tradesData?.liveBalances?.balances}
@@ -525,6 +569,34 @@ export default function Page() {
                   <BacktestPanel />
                 </div>
               </>
+            )}
+
+            {/* View: AI Multi-Day Gainers Predictions */}
+            {activeSidebarNav === 'predictions' && (
+              <div className="space-y-6">
+                <FutureGainersPredictor
+                  activeSymbol={selectedSymbol}
+                  onSelectSymbol={(sym) => {
+                    handleSelectSymbol(sym)
+                    setActiveSidebarNav('chart')
+                  }}
+                />
+              </div>
+            )}
+
+            {/* View: Assets & PKR Valuation */}
+            {activeSidebarNav === 'assets' && (
+              <div className="space-y-6">
+                <AssetsChart />
+                <WalletAssetsCard
+                  balances={tradesData?.liveBalances?.balances}
+                  testnet={tradesData?.settings?.testnet}
+                  ethPrice={ws.ticker?.price ?? price?.price}
+                  onRefresh={load}
+                  loading={loading}
+                  exchangeError={tradesData?.exchangeError}
+                />
+              </div>
             )}
 
             {/* View: Technical Chart */}
@@ -579,6 +651,8 @@ export default function Page() {
           <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-surface/95 backdrop-blur-md border-t border-line py-1.5 px-2 shadow-xl flex items-center justify-around">
             {[
               { id: 'overview', label: 'Cockpit', icon: '📊' },
+              { id: 'predictions', label: 'Predict', icon: '🔮' },
+              { id: 'assets', label: 'Assets', icon: '💰' },
               { id: 'chart', label: 'Chart', icon: '📈' },
               { id: 'plan', label: 'Plan', icon: '🎯' },
               { id: 'indicators', label: 'Gauges', icon: '⚡' },
@@ -650,7 +724,10 @@ export default function Page() {
               }`}
             >
               {loading ? (
-                <p className="text-sm text-subtle">Loading signals…</p>
+                <div className="space-y-6">
+                  <CardSkeleton lines={4} />
+                  <CardSkeleton lines={5} />
+                </div>
               ) : latest ? (
                 <>
                   <TradePlanCard plan={latest.plan} />
@@ -710,6 +787,16 @@ export default function Page() {
                 loading={loading}
                 liveOrders={tradesData?.liveOrders}
                 testnet={tradesData?.settings?.testnet}
+              />
+            </div>
+
+            {/* Multi-Day AI Predictions in Multi-Column View */}
+            <div className="lg:col-span-12">
+              <FutureGainersPredictor
+                activeSymbol={selectedSymbol}
+                onSelectSymbol={(sym) => {
+                  handleSelectSymbol(sym)
+                }}
               />
             </div>
           </div>
@@ -849,14 +936,17 @@ export default function Page() {
                   />
                 )}
                 {activeInspectorTab === 'assets' && (
-                  <WalletAssetsCard
-                    balances={tradesData?.liveBalances?.balances}
-                    testnet={tradesData?.settings?.testnet}
-                    ethPrice={ws.ticker?.price ?? price?.price}
-                    onRefresh={load}
-                    loading={loading}
-                    exchangeError={tradesData?.exchangeError}
-                  />
+                  <div className="space-y-6">
+                    <AssetsChart />
+                    <WalletAssetsCard
+                      balances={tradesData?.liveBalances?.balances}
+                      testnet={tradesData?.settings?.testnet}
+                      ethPrice={ws.ticker?.price ?? price?.price}
+                      onRefresh={load}
+                      loading={loading}
+                      exchangeError={tradesData?.exchangeError}
+                    />
+                  </div>
                 )}
                 {activeInspectorTab === 'orders' && (
                   <OrderHistory
@@ -876,6 +966,7 @@ export default function Page() {
 
           {/* Lower Full-Width Execution Audit & Signal Strip */}
           <div className="space-y-6">
+            <AssetsChart />
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <WalletAssetsCard
                 balances={tradesData?.liveBalances?.balances}

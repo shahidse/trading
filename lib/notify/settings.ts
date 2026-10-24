@@ -24,20 +24,29 @@ export type TelegramNotifySettings = {
   chatId: string
 }
 
+export type BinanceSquareNotifySettings = {
+  enabled: boolean
+  mode: NotifyMode
+  apiKey: string
+}
+
 export type NotifySettings = {
   email: EmailNotifySettings
   telegram: TelegramNotifySettings
+  square: BinanceSquareNotifySettings
 }
 
 /** What the browser is allowed to see: secrets become set/unset flags. */
 export type PublicNotifySettings = {
   email: { enabled: boolean; mode: NotifyMode; from: string; to: string; apiKeySet: boolean }
   telegram: { enabled: boolean; mode: NotifyMode; chatId: string; botTokenSet: boolean }
+  square: { enabled: boolean; mode: NotifyMode; apiKeySet: boolean }
 }
 
 export type NotifySettingsPatch = {
   email?: Partial<EmailNotifySettings>
   telegram?: Partial<TelegramNotifySettings>
+  square?: Partial<BinanceSquareNotifySettings>
 }
 
 const SETTINGS_KEY = 'notifications'
@@ -72,6 +81,11 @@ function envDefaults(): NotifySettings {
       botToken: config.telegram.botToken,
       chatId: config.telegram.chatId,
     },
+    square: {
+      enabled: Boolean(config.binanceSquare.apiKey),
+      mode: normalizeMode(process.env.BINANCE_SQUARE_NOTIFY_MODE, DEFAULT_NOTIFY_MODE),
+      apiKey: config.binanceSquare.apiKey,
+    },
   }
 }
 
@@ -91,6 +105,7 @@ function mergeStored(raw: unknown, base: NotifySettings): NotifySettings {
   const root = raw as Record<string, unknown>
   const email = (root.email ?? {}) as Record<string, unknown>
   const telegram = (root.telegram ?? {}) as Record<string, unknown>
+  const square = (root.square ?? {}) as Record<string, unknown>
 
   return {
     email: {
@@ -105,6 +120,11 @@ function mergeStored(raw: unknown, base: NotifySettings): NotifySettings {
       mode: normalizeMode(telegram.mode, base.telegram.mode),
       botToken: str(telegram.botToken, base.telegram.botToken),
       chatId: str(telegram.chatId, base.telegram.chatId),
+    },
+    square: {
+      enabled: bool(square.enabled, base.square.enabled),
+      mode: normalizeMode(square.mode, base.square.mode),
+      apiKey: str(square.apiKey, base.square.apiKey),
     },
   }
 }
@@ -129,9 +149,11 @@ export function saveNotifySettings(patch: NotifySettingsPatch): NotifySettings {
   const next: NotifySettings = {
     email: { ...current.email, ...stripUndefined(patch.email) },
     telegram: { ...current.telegram, ...stripUndefined(patch.telegram) },
+    square: { ...current.square, ...stripUndefined(patch.square) },
   }
   next.email.mode = normalizeMode(next.email.mode, DEFAULT_NOTIFY_MODE)
   next.telegram.mode = normalizeMode(next.telegram.mode, DEFAULT_NOTIFY_MODE)
+  next.square.mode = normalizeMode(next.square.mode, DEFAULT_NOTIFY_MODE)
 
   setSetting(SETTINGS_KEY, JSON.stringify(next))
   return next
@@ -163,6 +185,11 @@ export function publicNotifySettings(
       mode: settings.telegram.mode,
       chatId: settings.telegram.chatId,
       botTokenSet: Boolean(settings.telegram.botToken),
+    },
+    square: {
+      enabled: settings.square.enabled,
+      mode: settings.square.mode,
+      apiKeySet: Boolean(settings.square.apiKey),
     },
   }
 }

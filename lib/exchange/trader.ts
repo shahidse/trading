@@ -228,7 +228,6 @@ export async function executeTrade(
   }
 
   // A SELL is sized from the position we actually hold, not the configured notional.
-  // In live/testnet mode, query live position on Binance directly.
   let notionalUsd = intent.notionalUsd
   let liveBaseFree = 0
   if (!settings.dryRun) {
@@ -237,13 +236,10 @@ export async function executeTrade(
         const exchange = await getTradingExchange()
         const livePos = await fetchLivePosition(exchange, intent.symbol)
         liveBaseFree = livePos.baseFree
-        notionalUsd =
-          livePos.notionalUsd > 0
-            ? livePos.notionalUsd
-            : (openPosition?.notionalUsd ?? intent.notionalUsd)
       } catch {
-        notionalUsd = openPosition?.notionalUsd ?? intent.notionalUsd
+        // live balance query fallback
       }
+      notionalUsd = openPosition?.notionalUsd ?? intent.notionalUsd
     }
   } else {
     if (openDryRun) {
@@ -358,10 +354,8 @@ export async function executeTrade(
       if (intent.side === 'BUY') {
         rawQuantity = intent.notionalUsd / marketPrice
       } else {
-        rawQuantity =
-          liveBaseFree > 0
-            ? liveBaseFree
-            : (openPosition?.quantity ?? intent.notionalUsd / marketPrice)
+        const targetQty = openPosition?.quantity ?? intent.notionalUsd / marketPrice
+        rawQuantity = liveBaseFree > 0 ? Math.min(targetQty, liveBaseFree) : targetQty
       }
     } else {
       if (openDryRun) {
@@ -564,23 +558,73 @@ export async function runAutoTrade(
   let openPositionSide: TradeSide | null = null
 
   if (!isDryRun) {
-    // Authoritative check via Binance SDK (zero DB dependency)
+    let openBuy: StoredTradeOrder | null = null
     try {
-      const exchange = await getTradingExchange()
-      const livePos = await fetchLivePosition(exchange, symbol)
-      hasOpenPosition = livePos.hasPosition || livePos.hasOpenOrders
-      openPositionSide = hasOpenPosition ? 'BUY' : null
-    } catch (err) {
-      console.warn(
-        '[trader] Could not query live position from Binance, falling back to DB/cache:',
-        err,
-      )
-      let openBuy = null
+      openBuy = getOpenBuyPosition(symbol)
+    } catch {}
+
+    if (openBuy) {
+      // We have a recorded open position. Check with Binance if it's still open.
       try {
-        openBuy = getOpenBuyPosition(symbol)
-      } catch {}
-      hasOpenPosition = openBuy !== null
-      openPositionSide = openBuy !== null ? 'BUY' : null
+        const exchange = await getTradingExchange()
+        const openOrders = await exchange.fetchOpenOrders(symbol, undefined, 5).catch(() => [])
+        if (openOrders.length > 0) {
+          // OCO bracket or working order is still live on exchange
+          hasOpenPosition = true
+          openPositionSide = 'BUY'
+        } else {
+          // No open orders on exchange. Check if our OCO/exit filled.
+          const myTrades = await exchange.fetchMyTrades(symbol, undefined, 5).catch(() => [])
+          const closingTrade = myTrades.find(
+            (t) => t.side === 'sell' && t.timestamp && t.timestamp >= openBuy!.createdAt,
+          )
+          if (closingTrade) {
+            // Position was closed on exchange (e.g. OCO hit TP or SL). Record closing order.
+            const closingPrice = Number(closingTrade.price ?? 0)
+            const closingQty = Number(closingTrade.amount ?? openBuy.quantity)
+            const closingNotional = closingQty * closingPrice
+            const pnl = openBuy.price ? (closingPrice - openBuy.price) * closingQty : null
+            try {
+              recordTradeOrder({
+                symbol,
+                side: 'SELL',
+                type: 'oco-exit',
+                quantity: closingQty,
+                price: closingPrice,
+                notionalUsd: closingNotional,
+                status: 'placed',
+                reason: `Binance native OCO bracket filled at $${closingPrice.toFixed(2)} (Trade #${closingTrade.id})`,
+                environment: environmentLabel(settings),
+                realisedPnlUsd: pnl,
+                response: JSON.stringify(closingTrade),
+                signalId,
+              })
+            } catch {}
+            hasOpenPosition = false
+            openPositionSide = null
+          } else {
+            // No closing trade found yet, position still open
+            hasOpenPosition = true
+            openPositionSide = 'BUY'
+          }
+        }
+      } catch (err) {
+        console.warn('[trader] Could not query Binance orders, relying on DB position:', err)
+        hasOpenPosition = true
+        openPositionSide = 'BUY'
+      }
+    } else {
+      // DB has no open position for this symbol.
+      // Verify whether Binance has any open orders for this symbol placed by our bot.
+      try {
+        const exchange = await getTradingExchange()
+        const openOrders = await exchange.fetchOpenOrders(symbol, undefined, 5).catch(() => [])
+        hasOpenPosition = openOrders.length > 0
+        openPositionSide = hasOpenPosition ? 'BUY' : null
+      } catch {
+        hasOpenPosition = false
+        openPositionSide = null
+      }
     }
   } else {
     // In dry-run mode: check in-memory cache first, then fallback to DB

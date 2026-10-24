@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { formatPrice } from '@/lib/format'
 import type { StoredTradeOrder } from '@/lib/db/client'
 import { readJson } from '@/lib/utils'
+import { ExchangeSettingsSkeleton, ButtonSpinner } from '@/components/Loader'
 
 type PublicExchangeSettings = {
   enabled: boolean
@@ -195,7 +196,7 @@ export function ExchangeSettingsCard() {
       </div>
 
       {loading ? (
-        <p className="mt-4 text-sm text-subtle">Loading…</p>
+        <ExchangeSettingsSkeleton />
       ) : (
         <>
           <div className="mt-4 flex flex-wrap gap-4 text-sm text-muted">
@@ -399,18 +400,24 @@ export function ExchangeSettingsCard() {
               type="button"
               onClick={() => void save()}
               disabled={busy}
-              className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-400 disabled:opacity-50"
+              className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-400 disabled:opacity-50 flex items-center gap-1.5"
             >
-              {busy ? 'Saving…' : 'Save'}
+              {busy ? <ButtonSpinner label="Saving settings…" size="xs" /> : 'Save'}
             </button>
             {enabled ? (
               <button
                 type="button"
                 onClick={() => void action(killSwitch ? 'resume' : 'halt')}
                 disabled={busy}
-                className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-2 text-sm font-medium text-down transition hover:bg-rose-500/20 disabled:opacity-50"
+                className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-2 text-sm font-medium text-down transition hover:bg-rose-500/20 disabled:opacity-50 flex items-center gap-1.5"
               >
-                {killSwitch ? 'Release kill switch' : 'Engage kill switch'}
+                {busy ? (
+                  <ButtonSpinner label="Updating safety guard…" size="xs" />
+                ) : killSwitch ? (
+                  'Release kill switch'
+                ) : (
+                  'Engage kill switch'
+                )}
               </button>
             ) : null}
           </div>

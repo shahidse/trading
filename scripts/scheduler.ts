@@ -2,6 +2,7 @@ import cron from 'node-cron'
 import { config } from '@/lib/config'
 import { runAnalysis } from '@/lib/pipeline'
 import { isEmailConfigured } from '@/lib/notify/resend'
+import { normalizeSymbol } from '@/lib/constants/coins'
 import { isTelegramConfigured } from '@/lib/notify/telegram'
 
 /**
@@ -14,7 +15,11 @@ import { isTelegramConfigured } from '@/lib/notify/telegram'
  */
 const SCHEDULE = process.env.CRON_SCHEDULE ?? '*/15 * * * *'
 const TARGET_SYMBOLS = process.env.SYMBOLS
-  ? process.env.SYMBOLS.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean)
+  ? process.env.SYMBOLS.split(',')
+      .map((s) => s.trim().toUpperCase())
+      .filter(Boolean)
+      .map((s) => (s.includes('/') ? s : `${s}/USDT`))
+      .map((s) => normalizeSymbol(s))
   : [config.symbol]
 
 async function tick(): Promise<void> {

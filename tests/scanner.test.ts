@@ -31,6 +31,9 @@ describe('scanHotCoins', () => {
       expect(top.targetPrice).toBeGreaterThan(top.price)
       expect(top.predictedUpsidePct).toBeGreaterThan(0)
       expect(top.expectedGainPer1k).toBeGreaterThan(0)
+      expect(top.entryPrice).toBeGreaterThan(0)
+      expect(top.stopLossPrice).toBeLessThan(top.entryPrice)
+      expect(top.riskRewardRatio).toBeGreaterThan(0)
     }
   }, 20_000)
 })

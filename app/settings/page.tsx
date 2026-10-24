@@ -4,9 +4,10 @@ import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { ExchangeSettingsCard } from '@/components/ExchangeSettingsCard'
 import { VenueSelector } from '@/components/VenueSelector'
-import { ThemeToggle, useTheme } from '@/components/ThemeToggle'
-import { LAYOUT_OPTIONS, type LayoutType } from '@/lib/theme'
+import { ThemeToggle, useTheme, ThemeStyleGrid } from '@/components/ThemeToggle'
+import { LAYOUT_OPTIONS, LIGHT_MODES, type LayoutType } from '@/lib/theme'
 import { readJson } from '@/lib/utils'
+import { SettingsSkeleton, ButtonSpinner } from '@/components/Loader'
 
 /** Interactive layout selection card */
 function LayoutCardItem({
@@ -87,9 +88,10 @@ type NotifyMode = 'action-change' | 'direction-change' | 'every'
 type PublicSettings = {
   email: { enabled: boolean; mode: NotifyMode; from: string; to: string; apiKeySet: boolean }
   telegram: { enabled: boolean; mode: NotifyMode; chatId: string; botTokenSet: boolean }
+  square?: { enabled: boolean; mode: NotifyMode; apiKeySet: boolean }
 }
 
-type Channel = 'email' | 'telegram'
+type Channel = 'email' | 'telegram' | 'square'
 type Status = { channel: Channel; kind: 'ok' | 'error'; text: string }
 
 const MODE_OPTIONS: { value: NotifyMode; label: string }[] = [
@@ -103,6 +105,7 @@ const inputClass =
 const labelClass = 'block text-xs uppercase tracking-wide text-subtle'
 
 export default function SettingsPage() {
+  const { colorMode, setTheme } = useTheme()
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<{ channel: Channel; action: 'save' | 'test' } | null>(null)
   const [status, setStatus] = useState<Status | null>(null)
@@ -122,6 +125,12 @@ export default function SettingsPage() {
   const [tgTokenTouched, setTgTokenTouched] = useState(false)
   const [tgTokenSet, setTgTokenSet] = useState(false)
 
+  const [squareEnabled, setSquareEnabled] = useState(false)
+  const [squareMode, setSquareMode] = useState<NotifyMode>('action-change')
+  const [squareKey, setSquareKey] = useState('')
+  const [squareKeyTouched, setSquareKeyTouched] = useState(false)
+  const [squareKeySet, setSquareKeySet] = useState(false)
+
   const apply = useCallback((settings: PublicSettings) => {
     setEmailEnabled(settings.email.enabled)
     setEmailMode(settings.email.mode)
@@ -137,6 +146,14 @@ export default function SettingsPage() {
     setTgToken('')
     setTgTokenTouched(false)
     setTgTokenSet(settings.telegram.botTokenSet)
+
+    if (settings.square) {
+      setSquareEnabled(settings.square.enabled)
+      setSquareMode(settings.square.mode)
+      setSquareKey('')
+      setSquareKeyTouched(false)
+      setSquareKeySet(settings.square.apiKeySet)
+    }
   }, [])
 
   useEffect(() => {
@@ -171,12 +188,20 @@ export default function SettingsPage() {
                   ...(emailKeyTouched ? { apiKey: emailKey } : {}),
                 },
               }
-            : {
+            : channel === 'telegram'
+            ? {
                 telegram: {
                   enabled: tgEnabled,
                   mode: tgMode,
                   chatId: tgChatId,
                   ...(tgTokenTouched ? { botToken: tgToken } : {}),
+                },
+              }
+            : {
+                square: {
+                  enabled: squareEnabled,
+                  mode: squareMode,
+                  ...(squareKeyTouched ? { apiKey: squareKey } : {}),
                 },
               }
 
@@ -212,6 +237,10 @@ export default function SettingsPage() {
       tgChatId,
       tgToken,
       tgTokenTouched,
+      squareEnabled,
+      squareMode,
+      squareKey,
+      squareKeyTouched,
     ],
   )
 
@@ -254,17 +283,17 @@ export default function SettingsPage() {
           type="button"
           onClick={() => void save(channel)}
           disabled={isBusy}
-          className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-400 disabled:opacity-50"
+          className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-400 disabled:opacity-50 flex items-center gap-1.5"
         >
-          {isBusy && busy?.action === 'save' ? 'Saving…' : 'Save'}
+          {isBusy && busy?.action === 'save' ? <ButtonSpinner label="Saving…" size="xs" /> : 'Save'}
         </button>
         <button
           type="button"
           onClick={() => void test(channel)}
           disabled={isBusy}
-          className="rounded-lg border border-line px-4 py-2 text-sm text-muted transition hover:bg-surface-2 hover:text-ink disabled:opacity-50"
+          className="rounded-lg border border-line px-4 py-2 text-sm text-muted transition hover:bg-surface-2 hover:text-ink disabled:opacity-50 flex items-center gap-1.5"
         >
-          {isBusy && busy?.action === 'test' ? 'Sending…' : 'Send test'}
+          {isBusy && busy?.action === 'test' ? <ButtonSpinner label="Sending test…" size="xs" /> : 'Send test'}
         </button>
       </div>
     )
@@ -290,7 +319,7 @@ export default function SettingsPage() {
       </header>
 
       {loading ? (
-        <p className="mt-8 text-sm text-subtle">Loading…</p>
+        <SettingsSkeleton />
       ) : (
         <div className="mt-6 space-y-6">
           {/* ---- Workspace Layout Architecture ---- */}
@@ -315,18 +344,57 @@ export default function SettingsPage() {
             </div>
           </section>
 
-          {/* ---- Design Archetype & Theme (Only once here) ---- */}
-          <section className="rounded-2xl border border-line bg-surface p-6 shadow-xs">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div>
+          {/* ---- Color Themes & Ambient Room Lighting ---- */}
+          <section className="rounded-2xl border border-line bg-surface p-6 shadow-xs space-y-6">
+            <div>
+              <div className="mb-3">
                 <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
-                  Design Archetype & Color Theme
+                  Color Themes & Visual Palettes (8)
                 </h2>
                 <p className="mt-1 text-xs text-subtle">
-                  Toggle between the 4 custom aesthetic styling systems and light/dark mode.
+                  Curated aesthetic design systems tailored for professional quant traders, crypto hedge funds, and night-owls.
                 </p>
               </div>
-              <ThemeToggle />
+              <ThemeStyleGrid />
+            </div>
+
+            <div className="border-t border-line-soft pt-4">
+              <div className="mb-3">
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">
+                  Ambient Room Lighting Setup
+                </h3>
+                <p className="mt-1 text-xs text-subtle">
+                  Adjust interface illumination to match your real-world room lighting: from full daylight sun to OLED pitch darkness.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                {LIGHT_MODES.map((mode) => {
+                  const active = colorMode === mode.id
+                  return (
+                    <button
+                      key={mode.id}
+                      type="button"
+                      onClick={() => setTheme(mode.id)}
+                      className={`flex flex-col items-start p-3 rounded-xl border text-left transition ${
+                        active
+                          ? 'border-accent bg-accent/10 shadow-sm ring-1 ring-accent'
+                          : 'border-line bg-surface-2 hover:border-line-soft'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full mb-1">
+                        <span className="text-lg">{mode.icon}</span>
+                        <span
+                          className="h-2.5 w-2.5 rounded-full border border-black/20 dark:border-white/20"
+                          style={{ backgroundColor: mode.bgPreview }}
+                        />
+                      </div>
+                      <span className="text-xs font-bold text-ink">{mode.label}</span>
+                      <span className="text-[10px] text-accent font-medium mt-0.5">{mode.ambientTitle}</span>
+                      <p className="text-[10px] text-subtle mt-1 line-clamp-2">{mode.desc}</p>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
           </section>
 
@@ -490,6 +558,92 @@ export default function SettingsPage() {
 
             {channelStatus('telegram')}
             {actions('telegram')}
+          </section>
+
+          {/* ---- Binance Square Social Feed ---- */}
+          <section className="rounded-2xl border border-line bg-surface p-6">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/15 text-sm text-amber-500 font-bold">
+                  🟡
+                </span>
+                <div>
+                  <h2 className="text-sm font-semibold uppercase tracking-wide text-ink">
+                    Binance Square (Social Feed)
+                  </h2>
+                  <p className="text-xs text-subtle">
+                    Auto-publish signals and predictions to your Binance Square creator profile
+                  </p>
+                </div>
+              </div>
+              <label className="flex items-center gap-2 text-sm text-muted">
+                <input
+                  type="checkbox"
+                  checked={squareEnabled}
+                  onChange={(event) => setSquareEnabled(event.target.checked)}
+                  className="h-4 w-4 accent-amber-500"
+                />
+                Enabled
+              </label>
+            </div>
+
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <label className="sm:col-span-2">
+                <span className={labelClass}>Auto-Publish Trigger</span>
+                <select
+                  value={squareMode}
+                  onChange={(event) => setSquareMode(event.target.value as NotifyMode)}
+                  className={inputClass}
+                >
+                  {MODE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="sm:col-span-2">
+                <div className="flex items-center justify-between">
+                  <span className={labelClass}>
+                    Binance Square Creator OpenAPI Key {squareKeySet ? '· saved' : '· not set'}
+                  </span>
+                  <a
+                    href="https://square.binance.com/creator-center"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[11px] text-accent hover:underline"
+                  >
+                    Get Key from Creator Center ↗
+                  </a>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="password"
+                    value={squareKey}
+                    onChange={(event) => {
+                      setSquareKey(event.target.value)
+                      setSquareKeyTouched(true)
+                    }}
+                    placeholder={squareKeySet ? '•••••••• (leave blank to keep)' : 'Enter Square OpenAPI Key…'}
+                    className={inputClass}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSquareKey('')
+                      setSquareKeyTouched(true)
+                    }}
+                    className="mt-1 shrink-0 rounded-lg border border-line px-3 text-xs text-muted transition hover:bg-surface-2 hover:text-ink"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </label>
+            </div>
+
+            {channelStatus('square')}
+            {actions('square')}
           </section>
 
           {/* ---- Execution Venue Selection ---- */}

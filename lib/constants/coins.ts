@@ -118,17 +118,78 @@ export const TOP_COINS: CoinInfo[] = [
   { symbol: 'LDO/USDT', base: 'LDO', quote: 'USDT', name: 'Lido DAO', category: 'DeFi' },
   { symbol: 'RUNE/USDT', base: 'RUNE', quote: 'USDT', name: 'THORChain', category: 'DeFi' },
   { symbol: 'CAKE/USDT', base: 'CAKE', quote: 'USDT', name: 'PancakeSwap', category: 'DeFi' },
+  { symbol: 'LA/USDT', base: 'LA', quote: 'USDT', name: 'LATOKEN', category: 'DeFi' },
+  { symbol: 'HAEDAL/USDT', base: 'HAEDAL', quote: 'USDT', name: 'Haedal Protocol', category: 'DeFi' },
+  { symbol: 'PUNDIX/USDT', base: 'PUNDIX', quote: 'USDT', name: 'Pundi X', category: 'DeFi' },
+  { symbol: 'HUMA/USDT', base: 'HUMA', quote: 'USDT', name: 'Huma Finance', category: 'DeFi' },
+  { symbol: 'SPK/USDT', base: 'SPK', quote: 'USDT', name: 'Spark Protocol', category: 'DeFi' },
+  { symbol: 'RESOLV/USDT', base: 'RESOLV', quote: 'USDT', name: 'Resolv Protocol', category: 'DeFi' },
 
-  // --- Real World Assets (RWA) & Storage ---
+  // --- Real World Assets (RWA) & Storage & Infrastructure ---
   { symbol: 'ONDO/USDT', base: 'ONDO', quote: 'USDT', name: 'Ondo Finance', category: 'Infrastructure' },
   { symbol: 'FIL/USDT', base: 'FIL', quote: 'USDT', name: 'Filecoin', category: 'Infrastructure' },
   { symbol: 'PYTH/USDT', base: 'PYTH', quote: 'USDT', name: 'Pyth Network', category: 'Infrastructure' },
+  { symbol: 'AVA/USDT', base: 'AVA', quote: 'USDT', name: 'AVA Foundation', category: 'Infrastructure' },
+  { symbol: 'KERNEL/USDT', base: 'KERNEL', quote: 'USDT', name: 'Kernel Protocol', category: 'Infrastructure' },
+  { symbol: 'OPEN/USDT', base: 'OPEN', quote: 'USDT', name: 'Open Loot', category: 'Infrastructure' },
+  { symbol: 'PROVE/USDT', base: 'PROVE', quote: 'USDT', name: 'Succinct Prove', category: 'Infrastructure' },
+
+  // --- Emerging Breakouts, AI & Memes ---
+  { symbol: 'INIT/USDT', base: 'INIT', quote: 'USDT', name: 'Initia', category: 'Layer 1' },
+  { symbol: 'LAYER/USDT', base: 'LAYER', quote: 'USDT', name: 'Solayer', category: 'Layer 1' },
+  { symbol: 'ASTER/USDT', base: 'ASTER', quote: 'USDT', name: 'Aster Network', category: 'Layer 2' },
+  { symbol: 'AVNT/USDT', base: 'AVNT', quote: 'USDT', name: 'Aventus', category: 'Layer 2' },
+  { symbol: 'BARD/USDT', base: 'BARD', quote: 'USDT', name: 'Bard AI', category: 'AI / Data' },
+  { symbol: 'SAHARA/USDT', base: 'SAHARA', quote: 'USDT', name: 'Sahara AI', category: 'AI / Data' },
+  { symbol: 'SXT/USDT', base: 'SXT', quote: 'USDT', name: 'Space and Time', category: 'AI / Data' },
+  { symbol: '1MBABYDOGE/USDT', base: '1MBABYDOGE', quote: 'USDT', name: 'Baby Doge Coin', category: 'Meme' },
+  { symbol: 'GIGGLE/USDT', base: 'GIGGLE', quote: 'USDT', name: 'Giggle Academy', category: 'Meme' },
+  { symbol: 'PUMP/USDT', base: 'PUMP', quote: 'USDT', name: 'Pump.fun', category: 'Meme' },
+  { symbol: 'TRUMP/USDT', base: 'TRUMP', quote: 'USDT', name: 'Official Trump', category: 'Meme' },
+  { symbol: 'VIRTUAL/USDT', base: 'VIRTUAL', quote: 'USDT', name: 'Virtuals Protocol', category: 'AI / Data' },
+  { symbol: 'AIXBT/USDT', base: 'AIXBT', quote: 'USDT', name: 'aixbt AI Agent', category: 'AI / Data' },
+
+  // --- High-Beta Liquid Restaking & Next-Gen DeFi ---
+  { symbol: 'AERO/USDT', base: 'AERO', quote: 'USDT', name: 'Aerodrome Finance', category: 'DeFi' },
+  { symbol: 'EIGEN/USDT', base: 'EIGEN', quote: 'USDT', name: 'EigenLayer', category: 'DeFi' },
+  { symbol: 'ETHFI/USDT', base: 'ETHFI', quote: 'USDT', name: 'Ether.fi', category: 'DeFi' },
+  { symbol: 'REZ/USDT', base: 'REZ', quote: 'USDT', name: 'Renzo Protocol', category: 'DeFi' },
+  { symbol: 'JTO/USDT', base: 'JTO', quote: 'USDT', name: 'Jito', category: 'DeFi' },
+  { symbol: 'WLFI/USDT', base: 'WLFI', quote: 'USDT', name: 'World Liberty Financial', category: 'DeFi' },
+
+  // --- Next-Gen Layer 1s, Layer 2s & Privacy ---
+  { symbol: 'STRK/USDT', base: 'STRK', quote: 'USDT', name: 'Starknet', category: 'Layer 2' },
+  { symbol: 'W/USDT', base: 'W', quote: 'USDT', name: 'Wormhole', category: 'Infrastructure' },
+  { symbol: 'DYM/USDT', base: 'DYM', quote: 'USDT', name: 'Dymension', category: 'Layer 2' },
+  { symbol: 'ALT/USDT', base: 'ALT', quote: 'USDT', name: 'AltLayer', category: 'Layer 2' },
+  { symbol: 'ERA/USDT', base: 'ERA', quote: 'USDT', name: 'zkSync Era', category: 'Layer 2' },
+  { symbol: 'SOPH/USDT', base: 'SOPH', quote: 'USDT', name: 'Sophon', category: 'Layer 2' },
+  { symbol: 'COTI/USDT', base: 'COTI', quote: 'USDT', name: 'COTI', category: 'Layer 2' },
+  { symbol: 'ZAMA/USDT', base: 'ZAMA', quote: 'USDT', name: 'Zama FHE Privacy', category: 'Layer 2' },
+  { symbol: 'ZEC/USDT', base: 'ZEC', quote: 'USDT', name: 'Zcash', category: 'Major' },
+  { symbol: 'XLM/USDT', base: 'XLM', quote: 'USDT', name: 'Stellar', category: 'Layer 1' },
+  { symbol: 'DASH/USDT', base: 'DASH', quote: 'USDT', name: 'Dash', category: 'Layer 1' },
+  { symbol: 'QNT/USDT', base: 'QNT', quote: 'USDT', name: 'Quant Network', category: 'Infrastructure' },
 ]
 
+export const SYMBOL_ALIASES: Record<string, string> = {
+  'HEADAL/USDT': 'HAEDAL/USDT',
+  'IMBABY/USDT': '1MBABYDOGE/USDT',
+  'BABY/USDT': '1MBABYDOGE/USDT',
+  'SAHARAPUNDIX/USDT': 'SAHARA/USDT',
+}
+
+export function normalizeSymbol(symbol: string): string {
+  const upper = symbol.trim().toUpperCase()
+  return SYMBOL_ALIASES[upper] ?? upper
+}
+
 export function getCoinBySymbol(symbol: string): CoinInfo | undefined {
-  return TOP_COINS.find((c) => c.symbol.toLowerCase() === symbol.toLowerCase())
+  const norm = normalizeSymbol(symbol).toLowerCase()
+  return TOP_COINS.find((c) => c.symbol.toLowerCase() === norm)
 }
 
 export function isValidSymbol(symbol: string): boolean {
-  return TOP_COINS.some((c) => c.symbol.toLowerCase() === symbol.toLowerCase())
+  const norm = normalizeSymbol(symbol).toLowerCase()
+  return TOP_COINS.some((c) => c.symbol.toLowerCase() === norm)
 }

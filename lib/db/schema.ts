@@ -75,3 +75,20 @@ export const tradeOrders = sqliteTable('trade_orders', {
 
 export type TradeOrderRow = typeof tradeOrders.$inferSelect
 export type NewTradeOrderRow = typeof tradeOrders.$inferInsert
+
+/**
+ * Historical net-worth snapshots for the assets progress chart.
+ */
+export const portfolioSnapshots = sqliteTable('portfolio_snapshots', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  createdAt: integer('created_at').notNull(),
+  totalUsd: real('total_usd').notNull(),
+  totalPkr: real('total_pkr').notNull(),
+  pkrRate: real('pkr_rate').notNull(),
+  /** JSON-encoded array of { asset, amount, usdValue, pkrValue, price } */
+  assetsBreakdown: text('assets_breakdown').notNull(),
+  environment: text('environment').notNull(),
+})
+
+export type PortfolioSnapshotRow = typeof portfolioSnapshots.$inferSelect
+export type NewPortfolioSnapshotRow = typeof portfolioSnapshots.$inferInsert

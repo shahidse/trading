@@ -160,6 +160,14 @@ export const config = {
     chatId: process.env.TELEGRAM_CHAT_ID ?? '',
   },
 
+  binanceSquare: {
+    /** Binance Square Creator OpenAPI key. */
+    apiKey: cleanKey(
+      process.env.BINANCE_SQUARE_OPENAPI_KEY ??
+      process.env.BINANCE_SQUARE_API_KEY
+    ),
+  },
+
   /**
    * Automatic order placement.
    *

@@ -35,7 +35,7 @@ export function SignalHistory({ signals }: { signals: StoredSignal[] }) {
         </p>
       ) : (
         <div className="mt-4 space-y-3">
-          <div className="overflow-x-auto max-h-[420px] overflow-y-auto rounded-xl border border-line-soft">
+          <div className="overflow-x-auto max-h-[460px] overflow-y-auto fancy-scrollbar rounded-xl border border-line-soft">
             <table className="w-full text-sm">
               <thead className="sticky top-0 z-10 bg-surface-2 border-b border-line-soft">
                 <tr className="text-left text-xs uppercase tracking-wide text-subtle">

@@ -5,6 +5,7 @@ import { formatPrice, formatTime } from '@/lib/format'
 import type { StoredTradeOrder } from '@/lib/db/client'
 import type { LiveOrder } from '@/lib/exchange/client'
 import { Pagination } from '@/components/Pagination'
+import { Spinner } from '@/components/Loader'
 
 const PAGE_SIZE = 20
 
@@ -174,7 +175,7 @@ export function OrderHistory({
               className="rounded-xl border border-line bg-surface-2 px-2.5 py-1 text-xs text-muted hover:text-ink hover:bg-surface-3 transition disabled:opacity-50"
               title="Refresh order history"
             >
-              {loading ? '…' : '↻'}
+              {loading ? <Spinner size="xs" color="accent" /> : '↻'}
             </button>
           )}
         </div>
@@ -293,7 +294,7 @@ export function OrderHistory({
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto max-h-[420px] overflow-y-auto rounded-xl border border-line-soft">
+              <div className="overflow-x-auto max-h-[460px] overflow-y-auto fancy-scrollbar rounded-xl border border-line-soft">
                 <table className="w-full text-xs">
                   <thead className="sticky top-0 z-10 bg-surface-2 border-b border-line-soft">
                     <tr className="text-left uppercase tracking-wide text-subtle">
@@ -385,15 +386,22 @@ export function OrderHistory({
       {sourceTab === 'app' && (
         <div className="mt-3.5 space-y-3">
           {displayedBotOrders.length === 0 ? (
-            <div className="mt-6 rounded-xl border border-dashed border-line p-6 text-center">
-              <p className="text-sm font-medium text-ink">No orders matching this filter</p>
-              <p className="mt-1 text-xs text-subtle">
-                When automatic trading or Reversal Scalping triggers, orders will be recorded here automatically.
-              </p>
-            </div>
+            loading ? (
+              <div className="mt-6 rounded-xl border border-line bg-surface-2/60 p-6 text-center flex flex-col items-center justify-center gap-2">
+                <Spinner size="sm" color="accent" />
+                <p className="text-xs font-semibold text-ink">Synchronizing trade orders & execution logs…</p>
+              </div>
+            ) : (
+              <div className="mt-6 rounded-xl border border-dashed border-line p-6 text-center">
+                <p className="text-sm font-medium text-ink">No orders matching this filter</p>
+                <p className="mt-1 text-xs text-subtle">
+                  When automatic trading or Reversal Scalping triggers, orders will be recorded here automatically.
+                </p>
+              </div>
+            )
           ) : (
             <>
-              <div className="overflow-x-auto max-h-[420px] overflow-y-auto rounded-xl border border-line-soft">
+              <div className="overflow-x-auto max-h-[460px] overflow-y-auto fancy-scrollbar rounded-xl border border-line-soft">
                 <table className="w-full text-xs">
                   <thead className="sticky top-0 z-10 bg-surface-2 border-b border-line-soft">
                     <tr className="text-left uppercase tracking-wide text-subtle">

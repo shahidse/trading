@@ -19,6 +19,12 @@ export type ScannedHotCoin = {
   signalHeadline: string
   predictedUpsidePct: number
   predictedUpsideMaxPct: number
+  entryPrice: number
+  stopLossPrice: number
+  stopLossPct: number
+  takeProfitPrice: number
+  takeProfitPriceHigh: number
+  riskRewardRatio: number
   targetPrice: number
   targetPriceHigh: number
   expectedPumpTime: string
@@ -149,9 +155,28 @@ export async function scanHotCoins(): Promise<ScannerResult> {
 
     const predictedUpsideMaxPct = round(predictedUpsidePct * maxMultiplier, 1)
 
-    // Calculate Target Prices
-    const targetPrice = round(price * (1 + predictedUpsidePct / 100), price < 0.01 ? 6 : price < 1 ? 4 : 2)
-    const targetPriceHigh = round(price * (1 + predictedUpsideMaxPct / 100), price < 0.01 ? 6 : price < 1 ? 4 : 2)
+    // Calculate Entry, Stop Loss, and Take Profit (Exit) Levels
+    const decimals = price < 0.0001 ? 8 : price < 0.01 ? 6 : price < 1 ? 4 : 2
+    const entryPrice = round(price, decimals)
+
+    let stopLossPct = 2.0
+    if (signalType === 'BREAKOUT_IMMINENT') {
+      stopLossPct = round(Math.min(Math.max(volatilityPct * 0.35, 1.8), 4.0), 1)
+    } else if (signalType === 'PULLBACK_BOUNCE') {
+      const distToLowPct = low > 0 ? ((price - low) / price) * 100 : 2.0
+      stopLossPct = round(Math.min(Math.max(distToLowPct + 1.2, 1.5), 4.5), 1)
+    } else if (signalType === 'PRE_PUMP_ACCUMULATION') {
+      const distToLowPct = low > 0 ? ((price - low) / price) * 100 : 2.0
+      stopLossPct = round(Math.min(Math.max(distToLowPct + 1.0, 1.5), 4.0), 1)
+    } else {
+      stopLossPct = round(Math.min(Math.max(volatilityPct * 0.4, 2.0), 4.5), 1)
+    }
+
+    const stopLossPrice = round(price * (1 - stopLossPct / 100), decimals)
+    const targetPrice = round(price * (1 + predictedUpsidePct / 100), decimals)
+    const targetPriceHigh = round(price * (1 + predictedUpsideMaxPct / 100), decimals)
+    const riskRewardRatio = round(predictedUpsidePct / Math.max(stopLossPct, 0.5), 2)
+
     const expectedGainPer1k = round(1000 * (predictedUpsidePct / 100), 1)
     const expectedGainMaxPer1k = round(1000 * (predictedUpsideMaxPct / 100), 1)
 
@@ -194,11 +219,11 @@ export async function scanHotCoins(): Promise<ScannerResult> {
       base: coin.base,
       name: coin.name,
       category: coin.category,
-      price: round(price, 4),
+      price: entryPrice,
       change24h: round(change24h, 2),
       quoteVolume: round(quoteVolume, 0),
-      high24h: round(high, 4),
-      low24h: round(low, 4),
+      high24h: round(high, decimals),
+      low24h: round(low, decimals),
       rangePositionPct,
       volatilityPct,
       heatScore,
@@ -206,6 +231,12 @@ export async function scanHotCoins(): Promise<ScannerResult> {
       signalHeadline,
       predictedUpsidePct,
       predictedUpsideMaxPct,
+      entryPrice,
+      stopLossPrice,
+      stopLossPct,
+      takeProfitPrice: targetPrice,
+      takeProfitPriceHigh: targetPriceHigh,
+      riskRewardRatio,
       targetPrice,
       targetPriceHigh,
       expectedPumpTime,

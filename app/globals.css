@@ -182,6 +182,403 @@ html[data-style='brutalist'].dark {
   color-scheme: dark;
 }
 
+/* =========================================================================
+   5. CYBER EMERALD & JADE MATRIX (Luminous Mint & Obsidian Green)
+   ========================================================================= */
+html[data-style='emerald-quant'] {
+  --canvas: #f0fdf4;
+  --ink: #064e3b;
+  --muted: #047857;
+  --subtle: #059669;
+  --surface: #ffffff;
+  --surface-2: #dcfce7;
+  --line: #bbf7d0;
+  --line-soft: #dcfce7;
+  --accent: #059669;
+  --accent-soft: rgba(5, 150, 105, 0.16);
+  --up: #10b981;
+  --down: #ef4444;
+  --warn: #d97706;
+  --info: #0284c7;
+  --radius-custom: 0.625rem;
+  --border-w: 1.5px;
+  color-scheme: light;
+}
+
+html[data-style='emerald-quant'].dark {
+  --canvas: #021a12;
+  --ink: #f0fdf4;
+  --muted: #6ee7b7;
+  --subtle: #34d399;
+  --surface: #062b1f;
+  --surface-2: #0b3829;
+  --line: #14532d;
+  --line-soft: #0e3f28;
+  --accent: #10b981;
+  --accent-soft: rgba(16, 185, 129, 0.22);
+  --up: #00e676;
+  --down: #ff3d71;
+  --warn: #fbbf24;
+  --info: #34d399;
+  --radius-custom: 0.625rem;
+  --border-w: 1.5px;
+  color-scheme: dark;
+}
+
+/* =========================================================================
+   6. OBSIDIAN GOLD & SWISS PRESTIGE (Bullion Gold & Onyx Velvet)
+   ========================================================================= */
+html[data-style='midnight-gold'] {
+  --canvas: #fffbeb;
+  --ink: #451a03;
+  --muted: #78350f;
+  --subtle: #92400e;
+  --surface: #ffffff;
+  --surface-2: #fef3c7;
+  --line: #fde68a;
+  --line-soft: #fef3c7;
+  --accent: #d97706;
+  --accent-soft: rgba(217, 119, 6, 0.16);
+  --up: #15803d;
+  --down: #b91c1c;
+  --warn: #d97706;
+  --info: #0284c7;
+  --radius-custom: 0.75rem;
+  --border-w: 1.5px;
+  color-scheme: light;
+}
+
+html[data-style='midnight-gold'].dark {
+  --canvas: #0c0a09;
+  --ink: #fafaf9;
+  --muted: #d6d3d1;
+  --subtle: #a8a29e;
+  --surface: #1c1917;
+  --surface-2: #292524;
+  --line: #44403c;
+  --line-soft: #2d2826;
+  --accent: #f59e0b;
+  --accent-soft: rgba(245, 158, 11, 0.22);
+  --up: #22c55e;
+  --down: #f43f5e;
+  --warn: #fbbf24;
+  --info: #f59e0b;
+  --radius-custom: 0.75rem;
+  --border-w: 1.5px;
+  color-scheme: dark;
+}
+
+/* =========================================================================
+   7. NORDIC FROST & GLACIAL AURORA (Arctic Ice & Cyan Fjord)
+   ========================================================================= */
+html[data-style='nordic-frost'] {
+  --canvas: #f0f9ff;
+  --ink: #082f49;
+  --muted: #0369a1;
+  --subtle: #0284c7;
+  --surface: #ffffff;
+  --surface-2: #e0f2fe;
+  --line: #bae6fd;
+  --line-soft: #e0f2fe;
+  --accent: #0ea5e9;
+  --accent-soft: rgba(14, 165, 233, 0.14);
+  --up: #0d9488;
+  --down: #e11d48;
+  --warn: #d97706;
+  --info: #0284c7;
+  --radius-custom: 0.625rem;
+  --border-w: 1.5px;
+  color-scheme: light;
+}
+
+html[data-style='nordic-frost'].dark {
+  --canvas: #071018;
+  --ink: #f0f9ff;
+  --muted: #7dd3fc;
+  --subtle: #38bdf8;
+  --surface: #0c1c2b;
+  --surface-2: #132a40;
+  --line: #1e3a5f;
+  --line-soft: #11283e;
+  --accent: #38bdf8;
+  --accent-soft: rgba(56, 189, 248, 0.22);
+  --up: #2dd4bf;
+  --down: #fb7185;
+  --warn: #fbbf24;
+  --info: #38bdf8;
+  --radius-custom: 0.625rem;
+  --border-w: 1.5px;
+  color-scheme: dark;
+}
+
+/* =========================================================================
+   8. SUNSET HORIZON & TOKYO NEON (Golden Hour Orange & Nebula Violet)
+   ========================================================================= */
+html[data-style='sunset-synth'] {
+  --canvas: #fff7ed;
+  --ink: #431407;
+  --muted: #9a3412;
+  --subtle: #c2410c;
+  --surface: #ffffff;
+  --surface-2: #ffedd5;
+  --line: #fed7aa;
+  --line-soft: #ffedd5;
+  --accent: #ea580c;
+  --accent-soft: rgba(234, 88, 12, 0.16);
+  --up: #16a34a;
+  --down: #dc2626;
+  --warn: #d97706;
+  --info: #ea580c;
+  --radius-custom: 1rem;
+  --border-w: 1.5px;
+  color-scheme: light;
+}
+
+html[data-style='sunset-synth'].dark {
+  --canvas: #0e071a;
+  --ink: #ffffff;
+  --muted: #f472b6;
+  --subtle: #c084fc;
+  --surface: #190e2e;
+  --surface-2: #261645;
+  --line: #42266b;
+  --line-soft: #2b184a;
+  --accent: #f97316;
+  --accent-soft: rgba(249, 115, 22, 0.24);
+  --up: #10b981;
+  --down: #ec4899;
+  --warn: #f59e0b;
+  --info: #c084fc;
+  --radius-custom: 1rem;
+  --border-w: 1.5px;
+  color-scheme: dark;
+}
+
+/* =========================================================================
+   8. HYPER CYBER MATRIX (Electric Aqua, Hologram Glass & Cyber Grid)
+   ========================================================================= */
+html[data-style='hyper-matrix'] {
+  --canvas: #f0fdfa;
+  --ink: #042f2e;
+  --muted: #0d9488;
+  --subtle: #14b8a6;
+  --surface: #ffffff;
+  --surface-2: #ccfbf1;
+  --line: #99f6e4;
+  --line-soft: #ccfbf1;
+  --accent: #0d9488;
+  --accent-soft: rgba(13, 148, 136, 0.16);
+  --up: #10b981;
+  --down: #f43f5e;
+  --warn: #f59e0b;
+  --info: #06b6d4;
+  --radius-custom: 0.75rem;
+  --border-w: 1.5px;
+  color-scheme: light;
+}
+
+html[data-style='hyper-matrix'].dark {
+  --canvas: #020713;
+  --ink: #f0fdfa;
+  --muted: #5eead4;
+  --subtle: #2dd4bf;
+  --surface: #061329;
+  --surface-2: #0a1f3d;
+  --line: #113661;
+  --line-soft: #0c2747;
+  --accent: #00f5d4;
+  --accent-soft: rgba(0, 245, 212, 0.22);
+  --up: #00f5d4;
+  --down: #ff0055;
+  --warn: #ffb703;
+  --info: #00b4d8;
+  --radius-custom: 0.75rem;
+  --border-w: 1.5px;
+  color-scheme: dark;
+}
+
+/* =========================================================================
+   9. BLOOD MOON NOIR (Crimson Ruby, Carmine Laser & Onyx Velvet)
+   ========================================================================= */
+html[data-style='blood-moon'] {
+  --canvas: #fff5f5;
+  --ink: #450a0a;
+  --muted: #991b1b;
+  --subtle: #b91c1c;
+  --surface: #ffffff;
+  --surface-2: #ffe4e6;
+  --line: #fecdd3;
+  --line-soft: #ffe4e6;
+  --accent: #e11d48;
+  --accent-soft: rgba(225, 29, 72, 0.16);
+  --up: #059669;
+  --down: #e11d48;
+  --warn: #d97706;
+  --info: #7c3aed;
+  --radius-custom: 0.875rem;
+  --border-w: 1.5px;
+  color-scheme: light;
+}
+
+html[data-style='blood-moon'].dark {
+  --canvas: #090306;
+  --ink: #fff1f2;
+  --muted: #fda4af;
+  --subtle: #fb7185;
+  --surface: #15060d;
+  --surface-2: #240a17;
+  --line: #4c112e;
+  --line-soft: #2e0b1d;
+  --accent: #ff0055;
+  --accent-soft: rgba(255, 0, 85, 0.24);
+  --up: #10b981;
+  --down: #ff0055;
+  --warn: #fbbf24;
+  --info: #c084fc;
+  --radius-custom: 0.875rem;
+  --border-w: 1.5px;
+  color-scheme: dark;
+}
+
+/* =========================================================================
+   10. AMBIENT LIGHTING OVERRIDES (Adjust according to real-world room lighting)
+   ========================================================================= */
+
+/* Warm Eye-Care / Paper Reading Mode (Soft Amber Sepia, Reduced Blue Light) */
+html[data-mode='warm-light'] {
+  --canvas: #fbf7ee;
+  --surface: #ffffff;
+  --surface-2: #f4ede0;
+  --line: #e3d8c4;
+  --line-soft: #ede4d5;
+  --ink: #292524;
+  --muted: #57534e;
+  --subtle: #78716c;
+  --accent: #d97706;
+  --accent-soft: rgba(217, 119, 6, 0.14);
+  --up: #059669;
+  --down: #dc2626;
+  --warn: #d97706;
+  --info: #0284c7;
+  color-scheme: light;
+}
+
+/* Golden Candlelight Mode (1800K Hearth, Warm Caramel, Zero Eye Strain) */
+html[data-mode='candlelight'],
+html[data-mode='candlelight'].dark {
+  --canvas: #120b05;
+  --surface: #1a1008;
+  --surface-2: #24170d;
+  --line: #3d2615;
+  --line-soft: #28190e;
+  --ink: #fef3c7;
+  --muted: #fde68a;
+  --subtle: #d97706;
+  --accent: #f59e0b;
+  --accent-soft: rgba(245, 158, 11, 0.22);
+  --up: #10b981;
+  --down: #ef4444;
+  --warn: #f59e0b;
+  --info: #f59e0b;
+  color-scheme: dark;
+}
+
+/* Glacial Aurora Glow (Polar Emerald & Arctic Violet Ambient Light) */
+html[data-mode='aurora-glow'],
+html[data-mode='aurora-glow'].dark {
+  --canvas: #041018;
+  --surface: #081a26;
+  --surface-2: #0e2738;
+  --line: #19435e;
+  --line-soft: #102d40;
+  --ink: #e0f2fe;
+  --muted: #7dd3fc;
+  --subtle: #38bdf8;
+  --accent: #00f5d4;
+  --accent-soft: rgba(0, 245, 212, 0.25);
+  --up: #00f5d4;
+  --down: #f43f5e;
+  --warn: #fbbf24;
+  --info: #38bdf8;
+  color-scheme: dark;
+}
+
+/* Cyber Cockpit Mode (Electric Neon Horizon, High-Tech Matrix Luminescence) */
+html[data-mode='cyber-glow'],
+html[data-mode='cyber-glow'].dark {
+  --canvas: #050612;
+  --surface: #0a0d24;
+  --surface-2: #101538;
+  --line: #222b63;
+  --line-soft: #141b42;
+  --ink: #ffffff;
+  --muted: #a5b4fc;
+  --subtle: #6366f1;
+  --accent: #a855f7;
+  --accent-soft: rgba(168, 85, 247, 0.28);
+  --up: #06b6d4;
+  --down: #ec4899;
+  --warn: #f59e0b;
+  --info: #818cf8;
+  color-scheme: dark;
+}
+
+/* Twilight / Dim Ambient Mode (Muted Charcoal Slate for Low Indoor Light) */
+html[data-mode='dusk'],
+html[data-mode='dusk'].dark {
+  --canvas: #151922;
+  --surface: #1e2430;
+  --surface-2: #272f3f;
+  --line: #353f54;
+  --line-soft: #252d3d;
+  --ink: #f1f5f9;
+  --muted: #94a3b8;
+  --subtle: #64748b;
+  --accent: #38bdf8;
+  --accent-soft: rgba(56, 189, 248, 0.15);
+  --up: #10b981;
+  --down: #f43f5e;
+  --warn: #fbbf24;
+  --info: #38bdf8;
+  color-scheme: dark;
+}
+
+/* OLED Absolute Zero Mode (Pitch #000000 Black for Total Darkness & OLED screens) */
+html[data-mode='oled'],
+html[data-mode='oled'].dark {
+  --canvas: #000000;
+  --surface: #0a0a0c;
+  --surface-2: #141418;
+  --line: #24242e;
+  --line-soft: #181820;
+  --ink: #ffffff;
+  --muted: #a1a1aa;
+  --subtle: #71717a;
+  --accent: #38bdf8;
+  --accent-soft: rgba(56, 189, 248, 0.22);
+  --up: #00e676;
+  --down: #ff1744;
+  --warn: #ffab00;
+  --info: #29b6f6;
+  color-scheme: dark;
+}
+
+/* Decorative ambient lighting bloom backdrops */
+.ambient-glow-aurora {
+  background: radial-gradient(circle at 10% 10%, rgba(0, 245, 212, 0.12), transparent 45%),
+              radial-gradient(circle at 90% 90%, rgba(168, 85, 247, 0.10), transparent 50%);
+}
+
+.ambient-glow-candle {
+  background: radial-gradient(circle at 50% 0%, rgba(245, 158, 11, 0.16), transparent 50%),
+              radial-gradient(circle at 80% 80%, rgba(217, 119, 6, 0.10), transparent 45%);
+}
+
+.ambient-glow-cyber {
+  background: radial-gradient(circle at 85% 15%, rgba(168, 85, 247, 0.16), transparent 45%),
+              radial-gradient(circle at 15% 85%, rgba(6, 182, 212, 0.14), transparent 45%);
+}
+
 @theme inline {
   --color-canvas: var(--canvas);
   --color-ink: var(--ink);
@@ -233,3 +630,124 @@ html[data-style='brutalist'].dark {
     background-color: var(--accent-soft);
   }
 }
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.shimmer-bg {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--surface-2);
+}
+
+.shimmer-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(56, 189, 248, 0.08) 50%,
+    transparent 100%
+  );
+  animation: shimmer 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* =========================================================================
+   10. ULTRA-MODERN FANCY SCROLLBARS (Pro Trading Terminal Aesthetics)
+   ========================================================================= */
+
+/* Global default scrollbar for all browsers */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+/* WebKit (Chrome, Safari, Edge, Opera) */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 9999px;
+  border: 1.5px solid transparent;
+  background-clip: padding-box;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent-soft);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Fancy Scrollbar Utility: High-End Custom Glass & Accent Illumination */
+.fancy-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+.fancy-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.fancy-scrollbar::-webkit-scrollbar-track {
+  background: var(--surface-2);
+  border-radius: 9999px;
+  margin: 2px;
+}
+
+.fancy-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--line), var(--line-soft));
+  border-radius: 9999px;
+  border: 1.5px solid transparent;
+  background-clip: padding-box;
+  transition: all 0.2s ease;
+}
+
+.fancy-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+  box-shadow: 0 0 12px var(--accent-soft);
+}
+
+/* Subtle Ultra-Thin Scrollbar (for horizontal tab bars, pill trays & chips) */
+.fancy-scrollbar-subtle {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+.fancy-scrollbar-subtle::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.fancy-scrollbar-subtle::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.fancy-scrollbar-subtle::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 9999px;
+}
+
+.fancy-scrollbar-subtle::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+

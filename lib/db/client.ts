@@ -14,9 +14,11 @@ import type {
 } from '@/lib/types'
 import * as schema from './schema'
 import {
+  portfolioSnapshots,
   settings as settingsTable,
   signals,
   tradeOrders,
+  type PortfolioSnapshotRow,
   type SignalRow,
   type TradeOrderRow,
   type NewTradeOrderRow,
@@ -96,6 +98,17 @@ CREATE TABLE IF NOT EXISTS trade_orders (
   signal_id        INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_trade_orders_created_at ON trade_orders (created_at DESC);
+
+CREATE TABLE IF NOT EXISTS portfolio_snapshots (
+  id               INTEGER PRIMARY KEY AUTOINCREMENT,
+  created_at       INTEGER NOT NULL,
+  total_usd        REAL    NOT NULL,
+  total_pkr        REAL    NOT NULL,
+  pkr_rate         REAL    NOT NULL,
+  assets_breakdown TEXT    NOT NULL,
+  environment      TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_portfolio_snapshots_created_at ON portfolio_snapshots (created_at DESC);
 `
 
 /**
@@ -441,6 +454,7 @@ export function getOpenBuyPosition(symbol: string): StoredTradeOrder | null {
         eq(tradeOrders.symbol, symbol),
         eq(tradeOrders.side, 'SELL'),
         eq(tradeOrders.status, 'placed'),
+        ne(tradeOrders.type, 'oco'),
         gt(tradeOrders.id, lastBuy.id),
       ),
     )
@@ -486,4 +500,51 @@ export function getOpenDryRunPosition(
   }
 
   return current
+}
+
+export type StoredPortfolioSnapshot = PortfolioSnapshotRow
+
+export function savePortfolioSnapshot(data: {
+  totalUsd: number
+  totalPkr: number
+  pkrRate: number
+  assetsBreakdown: string
+  environment: string
+  createdAt?: number
+}): number {
+  const db = getDb()
+  const result = db
+    .insert(portfolioSnapshots)
+    .values({
+      createdAt: data.createdAt ?? Date.now(),
+      totalUsd: data.totalUsd,
+      totalPkr: data.totalPkr,
+      pkrRate: data.pkrRate,
+      assetsBreakdown: data.assetsBreakdown,
+      environment: data.environment,
+    })
+    .run()
+  return Number(result.lastInsertRowid)
+}
+
+export function getPortfolioSnapshots(limit = 100): StoredPortfolioSnapshot[] {
+  const db = getDb()
+  return db
+    .select()
+    .from(portfolioSnapshots)
+    .orderBy(desc(portfolioSnapshots.createdAt))
+    .limit(limit)
+    .all()
+}
+
+export function getLatestPortfolioSnapshot(): StoredPortfolioSnapshot | null {
+  const db = getDb()
+  return (
+    db
+      .select()
+      .from(portfolioSnapshots)
+      .orderBy(desc(portfolioSnapshots.createdAt))
+      .limit(1)
+      .get() ?? null
+  )
 }

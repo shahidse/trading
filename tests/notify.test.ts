@@ -75,6 +75,7 @@ describe('publicNotifySettings', () => {
         to: 'x@y.co',
       },
       telegram: { enabled: true, mode: 'every', botToken: '123:ABC-secret', chatId: '42' },
+      square: { enabled: true, mode: 'action-change', apiKey: 'sq_super_secret' },
     }
 
     const publicView = publicNotifySettings(settings)
@@ -82,8 +83,10 @@ describe('publicNotifySettings', () => {
 
     expect(serialized).not.toContain('re_super_secret')
     expect(serialized).not.toContain('123:ABC-secret')
+    expect(serialized).not.toContain('sq_super_secret')
     expect(publicView.email.apiKeySet).toBe(true)
     expect(publicView.telegram.botTokenSet).toBe(true)
+    expect(publicView.square.apiKeySet).toBe(true)
     expect(publicView.telegram.mode).toBe('every')
     expect(publicView.telegram.chatId).toBe('42')
   })
@@ -92,10 +95,12 @@ describe('publicNotifySettings', () => {
     const settings: NotifySettings = {
       email: { enabled: false, mode: 'action-change', apiKey: '', from: 'a@b.co', to: '' },
       telegram: { enabled: false, mode: 'action-change', botToken: '', chatId: '' },
+      square: { enabled: false, mode: 'action-change', apiKey: '' },
     }
 
     const publicView = publicNotifySettings(settings)
     expect(publicView.email.apiKeySet).toBe(false)
     expect(publicView.telegram.botTokenSet).toBe(false)
+    expect(publicView.square.apiKeySet).toBe(false)
   })
 })
