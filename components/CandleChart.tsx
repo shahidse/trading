@@ -16,6 +16,7 @@ import {
 } from 'lightweight-charts'
 import { useTheme } from '@/components/ThemeToggle'
 import { ChartSkeleton, Spinner } from '@/components/Loader'
+import { captureCandleChartSnapshot } from '@/lib/chart-capture'
 import type { Theme } from '@/lib/theme'
 import type { ChartPayload, LinePoint } from '@/lib/types'
 import { readJson } from '@/lib/utils'
@@ -213,6 +214,53 @@ export function CandleChart({
   const toggle = useCallback((key: ToggleKey) => {
     setToggles((prev) => ({ ...prev, [key]: !prev[key] }))
   }, [])
+
+  const [isPostingSquare, setIsPostingSquare] = useState(false)
+  const [squareMsg, setSquareMsg] = useState<{ ok: boolean; text: string } | null>(null)
+
+  const handlePostChartToSquare = async () => {
+    if (isPostingSquare) return
+    setIsPostingSquare(true)
+    setSquareMsg(null)
+    try {
+      const imageBase64 = captureCandleChartSnapshot(symbol ?? 'ETH/USDT', timeframe)
+      const sym = (symbol ?? 'ETH/USDT').split('/')[0]
+      const lastCandle = payload?.series.candles[payload.series.candles.length - 1]
+      const lastPrice = lastCandle?.close
+      const priceText = lastPrice != null ? `: $${lastPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}` : ''
+      const content = `📊 ${symbol ?? 'ETH/USDT'} (${timeframe}) Live Candlestick Chart\n\nCurrent Price${priceText}\n\n#BinanceSquare #CryptoCharts #${sym} #Trading`
+
+      const res = await fetch('/api/square/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'raw',
+          content,
+          imageBase64: imageBase64 || undefined,
+        }),
+      })
+
+      const data = await res.json()
+      if (res.ok && data.success) {
+        setSquareMsg({
+          ok: true,
+          text: data.contentId ? `Posted! (ID: ${data.contentId})` : 'Chart posted to Square!',
+        })
+      } else {
+        setSquareMsg({
+          ok: false,
+          text: data.error || 'Failed to post chart to Square',
+        })
+      }
+    } catch (err: unknown) {
+      setSquareMsg({
+        ok: false,
+        text: err instanceof Error ? err.message : 'Network error',
+      })
+    } finally {
+      setIsPostingSquare(false)
+    }
+  }
 
   // ---- fetch chart data -------------------------------------------------
   useEffect(() => {
@@ -550,9 +598,9 @@ export function CandleChart({
   }, [toggles, payload, theme])
 
   return (
-    <section className="rounded-2xl border border-line bg-surface p-4 sm:p-6">
+    <section className="rounded-2xl border border-line bg-surface p-3 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
               Price chart
@@ -577,8 +625,31 @@ export function CandleChart({
               </button>
             ))}
           </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handlePostChartToSquare}
+              disabled={isPostingSquare}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-600 transition hover:bg-amber-500/20 active:scale-95 disabled:opacity-50 dark:text-amber-400"
+              title="Capture and publish this live candlestick chart directly to Binance Square"
+            >
+              <span>📊</span>
+              <span>{isPostingSquare ? 'Posting Chart...' : 'Square Chart'}</span>
+            </button>
+            {squareMsg && (
+              <span
+                className={`text-[11px] font-medium max-w-[150px] truncate ${
+                  squareMsg.ok ? 'text-emerald-500' : 'text-rose-400'
+                }`}
+                title={squareMsg.text}
+              >
+                {squareMsg.ok ? '✅ ' : '⚠️ '}
+                {squareMsg.text}
+              </span>
+            )}
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-1.5 max-w-full overflow-x-auto pb-1">
+        <div className="flex flex-nowrap sm:flex-wrap items-center gap-1.5 max-w-full overflow-x-auto no-scrollbar pb-1">
           {TOGGLE_LABELS.map(({ key, label }) => (
             <button
               key={key}
@@ -586,7 +657,7 @@ export function CandleChart({
               onClick={() => toggle(key)}
               aria-pressed={toggles[key]}
               className={
-                'rounded-full border px-3 py-1 text-xs transition ' +
+                'rounded-full border px-3 py-1 text-xs transition shrink-0 ' +
                 (toggles[key]
                   ? 'border-accent bg-accent-soft text-accent'
                   : 'border-line text-subtle hover:text-ink')
@@ -609,8 +680,8 @@ export function CandleChart({
           <ChartSkeleton height={380} message={`Streaming ${symbol ?? 'Market'} Candles & Syncing 9 Indicators…`} />
         </div>
       ) : (
-        <div ref={wrapperRef} className="mt-4 space-y-1">
-          <div ref={mainContainerRef} className="w-full" />
+        <div ref={wrapperRef} id="candle-chart-wrapper" className="mt-4 space-y-1">
+          <div ref={mainContainerRef} id="main-candle-chart-container" data-chart-container="true" className="w-full" />
           <div className="flex items-center justify-between px-1">
             <span className="text-[10px] uppercase tracking-wide text-subtle">RSI (14)</span>
           </div>

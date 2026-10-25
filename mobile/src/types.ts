@@ -238,6 +238,13 @@ export type NotifySettings = {
     chatId: string
     trigger: string
   }
+  square?: {
+    enabled: boolean
+    hasApiKey: boolean
+    trigger: string
+    allowedTokens: string
+    maxDailyPosts: number
+  }
 }
 
 export type CoinInfo = {
@@ -298,5 +305,73 @@ export type OrderBookSnapshot = {
   spreadPct: number
   midPrice: number
   timestamp: number
+}
+
+export type FutureGainHorizon = '24H' | '3_DAYS' | '7_DAYS'
+
+export type PredictionCatalyst =
+  | 'WHALE_ACCUMULATION'
+  | 'VOLATILITY_SQUEEZE'
+  | 'DAILY_GOLDEN_CROSS'
+  | 'OVERSOLD_REVERSAL'
+  | 'MOMENTUM_EXPANSION'
+
+export type PredictionRiskLevel = 'LOW' | 'MODERATE' | 'HIGH_GROWTH'
+
+export type FutureCoinPrediction = {
+  symbol: string
+  base: string
+  name: string
+  category: CoinInfo['category']
+  currentPrice: number
+  change24h: number
+  quoteVolume: number
+  horizon: FutureGainHorizon
+  horizonLabel: string
+  confidenceScore: number
+  predictedGainPctMin: number
+  predictedGainPctMax: number
+  targetPriceLow: number
+  targetPriceHigh: number
+  entryZoneLow: number
+  entryZoneHigh: number
+  stopLossPrice: number
+  stopLossPct: number
+  riskRewardRatio: number
+  riskLevel: PredictionRiskLevel
+  catalyst: PredictionCatalyst
+  catalystTitle: string
+  thesis: string
+  triggers: string[]
+  profitEstimate1kUsd: {
+    min: number
+    max: number
+  }
+  rank: number
+}
+
+export type PredictionsPayload = {
+  timestamp: number
+  totalAnalyzed: number
+  topPicks: {
+    best24h: FutureCoinPrediction | null
+    best3Days: FutureCoinPrediction | null
+    best7Days: FutureCoinPrediction | null
+    highestUpside: FutureCoinPrediction | null
+  }
+  marketBreadth: {
+    bullishPercent: number
+    averagePredictedGain: number
+    dominantCatalyst: string
+  }
+  predictions: FutureCoinPrediction[]
+  trackedSquarePredictions?: Array<{
+    id: number
+    symbol: string
+    horizon: string
+    status: string
+    metPrice?: number | null
+    metAt?: number | null
+  }>
 }
 

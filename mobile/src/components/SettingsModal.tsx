@@ -41,6 +41,11 @@ export const SettingsModal: React.FC<Props> = ({ onClose }) => {
   const [emailEnabled, setEmailEnabled] = useState(false)
   const [emailTo, setEmailTo] = useState('')
 
+  // Binance Square settings
+  const [squareEnabled, setSquareEnabled] = useState(false)
+  const [squareAllowedTokens, setSquareAllowedTokens] = useState('ETH/USDT, BTC/USDT, SOL/USDT')
+  const [squareMaxDailyPosts, setSquareMaxDailyPosts] = useState('5')
+
   useEffect(() => {
     const fetchSettings = async () => {
       try {
@@ -65,6 +70,11 @@ export const SettingsModal: React.FC<Props> = ({ onClose }) => {
           setTgChatId(notifyRes.settings.telegram.chatId || '')
           setEmailEnabled(notifyRes.settings.email.enabled)
           setEmailTo(notifyRes.settings.email.to || '')
+          if (notifyRes.settings.square) {
+            setSquareEnabled(notifyRes.settings.square.enabled)
+            setSquareAllowedTokens(notifyRes.settings.square.allowedTokens || 'ETH/USDT, BTC/USDT, SOL/USDT')
+            setSquareMaxDailyPosts(String(notifyRes.settings.square.maxDailyPosts || 5))
+          }
         }
       } catch (err: any) {
         Alert.alert('Load Settings Error', err.message)
@@ -94,6 +104,11 @@ export const SettingsModal: React.FC<Props> = ({ onClose }) => {
         api.updateSettings({
           telegram: { enabled: tgEnabled, chatId: tgChatId },
           email: { enabled: emailEnabled, to: emailTo },
+          square: {
+            enabled: squareEnabled,
+            allowedTokens: squareAllowedTokens,
+            maxDailyPosts: parseInt(squareMaxDailyPosts, 10) || 5,
+          },
         }),
       ])
 
@@ -433,6 +448,71 @@ export const SettingsModal: React.FC<Props> = ({ onClose }) => {
                   autoCapitalize="none"
                 />
               </View>
+            )}
+
+            {/* Binance Square Broadcast */}
+            <View style={[styles.switchRow, { borderBottomColor: colors.borderSubtle }]}>
+              <View style={{ flex: 1, paddingRight: 12 }}>
+                <Text style={[styles.switchLabel, { color: colors.text }]}>Binance Square Broadcast</Text>
+                <Text style={[styles.switchHint, { color: colors.textMuted }]}>
+                  Publish trade signals & predictions to Binance Square
+                </Text>
+              </View>
+              <Switch
+                value={squareEnabled}
+                onValueChange={setSquareEnabled}
+                trackColor={{ false: colors.surface3, true: colors.warning || '#f59e0b' }}
+              />
+            </View>
+
+            {squareEnabled && (
+              <>
+                <View style={styles.field}>
+                  <Text style={[styles.fieldLabel, { color: colors.textSubtle }]}>
+                    Allowed Tokens for Square Posts
+                  </Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      {
+                        backgroundColor: colors.surface2,
+                        borderColor: colors.border,
+                        borderWidth: colors.borderWidth,
+                        borderRadius: colors.borderRadius,
+                        color: colors.text,
+                      },
+                    ]}
+                    value={squareAllowedTokens}
+                    onChangeText={setSquareAllowedTokens}
+                    placeholder="e.g. ETH/USDT, BTC/USDT, SOL/USDT"
+                    placeholderTextColor={colors.textDisabled}
+                    autoCapitalize="characters"
+                  />
+                </View>
+
+                <View style={styles.field}>
+                  <Text style={[styles.fieldLabel, { color: colors.textSubtle }]}>
+                    Max Daily Posts Quota (Per Token)
+                  </Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      {
+                        backgroundColor: colors.surface2,
+                        borderColor: colors.border,
+                        borderWidth: colors.borderWidth,
+                        borderRadius: colors.borderRadius,
+                        color: colors.text,
+                      },
+                    ]}
+                    value={squareMaxDailyPosts}
+                    onChangeText={setSquareMaxDailyPosts}
+                    keyboardType="numeric"
+                    placeholder="5"
+                    placeholderTextColor={colors.textDisabled}
+                  />
+                </View>
+              </>
             )}
           </View>
 

@@ -61,11 +61,11 @@ export function TradePlanCard({ plan }: { plan: TradePlan }) {
   const styles = ACTION_STYLES[plan.action]
 
   return (
-    <section className={`rounded-2xl border ${styles.border} ${styles.bg} p-6`}>
+    <section className={`rounded-2xl border ${styles.border} ${styles.bg} p-4 sm:p-6`}>
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
           <span
-            className={`rounded-lg border px-4 py-2 text-xl font-bold tracking-wide ${styles.text} ${styles.border}`}
+            className={`rounded-lg border px-4 py-2 text-xl font-bold tracking-wide w-fit ${styles.text} ${styles.border}`}
           >
             {styles.label}
           </span>

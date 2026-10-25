@@ -75,7 +75,13 @@ describe('publicNotifySettings', () => {
         to: 'x@y.co',
       },
       telegram: { enabled: true, mode: 'every', botToken: '123:ABC-secret', chatId: '42' },
-      square: { enabled: true, mode: 'action-change', apiKey: 'sq_super_secret' },
+      square: {
+        enabled: true,
+        mode: 'action-change',
+        apiKey: 'sq_super_secret',
+        allowedTokens: ['ETH', 'SOL'],
+        maxDailyPostsPerToken: 3,
+      },
     }
 
     const publicView = publicNotifySettings(settings)
@@ -87,11 +93,13 @@ describe('publicNotifySettings', () => {
     expect(publicView.email.apiKeySet).toBe(true)
     expect(publicView.telegram.botTokenSet).toBe(true)
     expect(publicView.square.apiKeySet).toBe(true)
+    expect(publicView.square.allowedTokens).toEqual(['ETH', 'SOL'])
+    expect(publicView.square.maxDailyPostsPerToken).toBe(3)
     expect(publicView.telegram.mode).toBe('every')
     expect(publicView.telegram.chatId).toBe('42')
   })
 
-  it('reports unset secrets as false', () => {
+  it('reports unset secrets as false and supplies default auto-post token quotas', () => {
     const settings: NotifySettings = {
       email: { enabled: false, mode: 'action-change', apiKey: '', from: 'a@b.co', to: '' },
       telegram: { enabled: false, mode: 'action-change', botToken: '', chatId: '' },
@@ -102,5 +110,7 @@ describe('publicNotifySettings', () => {
     expect(publicView.email.apiKeySet).toBe(false)
     expect(publicView.telegram.botTokenSet).toBe(false)
     expect(publicView.square.apiKeySet).toBe(false)
+    expect(publicView.square.allowedTokens).toEqual(['ETH', 'BTC', 'SOL'])
+    expect(publicView.square.maxDailyPostsPerToken).toBe(2)
   })
 })

@@ -89,7 +89,13 @@ type NotifyMode = 'action-change' | 'direction-change' | 'every'
 type PublicSettings = {
   email: { enabled: boolean; mode: NotifyMode; from: string; to: string; apiKeySet: boolean }
   telegram: { enabled: boolean; mode: NotifyMode; chatId: string; botTokenSet: boolean }
-  square?: { enabled: boolean; mode: NotifyMode; apiKeySet: boolean }
+  square?: {
+    enabled: boolean
+    mode: NotifyMode
+    apiKeySet: boolean
+    allowedTokens?: string[]
+    maxDailyPostsPerToken?: number
+  }
 }
 
 type Channel = 'email' | 'telegram' | 'square'
@@ -129,6 +135,8 @@ export default function SettingsPage() {
 
   const [squareEnabled, setSquareEnabled] = useState(false)
   const [squareMode, setSquareMode] = useState<NotifyMode>('action-change')
+  const [squareTokens, setSquareTokens] = useState('ETH,BTC,SOL')
+  const [squareMaxPosts, setSquareMaxPosts] = useState(2)
   const [squareKey, setSquareKey] = useState('')
   const [squareKeyTouched, setSquareKeyTouched] = useState(false)
   const [squareKeySet, setSquareKeySet] = useState(false)
@@ -152,6 +160,8 @@ export default function SettingsPage() {
     if (settings.square) {
       setSquareEnabled(settings.square.enabled)
       setSquareMode(settings.square.mode)
+      setSquareTokens(settings.square.allowedTokens?.join(', ') ?? 'ETH,BTC,SOL')
+      setSquareMaxPosts(settings.square.maxDailyPostsPerToken ?? 2)
       setSquareKey('')
       setSquareKeyTouched(false)
       setSquareKeySet(settings.square.apiKeySet)
@@ -203,6 +213,8 @@ export default function SettingsPage() {
                 square: {
                   enabled: squareEnabled,
                   mode: squareMode,
+                  allowedTokens: squareTokens.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean),
+                  maxDailyPostsPerToken: Math.max(1, Number(squareMaxPosts) || 2),
                   ...(squareKeyTouched ? { apiKey: squareKey } : {}),
                 },
               }
@@ -640,7 +652,7 @@ export default function SettingsPage() {
             </div>
 
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <label className="sm:col-span-2">
+              <label>
                 <span className={labelClass}>Auto-Publish Trigger</span>
                 <select
                   value={squareMode}
@@ -653,6 +665,36 @@ export default function SettingsPage() {
                     </option>
                   ))}
                 </select>
+              </label>
+
+              <label>
+                <span className={labelClass}>Max Daily Posts Per Token</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="50"
+                  value={squareMaxPosts}
+                  onChange={(event) => setSquareMaxPosts(Math.max(1, parseInt(event.target.value, 10) || 1))}
+                  placeholder="2"
+                  className={inputClass}
+                />
+                <span className="mt-1 block text-[11px] text-subtle">
+                  Maximum automatic posts per token per 24h UTC window (anti-spam quota).
+                </span>
+              </label>
+
+              <label className="sm:col-span-2">
+                <span className={labelClass}>Allowed Tokens for Auto-Posting</span>
+                <input
+                  type="text"
+                  value={squareTokens}
+                  onChange={(event) => setSquareTokens(event.target.value)}
+                  placeholder="e.g. ETH, BTC, SOL (or * for all)"
+                  className={inputClass}
+                />
+                <span className="mt-1 block text-[11px] text-subtle">
+                  Only signals for these coins are auto-published to Square. Comma-separated or * for all.
+                </span>
               </label>
 
               <label className="sm:col-span-2">

@@ -88,7 +88,7 @@ export function HotCoinsRadar({ activeSymbol, onSelectSymbol }: HotCoinsRadarPro
   const filteredCoins = currentList
 
   return (
-    <section className="relative overflow-hidden rounded-3xl border border-line bg-surface/90 backdrop-blur-md p-4 sm:p-6 shadow-lg">
+    <section className="relative overflow-hidden rounded-3xl border border-line bg-surface/90 backdrop-blur-md p-3.5 sm:p-6 shadow-lg">
       {/* Background ambient decorative glow */}
       <div className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-gradient-to-br from-amber-500/10 via-rose-500/10 to-transparent blur-3xl" />
       <div className="pointer-events-none absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-gradient-to-tr from-indigo-500/10 to-transparent blur-3xl" />
@@ -112,7 +112,7 @@ export function HotCoinsRadar({ activeSymbol, onSelectSymbol }: HotCoinsRadarPro
         </div>
 
         {/* Tab Switchers */}
-        <div className="flex flex-wrap items-center gap-1.5 rounded-2xl border border-line bg-surface-2/80 p-1">
+        <div className="flex items-center gap-1.5 rounded-2xl border border-line bg-surface-2/80 p-1 overflow-x-auto no-scrollbar w-full sm:w-auto">
           {[
             { id: 'breakout', label: '🔥 Breakout Imminent', icon: '⚡' },
             { id: 'hot', label: 'Top Heat Radar', icon: '🎯' },
@@ -124,7 +124,7 @@ export function HotCoinsRadar({ activeSymbol, onSelectSymbol }: HotCoinsRadarPro
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id as typeof activeTab)}
-              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition flex items-center gap-1.5 ${
+              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition shrink-0 flex items-center gap-1.5 ${
                 activeTab === tab.id
                   ? 'bg-accent text-white shadow-xs'
                   : 'text-subtle hover:text-ink hover:bg-surface'

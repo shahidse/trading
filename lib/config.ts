@@ -166,6 +166,22 @@ export const config = {
       process.env.BINANCE_SQUARE_OPENAPI_KEY ??
       process.env.BINANCE_SQUARE_API_KEY
     ),
+    /** Auto-publish signals to Binance Square (default: false, only on manual button clicks unless enabled). */
+    autoPost: bool(process.env.BINANCE_SQUARE_AUTO_POST, false),
+    /** Tokens allowed to auto-publish (e.g. 'ETH,BTC,SOL' or '*' for all). */
+    allowedTokens: (process.env.BINANCE_SQUARE_AUTO_POST_TOKENS ?? process.env.SQUARE_AUTO_POST_TOKENS ?? 'ETH,BTC,SOL')
+      .split(',')
+      .map((s) => s.trim().toUpperCase())
+      .filter(Boolean),
+    /** Maximum daily automated posts per token. */
+    maxDailyPostsPerToken: Math.max(
+      1,
+      num(
+        process.env.BINANCE_SQUARE_MAX_POSTS_PER_TOKEN ??
+          process.env.SQUARE_MAX_POSTS_PER_TOKEN_PER_DAY,
+        2
+      )
+    ),
   },
 
   /**

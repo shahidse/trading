@@ -1,7 +1,17 @@
 /**
  * API Client for interacting with the ETH Signal Next.js Backend
  */
-import { ChartPayload, CoinInfo, NotifySettings, PriceResponse, ScannerResult, Signal, TradingStateResponse } from '../types'
+import {
+  ChartPayload,
+  CoinInfo,
+  FutureCoinPrediction,
+  NotifySettings,
+  PredictionsPayload,
+  PriceResponse,
+  ScannerResult,
+  Signal,
+  TradingStateResponse,
+} from '../types'
 import { getDefaultApiUrl } from '../config'
 
 class ApiClient {
@@ -118,6 +128,30 @@ class ApiClient {
     return this.request<{ settings: NotifySettings }>('/api/settings', {
       method: 'PUT',
       body: JSON.stringify(patch),
+    })
+  }
+
+  async getPredictions(refresh = false): Promise<PredictionsPayload> {
+    const qs = refresh ? '?refresh=true' : ''
+    return this.request<PredictionsPayload>(`/api/predictions${qs}`)
+  }
+
+  async publishToSquare(payload: {
+    type: 'signal' | 'prediction' | 'raw'
+    signal?: Signal
+    prediction?: FutureCoinPrediction
+    content?: string
+    imageBase64?: string
+  }): Promise<{ success: boolean; contentId?: string; error?: string }> {
+    return this.request<{ success: boolean; contentId?: string; error?: string }>('/api/square/publish', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  }
+
+  async checkPredictionsTargets(): Promise<{ checked: number; newlyMet: number; errors: number }> {
+    return this.request<{ checked: number; newlyMet: number; errors: number }>('/api/predictions/targets', {
+      method: 'POST',
     })
   }
 }

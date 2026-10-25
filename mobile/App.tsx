@@ -32,6 +32,7 @@ import { SettingsModal } from './src/components/SettingsModal'
 import { ThemeSelector } from './src/components/ThemeSelector'
 import { CoinSelectorModal } from './src/components/CoinSelectorModal'
 import { HotCoinsRadar } from './src/components/HotCoinsRadar'
+import { FutureGainersPredictor } from './src/components/FutureGainersPredictor'
 
 function MainScreen() {
   const { colors, colorMode, themeStyle, refreshInterval, showIndicators } = useTheme()
@@ -51,7 +52,9 @@ function MainScreen() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   // Active tab for Neofuturistic tabbed cockpit
-  const [activeTab, setActiveTab] = useState<'alpha' | 'radar' | 'chart' | 'indicators' | 'guards' | 'orders'>('alpha')
+  const [activeTab, setActiveTab] = useState<
+    'alpha' | 'radar' | 'predictions' | 'chart' | 'indicators' | 'guards' | 'orders'
+  >('alpha')
 
   const loadData = useCallback(async () => {
     try {
@@ -341,6 +344,12 @@ function MainScreen() {
               onSelectSymbol={(sym) => setSelectedSymbol(sym)}
             />
 
+            {/* AI Multi-Day Future Gainers Predictor */}
+            <FutureGainersPredictor
+              activeSymbol={selectedSymbol}
+              onSelectSymbol={(sym) => setSelectedSymbol(sym)}
+            />
+
             {/* Candlestick Chart High Priority */}
             {chartData && (
               <MiniCandleChart
@@ -399,8 +408,8 @@ function MainScreen() {
             </View>
 
             {/* Interactive Segments Bar */}
-            <View style={styles.segmentBar}>
-              {(['alpha', 'radar', 'chart', 'indicators', 'guards', 'orders'] as const).map((tab) => {
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.segmentBar}>
+              {(['alpha', 'radar', 'predictions', 'chart', 'indicators', 'guards', 'orders'] as const).map((tab) => {
                 const active = activeTab === tab
                 return (
                   <TouchableOpacity
@@ -417,17 +426,26 @@ function MainScreen() {
                     ]}
                   >
                     <Text style={[styles.segmentTabText, { color: active ? colors.primary : colors.textMuted, fontWeight: active ? '800' : '600' }]}>
-                      {tab.toUpperCase()}
+                      {tab === 'predictions' ? '🔮 PREDICTOR' : tab.toUpperCase()}
                     </Text>
                   </TouchableOpacity>
                 )
               })}
-            </View>
+            </ScrollView>
 
             {/* Segment Content */}
             {activeTab === 'alpha' && latestSignal && <SignalCard signal={latestSignal} />}
             {activeTab === 'radar' && (
               <HotCoinsRadar
+                activeSymbol={selectedSymbol}
+                onSelectSymbol={(sym) => {
+                  setSelectedSymbol(sym)
+                  setActiveTab('alpha')
+                }}
+              />
+            )}
+            {activeTab === 'predictions' && (
+              <FutureGainersPredictor
                 activeSymbol={selectedSymbol}
                 onSelectSymbol={(sym) => {
                   setSelectedSymbol(sym)
@@ -498,6 +516,12 @@ function MainScreen() {
               onSelectSymbol={(sym) => setSelectedSymbol(sym)}
             />
 
+            {/* AI Multi-Day Future Gainers Predictor */}
+            <FutureGainersPredictor
+              activeSymbol={selectedSymbol}
+              onSelectSymbol={(sym) => setSelectedSymbol(sym)}
+            />
+
             {/* Candlestick Chart */}
             {chartData && (
               <MiniCandleChart
@@ -557,6 +581,12 @@ function MainScreen() {
 
             {/* Hot Coins Radar */}
             <HotCoinsRadar
+              activeSymbol={selectedSymbol}
+              onSelectSymbol={(sym) => setSelectedSymbol(sym)}
+            />
+
+            {/* AI Multi-Day Future Gainers Predictor */}
+            <FutureGainersPredictor
               activeSymbol={selectedSymbol}
               onSelectSymbol={(sym) => setSelectedSymbol(sym)}
             />

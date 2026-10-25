@@ -19,13 +19,18 @@ import {
   settings as settingsTable,
   signals,
   tradeOrders,
+  squarePostedPredictions,
   type AppNotificationRow,
   type NewAppNotificationRow,
   type PortfolioSnapshotRow,
   type SignalRow,
   type TradeOrderRow,
   type NewTradeOrderRow,
+  type SquarePostedPredictionRow,
+  type NewSquarePostedPredictionRow,
 } from './schema'
+export type { SquarePostedPredictionRow, NewSquarePostedPredictionRow }
+import type { FutureCoinPrediction } from '@/lib/data/predictions'
 
 type DB = BetterSQLite3Database<typeof schema>
 
@@ -125,6 +130,28 @@ CREATE TABLE IF NOT EXISTS app_notifications (
   read       INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_app_notifications_created_at ON app_notifications (created_at DESC);
+
+CREATE TABLE IF NOT EXISTS square_posted_predictions (
+  id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+  created_at          INTEGER NOT NULL,
+  symbol              TEXT    NOT NULL,
+  base                TEXT    NOT NULL,
+  name                TEXT    NOT NULL,
+  horizon             TEXT    NOT NULL,
+  horizon_label       TEXT    NOT NULL,
+  entry_price         REAL    NOT NULL,
+  target_price_low    REAL    NOT NULL,
+  target_price_high   REAL    NOT NULL,
+  stop_loss_price     REAL    NOT NULL,
+  predicted_gain_min  REAL    NOT NULL,
+  predicted_gain_max  REAL    NOT NULL,
+  content_id          TEXT,
+  status              TEXT    NOT NULL DEFAULT 'PENDING',
+  met_at              INTEGER,
+  met_price           REAL,
+  met_post_id         TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_square_preds_status ON square_posted_predictions (status, created_at DESC);
 `
 
 /**
@@ -645,5 +672,86 @@ export function clearAllNotifications(): void {
   try {
     getDb().delete(appNotifications).run()
   } catch {}
+}
+
+/**
+ * Record a Binance Square published prediction for milestone tracking.
+ */
+export function recordSquarePostedPrediction(
+  pred: FutureCoinPrediction,
+  contentId?: string
+): number {
+  const db = getDb()
+  const now = Date.now()
+  const result = db
+    .insert(squarePostedPredictions)
+    .values({
+      createdAt: now,
+      symbol: pred.symbol,
+      base: pred.base,
+      name: pred.name,
+      horizon: pred.horizon,
+      horizonLabel: pred.horizonLabel,
+      entryPrice: pred.currentPrice,
+      targetPriceLow: pred.targetPriceLow,
+      targetPriceHigh: pred.targetPriceHigh,
+      stopLossPrice: pred.stopLossPrice,
+      predictedGainMin: pred.predictedGainPctMin,
+      predictedGainMax: pred.predictedGainPctMax,
+      contentId: contentId ?? null,
+      status: 'PENDING',
+    })
+    .returning({ id: squarePostedPredictions.id })
+    .get()
+
+  return result.id
+}
+
+/**
+ * Get all active/pending Square predictions that have not yet hit target or expired.
+ */
+export function getPendingSquarePostedPredictions(): SquarePostedPredictionRow[] {
+  const db = getDb()
+  return db
+    .select()
+    .from(squarePostedPredictions)
+    .where(eq(squarePostedPredictions.status, 'PENDING'))
+    .orderBy(desc(squarePostedPredictions.createdAt))
+    .all()
+}
+
+/**
+ * Update milestone status of a posted prediction (e.g. TARGET_MET, STOPPED_OUT, EXPIRED).
+ */
+export function updateSquarePostedPredictionStatus(
+  id: number,
+  status: 'TARGET_MET' | 'STOPPED_OUT' | 'EXPIRED',
+  metPrice?: number,
+  metPostId?: string
+): void {
+  const db = getDb()
+  const now = Date.now()
+  db.update(squarePostedPredictions)
+    .set({
+      status,
+      metAt: status === 'TARGET_MET' ? now : null,
+      metPrice: metPrice ?? null,
+      metPostId: metPostId ?? null,
+    })
+    .where(eq(squarePostedPredictions.id, id))
+    .run()
+}
+
+/**
+ * Get recent Square posted predictions for UI display and tracking history.
+ */
+export function getSquarePostedPredictions(limit = 20): SquarePostedPredictionRow[] {
+  const db = getDb()
+  return db
+    .select()
+    .from(squarePostedPredictions)
+    .orderBy(desc(squarePostedPredictions.createdAt))
+    .limit(limit)
+    .all()
 }
 

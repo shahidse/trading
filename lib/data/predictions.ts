@@ -60,6 +60,14 @@ export type PredictionsPayload = {
     dominantCatalyst: string
   }
   predictions: FutureCoinPrediction[]
+  trackedSquarePredictions?: Array<{
+    id: number
+    symbol: string
+    horizon: string
+    status: string
+    metPrice?: number | null
+    metAt?: number | null
+  }>
 }
 
 // In-memory cache for fast response times

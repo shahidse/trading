@@ -28,6 +28,8 @@ export type BinanceSquareNotifySettings = {
   enabled: boolean
   mode: NotifyMode
   apiKey: string
+  allowedTokens?: string[]
+  maxDailyPostsPerToken?: number
 }
 
 export type NotifySettings = {
@@ -40,7 +42,13 @@ export type NotifySettings = {
 export type PublicNotifySettings = {
   email: { enabled: boolean; mode: NotifyMode; from: string; to: string; apiKeySet: boolean }
   telegram: { enabled: boolean; mode: NotifyMode; chatId: string; botTokenSet: boolean }
-  square: { enabled: boolean; mode: NotifyMode; apiKeySet: boolean }
+  square: {
+    enabled: boolean
+    mode: NotifyMode
+    apiKeySet: boolean
+    allowedTokens: string[]
+    maxDailyPostsPerToken: number
+  }
 }
 
 export type NotifySettingsPatch = {
@@ -82,9 +90,12 @@ function envDefaults(): NotifySettings {
       chatId: config.telegram.chatId,
     },
     square: {
-      enabled: Boolean(config.binanceSquare.apiKey),
+      // Auto-broadcast defaults to false so posting only occurs when clicking Square button in app
+      enabled: process.env.BINANCE_SQUARE_AUTO_POST === 'true',
       mode: normalizeMode(process.env.BINANCE_SQUARE_NOTIFY_MODE, DEFAULT_NOTIFY_MODE),
       apiKey: config.binanceSquare.apiKey,
+      allowedTokens: config.binanceSquare.allowedTokens,
+      maxDailyPostsPerToken: config.binanceSquare.maxDailyPostsPerToken,
     },
   }
 }
@@ -125,6 +136,15 @@ function mergeStored(raw: unknown, base: NotifySettings): NotifySettings {
       enabled: bool(square.enabled, base.square.enabled),
       mode: normalizeMode(square.mode, base.square.mode),
       apiKey: str(square.apiKey, base.square.apiKey),
+      allowedTokens: Array.isArray(square.allowedTokens)
+        ? (square.allowedTokens as string[])
+            .map((s) => String(s).trim().toUpperCase())
+            .filter(Boolean)
+        : base.square.allowedTokens,
+      maxDailyPostsPerToken:
+        typeof square.maxDailyPostsPerToken === 'number' && square.maxDailyPostsPerToken > 0
+          ? square.maxDailyPostsPerToken
+          : base.square.maxDailyPostsPerToken,
     },
   }
 }
@@ -190,6 +210,8 @@ export function publicNotifySettings(
       enabled: settings.square.enabled,
       mode: settings.square.mode,
       apiKeySet: Boolean(settings.square.apiKey),
+      allowedTokens: settings.square.allowedTokens ?? ['ETH', 'BTC', 'SOL'],
+      maxDailyPostsPerToken: settings.square.maxDailyPostsPerToken ?? 2,
     },
   }
 }

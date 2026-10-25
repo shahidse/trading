@@ -56,7 +56,9 @@ export function FutureGainersPredictor({
         setShareResult({
           symbol: pred.symbol,
           ok: true,
-          message: data.contentId ? `Posted! (ID: ${data.contentId})` : 'Posted to Binance Square!',
+          message: data.contentId
+            ? 'Posted to Square! Target milestone tracking armed.'
+            : 'Posted! Target milestone tracking armed.',
         })
       } else {
         setShareResult({
@@ -204,7 +206,7 @@ export function FutureGainersPredictor({
   }
 
   return (
-    <section className="rounded-2xl border border-line bg-surface p-5 shadow-xs transition-all space-y-6">
+    <section className="rounded-2xl border border-line bg-surface p-3.5 sm:p-5 shadow-xs transition-all space-y-6">
       {/* Header Bar */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-line pb-5">
         <div className="space-y-1">
@@ -446,21 +448,21 @@ export function FutureGainersPredictor({
           </div>
 
           {/* Search & Sort */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto">
             {/* Search Input */}
             <input
               type="text"
               placeholder="Search coin (e.g. ETH, SOL)..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="rounded-lg border border-line bg-surface-2 px-3 py-1 text-xs text-ink placeholder:text-subtle focus:border-accent focus:outline-none w-44"
+              className="rounded-lg border border-line bg-surface-2 px-3 py-1 text-xs text-ink placeholder:text-subtle focus:border-accent focus:outline-none w-full sm:w-44 flex-1"
             />
 
             {/* Sort Select */}
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as SortOption)}
-              className="rounded-lg border border-line bg-surface-2 px-2.5 py-1 text-xs text-ink font-semibold focus:border-accent focus:outline-none"
+              className="rounded-lg border border-line bg-surface-2 px-2.5 py-1 text-xs text-ink font-semibold focus:border-accent focus:outline-none shrink-0"
             >
               <option value="confidence">Highest Confidence</option>
               <option value="upside">Maximum Upside %</option>
@@ -575,6 +577,10 @@ export function FutureGainersPredictor({
                 ? 'bg-amber-700 text-white font-extrabold'
                 : 'bg-surface-3 text-subtle font-semibold'
 
+            const tracked = data?.trackedSquarePredictions?.find(
+              (t) => t.symbol === pred.symbol && (t.horizon === pred.horizon || !t.horizon)
+            )
+
             return (
               <div
                 key={pred.symbol}
@@ -592,12 +598,22 @@ export function FutureGainersPredictor({
                         #{pred.rank}
                       </span>
                       <div>
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="font-bold text-ink text-base tracking-tight">{pred.base}</span>
                           <span className="text-[11px] text-subtle font-semibold">/{pred.symbol.split('/')[1]}</span>
                           <span className="rounded-md bg-surface-3 px-1.5 py-0.5 text-[10px] font-semibold text-subtle">
                             {pred.category}
                           </span>
+                          {tracked?.status === 'TARGET_MET' && (
+                            <span className="rounded-md bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 animate-pulse">
+                              🎯 Target Met
+                            </span>
+                          )}
+                          {tracked?.status === 'PENDING' && (
+                            <span className="rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                              ⏳ Square Armed
+                            </span>
+                          )}
                         </div>
                         <span className="text-xs text-subtle truncate max-w-[140px] block">{pred.name}</span>
                       </div>

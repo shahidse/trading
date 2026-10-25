@@ -176,17 +176,17 @@ export default function Page() {
       <AmbientAtmosphereGlow />
       {/* Top Header Branding & Global Action Bar */}
       <header
-        className={`relative z-30 flex flex-wrap items-center justify-between gap-4 pb-5 ${
+        className={`relative z-30 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 ${
           isBrutalist
             ? 'border-b-4 border-line'
             : isPlayful
             ? 'rounded-3xl border-2 border-line bg-surface p-4 shadow-sm'
             : isNeofuturistic
-            ? 'rounded-2xl border border-line bg-surface/90 backdrop-blur-md p-4 shadow-lg'
+            ? 'rounded-2xl border border-line bg-surface/90 backdrop-blur-md p-3.5 sm:p-4 shadow-lg'
             : 'border-b border-line'
         }`}
       >
-        <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between w-full sm:w-auto">
           <div>
             <div className="flex items-center gap-2">
               <h1
@@ -226,59 +226,69 @@ export default function Page() {
               Engine
             </p>
           </div>
+
+          {/* Mobile Quick Action Buttons (Notifications & Settings) */}
+          <div className="flex items-center gap-1.5 sm:hidden">
+            <NotificationCenter />
+            <SettingsButton />
+          </div>
         </div>
 
         {/* Global Toolbar */}
         <div className="flex flex-wrap items-center gap-2">
-          <NotificationCenter />
+          <div className="hidden sm:flex items-center gap-2">
+            <NotificationCenter />
+            <SettingsButton />
+          </div>
           <ConfigReportButton targetSymbol={selectedSymbol} />
           <TradingControls />
-          <SettingsButton />
           <WalletConnect />
         </div>
       </header>
 
       {/* Top 50 Coin Switcher & Market Action Bar */}
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-surface/80 p-2.5 shadow-xs">
-        <CoinSelector activeSymbol={selectedSymbol} onSelectSymbol={handleSelectSymbol} />
+      <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 rounded-2xl border border-line bg-surface/80 p-2 sm:p-2.5 shadow-xs">
+        <div className="flex items-center justify-between sm:justify-start gap-2 w-full sm:w-auto">
+          <CoinSelector activeSymbol={selectedSymbol} onSelectSymbol={handleSelectSymbol} />
 
-        {/* Strategy Timeframe Mode Selector */}
-        <div className="flex flex-wrap items-center gap-1 rounded-xl border border-line bg-surface-2/60 p-1">
-          {[
-            { tf: '1m', label: '1m', badge: 'Scalp', desc: '1m High-Freq Scalping (15m Macro Anchor)' },
-            { tf: '15m', label: '15m', badge: 'Intraday', desc: '15m Intraday Momentum (1h Macro Anchor)' },
-            { tf: '1h', label: '1h', badge: 'Swing', desc: '1h Swing Trading (4h Macro Anchor)' },
-            { tf: '4h', label: '4h', badge: 'Macro', desc: '4h Macro Swing (1d Daily Macro Anchor)' },
-          ].map(({ tf, label, badge, desc }) => (
-            <button
-              key={tf}
-              type="button"
-              onClick={() => handleSelectTimeframe(tf)}
-              title={desc}
-              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition ${
-                selectedTimeframe === tf
-                  ? 'bg-accent text-white shadow-xs'
-                  : 'text-subtle hover:text-ink hover:bg-surface'
-              }`}
-            >
-              <span>{label}</span>
-              <span
-                className={`text-[9px] font-semibold uppercase tracking-wider ${
-                  selectedTimeframe === tf ? 'text-white/80' : 'text-muted'
+          {/* Strategy Timeframe Mode Selector */}
+          <div className="flex items-center gap-1 rounded-xl border border-line bg-surface-2/60 p-1">
+            {[
+              { tf: '1m', label: '1m', badge: 'Scalp', desc: '1m High-Freq Scalping (15m Macro Anchor)' },
+              { tf: '15m', label: '15m', badge: 'Intraday', desc: '15m Intraday Momentum (1h Macro Anchor)' },
+              { tf: '1h', label: '1h', badge: 'Swing', desc: '1h Swing Trading (4h Macro Anchor)' },
+              { tf: '4h', label: '4h', badge: 'Macro', desc: '4h Macro Swing (1d Daily Macro Anchor)' },
+            ].map(({ tf, label, badge, desc }) => (
+              <button
+                key={tf}
+                type="button"
+                onClick={() => handleSelectTimeframe(tf)}
+                title={desc}
+                className={`flex items-center gap-1 rounded-lg px-2 sm:px-2.5 py-1 text-xs font-bold transition ${
+                  selectedTimeframe === tf
+                    ? 'bg-accent text-white shadow-xs'
+                    : 'text-subtle hover:text-ink hover:bg-surface'
                 }`}
               >
-                {badge}
-              </span>
-            </button>
-          ))}
+                <span>{label}</span>
+                <span
+                  className={`hidden sm:inline text-[9px] font-semibold uppercase tracking-wider ${
+                    selectedTimeframe === tf ? 'text-white/80' : 'text-muted'
+                  }`}
+                >
+                  {badge}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <button
             type="button"
             onClick={runAnalysis}
             disabled={running}
-            className={`px-3.5 py-1.5 text-xs font-bold transition disabled:opacity-50 ${
+            className={`w-full sm:w-auto px-3.5 py-1.5 text-xs font-bold transition disabled:opacity-50 ${
               isBrutalist
                 ? 'border-2 border-line bg-accent text-white hover:translate-x-0.5 hover:translate-y-0.5'
                 : isPlayful
@@ -379,9 +389,9 @@ export default function Page() {
          ------------------------------------------------------------------------- */}
       {layoutType === 'sidebar' && (
         <div className="mt-6 flex flex-col md:flex-row gap-6 items-start">
-          {/* Responsive Sleek Sidebar Navigation */}
+          {/* Responsive Sleek Sidebar Navigation: Desktop only; mobile uses fixed bottom dock */}
           <aside
-            className={`w-full shrink-0 transition-all duration-300 md:sticky md:top-4 z-10 ${
+            className={`hidden md:block shrink-0 transition-all duration-300 md:sticky md:top-4 z-10 ${
               sidebarCollapsed ? 'md:w-20' : 'md:w-64'
             }`}
           >
@@ -650,13 +660,13 @@ export default function Page() {
           </section>
 
           {/* Mobile App Fixed Bottom Navigation Dock for Sidebar Layout */}
-          <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-surface/95 backdrop-blur-md border-t border-line py-1.5 px-2 shadow-xl flex items-center justify-around">
+          <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-surface/95 backdrop-blur-md border-t border-line py-1 px-1.5 shadow-2xl flex items-center overflow-x-auto no-scrollbar gap-1">
             {[
               { id: 'overview', label: 'Cockpit', icon: '📊' },
-              { id: 'predictions', label: 'Predict', icon: '🔮' },
+              { id: 'predictions', label: 'AI Predict', icon: '🔮' },
               { id: 'assets', label: 'Assets', icon: '💰' },
               { id: 'chart', label: 'Chart', icon: '📈' },
-              { id: 'plan', label: 'Plan', icon: '🎯' },
+              { id: 'plan', label: 'Trade Plan', icon: '🎯' },
               { id: 'indicators', label: 'Gauges', icon: '⚡' },
               { id: 'orders', label: 'Orders', icon: '📋' },
               { id: 'report', label: 'Report', icon: '🛡️' },
@@ -669,12 +679,12 @@ export default function Page() {
                   key={item.id}
                   type="button"
                   onClick={() => setActiveSidebarNav(item.id as typeof activeSidebarNav)}
-                  className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[10px] font-bold transition ${
-                    active ? 'text-accent scale-105' : 'text-subtle hover:text-ink'
+                  className={`flex flex-col items-center justify-center py-1.5 px-3 min-w-[62px] rounded-xl text-[10px] font-bold transition shrink-0 ${
+                    active ? 'bg-accent/15 text-accent ring-1 ring-accent/40 shadow-xs' : 'text-subtle hover:text-ink'
                   }`}
                 >
                   <span className="text-base">{item.icon}</span>
-                  <span className="mt-0.5">{item.label}</span>
+                  <span className="mt-0.5 whitespace-nowrap">{item.label}</span>
                 </button>
               )
             })}

@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native'
 import { Signal } from '../types'
 import { useTheme, formatPercent, formatPrice } from '../theme'
+import { api } from '../services/api'
 
 interface Props {
   signal: Signal
@@ -10,6 +11,31 @@ interface Props {
 export const SignalCard: React.FC<Props> = ({ signal }) => {
   const { colors, layoutDensity } = useTheme()
   const [expandedRationale, setExpandedRationale] = useState(false)
+  const [postingSquare, setPostingSquare] = useState(false)
+
+  const handlePostSignalToSquare = async () => {
+    setPostingSquare(true)
+    try {
+      const res = await api.publishToSquare({
+        type: 'signal',
+        signal,
+      })
+      if (res.success) {
+        Alert.alert(
+          'Posted to Binance Square! 🚀',
+          res.contentId
+            ? `Successfully published ${signal.symbol} signal (Post ID: ${res.contentId}).`
+            : `Successfully published ${signal.symbol} signal.`
+        )
+      } else {
+        Alert.alert('Publish Failed', res.error || 'Failed to post to Binance Square')
+      }
+    } catch (err: any) {
+      Alert.alert('Publish Error', err.message || 'Network error while posting to Binance Square')
+    } finally {
+      setPostingSquare(false)
+    }
+  }
 
   const isLong = signal.direction === 'LONG'
   const isShort = signal.direction === 'SHORT'
@@ -250,6 +276,31 @@ export const SignalCard: React.FC<Props> = ({ signal }) => {
             ))}
         </View>
       )}
+
+      {/* Binance Square Share Action */}
+      <View style={[styles.squareActionRow, { borderTopColor: colors.borderSubtle }]}>
+        <TouchableOpacity
+          onPress={handlePostSignalToSquare}
+          disabled={postingSquare}
+          style={[
+            styles.squarePostBtn,
+            {
+              backgroundColor: colors.warningBg || '#f59e0b15',
+              borderColor: colors.warning || '#f59e0b',
+              borderWidth: colors.borderWidth,
+              borderRadius: colors.borderRadiusSm,
+            },
+          ]}
+        >
+          {postingSquare ? (
+            <ActivityIndicator size="small" color={colors.warning || '#f59e0b'} />
+          ) : (
+            <Text style={[styles.squarePostBtnText, { color: colors.warning || '#f59e0b' }]}>
+              📢 Share Signal to Binance Square
+            </Text>
+          )}
+        </TouchableOpacity>
+      </View>
     </View>
   )
 }
@@ -410,5 +461,20 @@ const styles = StyleSheet.create({
   expandToggleText: {
     fontSize: 11,
     fontWeight: '700',
+  },
+  squareActionRow: {
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  squarePostBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  squarePostBtnText: {
+    fontSize: 11,
+    fontWeight: '800',
   },
 })

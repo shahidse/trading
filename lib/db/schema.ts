@@ -110,3 +110,30 @@ export const appNotifications = sqliteTable('app_notifications', {
 
 export type AppNotificationRow = typeof appNotifications.$inferSelect
 export type NewAppNotificationRow = typeof appNotifications.$inferInsert
+
+/**
+ * Tracked Binance Square posted predictions to monitor for milestone achievement.
+ */
+export const squarePostedPredictions = sqliteTable('square_posted_predictions', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  createdAt: integer('created_at').notNull(),
+  symbol: text('symbol').notNull(),
+  base: text('base').notNull(),
+  name: text('name').notNull(),
+  horizon: text('horizon').notNull(),
+  horizonLabel: text('horizon_label').notNull(),
+  entryPrice: real('entry_price').notNull(),
+  targetPriceLow: real('target_price_low').notNull(),
+  targetPriceHigh: real('target_price_high').notNull(),
+  stopLossPrice: real('stop_loss_price').notNull(),
+  predictedGainMin: real('predicted_gain_min').notNull(),
+  predictedGainMax: real('predicted_gain_max').notNull(),
+  contentId: text('content_id'),
+  status: text('status').notNull().default('PENDING'), // 'PENDING' | 'TARGET_MET' | 'STOPPED_OUT' | 'EXPIRED'
+  metAt: integer('met_at'),
+  metPrice: real('met_price'),
+  metPostId: text('met_post_id'),
+})
+
+export type SquarePostedPredictionRow = typeof squarePostedPredictions.$inferSelect
+export type NewSquarePostedPredictionRow = typeof squarePostedPredictions.$inferInsert

@@ -54,6 +54,17 @@ async function tick(): Promise<void> {
   } catch (err) {
     console.warn(`[${at}] [HOT-COINS] Auto-buy check failed:`, err)
   }
+
+  // Periodic Binance Square prediction milestone tracking (Target Met / Reached)
+  try {
+    const { checkAndPublishMetSquarePredictions } = await import('@/lib/notify/binance-square')
+    const squareReport = await checkAndPublishMetSquarePredictions()
+    if (squareReport.metCount > 0) {
+      console.log(`[${at}] [SQUARE-PREDICTIONS] Published ${squareReport.metCount} target milestone post(s) to Binance Square!`)
+    }
+  } catch (err) {
+    console.warn(`[${at}] [SQUARE-PREDICTIONS] Milestone check failed:`, err)
+  }
 }
 
 async function main(): Promise<void> {

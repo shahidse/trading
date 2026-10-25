@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getFutureCoinPredictions } from '@/lib/data/predictions'
+import { getSquarePostedPredictions } from '@/lib/db/client'
 
 export const dynamic = 'force-dynamic'
 
@@ -34,9 +35,12 @@ export async function GET(req: NextRequest) {
       filtered = filtered.slice(0, limit)
     }
 
+    const trackedSquare = getSquarePostedPredictions(20)
+
     return NextResponse.json({
       ...data,
       predictions: filtered,
+      trackedSquarePredictions: trackedSquare,
     })
   } catch (error) {
     return NextResponse.json(

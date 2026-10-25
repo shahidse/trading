@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { DirectionBadge } from '@/components/DirectionBadge'
 import { directionStyles, formatAge, formatPrice, formatScore, formatTime } from '@/lib/format'
+import { captureCandleChartSnapshot } from '@/lib/chart-capture'
 import type { Signal } from '@/lib/types'
 
 export function SignalCard({ signal }: { signal: Signal & { emailed?: boolean } }) {
@@ -14,12 +15,15 @@ export function SignalCard({ signal }: { signal: Signal & { emailed?: boolean } 
     setIsPosting(true)
     setPostResult(null)
     try {
+      const imageBase64 = captureCandleChartSnapshot(signal.symbol, signal.timeframe)
+
       const res = await fetch('/api/square/publish', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: 'signal',
           signal,
+          imageBase64: imageBase64 || undefined,
         }),
       })
       const data = await res.json()
@@ -45,7 +49,7 @@ export function SignalCard({ signal }: { signal: Signal & { emailed?: boolean } 
   }
 
   return (
-    <section className={`rounded-2xl border ${styles.border} ${styles.bg} p-6`}>
+    <section className={`rounded-2xl border ${styles.border} ${styles.bg} p-4 sm:p-6`}>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.18em] text-muted">
@@ -87,13 +91,13 @@ export function SignalCard({ signal }: { signal: Signal & { emailed?: boolean } 
           )}
         </div>
 
-        <div className="text-right text-sm">
+        <div className="text-left sm:text-right text-sm w-full sm:w-auto">
           <p className="text-muted">Spot action</p>
           <p className={`font-medium ${styles.text}`}>{styles.spotAction}</p>
           <p className="mt-2 text-xs text-subtle">
             {formatTime(signal.timestamp)} · {formatAge(signal.timestamp)}
           </p>
-          <div className="mt-2.5 flex flex-col items-end gap-1.5">
+          <div className="mt-2.5 flex flex-col items-start sm:items-end gap-1.5">
             <button
               type="button"
               onClick={handlePostToSquare}
