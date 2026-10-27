@@ -17,6 +17,7 @@ import {
 import { useTheme } from '@/components/ThemeToggle'
 import { ChartSkeleton, Spinner } from '@/components/Loader'
 import { captureCandleChartSnapshot } from '@/lib/chart-capture'
+import { SquarePostModal } from '@/components/SquarePostModal'
 import type { Theme } from '@/lib/theme'
 import type { ChartPayload, LinePoint } from '@/lib/types'
 import { readJson } from '@/lib/utils'
@@ -215,51 +216,18 @@ export function CandleChart({
     setToggles((prev) => ({ ...prev, [key]: !prev[key] }))
   }, [])
 
-  const [isPostingSquare, setIsPostingSquare] = useState(false)
+  const [isChartModalOpen, setIsChartModalOpen] = useState(false)
+  const [chartImageBase64, setChartImageBase64] = useState<string | undefined>(undefined)
   const [squareMsg, setSquareMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
-  const handlePostChartToSquare = async () => {
-    if (isPostingSquare) return
-    setIsPostingSquare(true)
-    setSquareMsg(null)
+  const handleOpenChartModal = () => {
     try {
-      const imageBase64 = captureCandleChartSnapshot(symbol ?? 'ETH/USDT', timeframe)
-      const sym = (symbol ?? 'ETH/USDT').split('/')[0]
-      const lastCandle = payload?.series.candles[payload.series.candles.length - 1]
-      const lastPrice = lastCandle?.close
-      const priceText = lastPrice != null ? `: $${lastPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}` : ''
-      const content = `📊 ${symbol ?? 'ETH/USDT'} (${timeframe}) Live Candlestick Chart\n\nCurrent Price${priceText}\n\n#BinanceSquare #CryptoCharts #${sym} #Trading`
-
-      const res = await fetch('/api/square/publish', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'raw',
-          content,
-          imageBase64: imageBase64 || undefined,
-        }),
-      })
-
-      const data = await res.json()
-      if (res.ok && data.success) {
-        setSquareMsg({
-          ok: true,
-          text: data.contentId ? `Posted! (ID: ${data.contentId})` : 'Chart posted to Square!',
-        })
-      } else {
-        setSquareMsg({
-          ok: false,
-          text: data.error || 'Failed to post chart to Square',
-        })
-      }
-    } catch (err: unknown) {
-      setSquareMsg({
-        ok: false,
-        text: err instanceof Error ? err.message : 'Network error',
-      })
-    } finally {
-      setIsPostingSquare(false)
+      const img = captureCandleChartSnapshot(symbol ?? 'ETH/USDT', timeframe)
+      setChartImageBase64(img || undefined)
+    } catch {
+      setChartImageBase64(undefined)
     }
+    setIsChartModalOpen(true)
   }
 
   // ---- fetch chart data -------------------------------------------------
@@ -628,13 +596,12 @@ export function CandleChart({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={handlePostChartToSquare}
-              disabled={isPostingSquare}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-600 transition hover:bg-amber-500/20 active:scale-95 disabled:opacity-50 dark:text-amber-400"
-              title="Capture and publish this live candlestick chart directly to Binance Square"
+              onClick={handleOpenChartModal}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-600 transition hover:bg-amber-500/20 active:scale-95 dark:text-amber-400"
+              title="Choose template and publish this live candlestick chart to Binance Square"
             >
               <span>📊</span>
-              <span>{isPostingSquare ? 'Posting Chart...' : 'Square Chart'}</span>
+              <span>Square Chart</span>
             </button>
             {squareMsg && (
               <span
@@ -702,6 +669,29 @@ export function CandleChart({
           as its two leading-span lines (Senkou A/B).
         </p>
       ) : null}
+
+      {/* Binance Square Posting Modal with Template Selector */}
+      <SquarePostModal
+        isOpen={isChartModalOpen}
+        onClose={() => setIsChartModalOpen(false)}
+        type="chart"
+        chartInfo={{
+          symbol: symbol ?? 'ETH/USDT',
+          timeframe,
+          price: payload?.series.candles[payload.series.candles.length - 1]?.close,
+        }}
+        initialImageBase64={chartImageBase64}
+        onPublished={(res) => {
+          setSquareMsg({
+            ok: res.ok,
+            text: res.ok
+              ? res.contentId
+                ? `Posted! (ID: ${res.contentId})`
+                : 'Chart posted to Square!'
+              : res.message,
+          })
+        }}
+      />
     </section>
   )
 }

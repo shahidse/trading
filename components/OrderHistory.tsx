@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { formatPrice, formatTime } from '@/lib/format'
-import type { StoredTradeOrder } from '@/lib/db/client'
+import type { StoredTradeOrder } from '@/lib/db/schema'
 import type { LiveOrder } from '@/lib/exchange/client'
 import { Pagination } from '@/components/Pagination'
 import { Spinner } from '@/components/Loader'

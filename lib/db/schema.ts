@@ -137,3 +137,6 @@ export const squarePostedPredictions = sqliteTable('square_posted_predictions', 
 
 export type SquarePostedPredictionRow = typeof squarePostedPredictions.$inferSelect
 export type NewSquarePostedPredictionRow = typeof squarePostedPredictions.$inferInsert
+
+export type StoredTradeOrder = TradeOrderRow
+export type StoredAppNotification = AppNotificationRow

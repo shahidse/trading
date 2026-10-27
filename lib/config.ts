@@ -191,23 +191,39 @@ export const config = {
    * — so the app sends nothing until it is deliberately armed from /settings.
    */
   exchange: {
+    /** Target spot exchange ('binance' | 'bybit' | 'okx' | 'bitget'). */
+    exchangeId: (process.env.EXCHANGE_ID ?? 'binance') as 'binance' | 'bybit' | 'okx' | 'bitget',
     /** Master arm switch. */
     enabled: bool(process.env.TRADING_ENABLED ?? process.env.AUTO_TRADE_ENABLED, false),
     /** Immediate halt, checked before every order. */
     killSwitch: bool(process.env.TRADING_KILL_SWITCH, false),
     /** Log the intended order instead of sending it. */
     dryRun: bool(process.env.TRADING_DRY_RUN ?? process.env.DRY_RUN, true),
-    /** Binance Spot Testnet (fake funds) rather than mainnet. */
+    /** Spot Testnet / Sandbox (fake funds) rather than mainnet. */
     testnet: bool(process.env.EXCHANGE_TESTNET ?? process.env.BINANCE_TESTNET, true),
     apiKey: cleanKey(
+      process.env.EXCHANGE_API_KEY ??
       process.env.BINANCE_API_KEY ??
       process.env.BINANCE_KEY ??
       process.env.BINANCE_APIKEY
     ),
     secret: cleanKey(
+      process.env.EXCHANGE_SECRET ??
       process.env.BINANCE_SECRET ??
       process.env.BINANCE_API_SECRET ??
       process.env.BINANCE_SECRET_KEY
+    ),
+    /** Optional API passphrase for OKX / Bitget. */
+    password: cleanKey(
+      process.env.EXCHANGE_PASSWORD ??
+      process.env.OKX_PASSPHRASE ??
+      process.env.BITGET_PASSPHRASE
+    ),
+    /** Broker / Referral partner ID for automated fee rebates (30%-40%). */
+    brokerId: cleanKey(
+      process.env.EXCHANGE_BROKER_ID ??
+      process.env.BINANCE_BROKER_ID ??
+      'x-ETHBOT'
     ),
     /** Fixed notional per entry, in quote currency. */
     notionalUsd: num(process.env.TRADE_NOTIONAL_USD, 100),
@@ -221,6 +237,14 @@ export const config = {
     useOcoBracket: bool(process.env.USE_OCO_BRACKET, true),
     /** Reversal scalping mode: allows BUY on strong bullish candle patterns / oversold bounce even in downtrends. */
     reversalScalpMode: bool(process.env.REVERSAL_SCALP_MODE, true),
+  },
+
+  /** Broker partner rebate IDs across exchanges */
+  broker: {
+    binance: cleanKey(process.env.BINANCE_BROKER_ID ?? 'x-ETHBOT'),
+    bybit: cleanKey(process.env.BYBIT_BROKER_ID ?? 'ethbot'),
+    okx: cleanKey(process.env.OKX_BROKER_ID ?? 'ethbot'),
+    bitget: cleanKey(process.env.BITGET_BROKER_ID ?? 'ethbot'),
   },
 
   /** Reversal Scalper parameters for intraday candle bounces */

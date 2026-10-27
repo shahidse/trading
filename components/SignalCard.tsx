@@ -4,48 +4,23 @@ import { useState } from 'react'
 import { DirectionBadge } from '@/components/DirectionBadge'
 import { directionStyles, formatAge, formatPrice, formatScore, formatTime } from '@/lib/format'
 import { captureCandleChartSnapshot } from '@/lib/chart-capture'
+import { SquarePostModal } from '@/components/SquarePostModal'
 import type { Signal } from '@/lib/types'
 
 export function SignalCard({ signal }: { signal: Signal & { emailed?: boolean } }) {
   const styles = directionStyles[signal.direction]
-  const [isPosting, setIsPosting] = useState(false)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [chartSnapshot, setChartSnapshot] = useState<string | undefined>(undefined)
   const [postResult, setPostResult] = useState<{ ok: boolean; message: string } | null>(null)
 
-  const handlePostToSquare = async () => {
-    setIsPosting(true)
-    setPostResult(null)
+  const handleOpenSquareModal = () => {
     try {
       const imageBase64 = captureCandleChartSnapshot(signal.symbol, signal.timeframe)
-
-      const res = await fetch('/api/square/publish', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'signal',
-          signal,
-          imageBase64: imageBase64 || undefined,
-        }),
-      })
-      const data = await res.json()
-      if (res.ok && data.success) {
-        setPostResult({
-          ok: true,
-          message: data.contentId ? `Posted! (ID: ${data.contentId})` : 'Posted to Binance Square!',
-        })
-      } else {
-        setPostResult({
-          ok: false,
-          message: data.error || 'Failed to post to Square',
-        })
-      }
-    } catch (err: unknown) {
-      setPostResult({
-        ok: false,
-        message: err instanceof Error ? err.message : 'Network error posting to Square',
-      })
-    } finally {
-      setIsPosting(false)
+      setChartSnapshot(imageBase64 || undefined)
+    } catch {
+      setChartSnapshot(undefined)
     }
+    setIsModalOpen(true)
   }
 
   return (
@@ -100,13 +75,12 @@ export function SignalCard({ signal }: { signal: Signal & { emailed?: boolean } 
           <div className="mt-2.5 flex flex-col items-start sm:items-end gap-1.5">
             <button
               type="button"
-              onClick={handlePostToSquare}
-              disabled={isPosting}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-600 transition-all hover:bg-amber-500/20 active:scale-95 disabled:opacity-50 dark:text-amber-400"
-              title="Publish this trade signal directly to Binance Square Creator Social Feed"
+              onClick={handleOpenSquareModal}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-600 transition-all hover:bg-amber-500/20 active:scale-95 dark:text-amber-400"
+              title="Choose template and publish this trade signal to Binance Square"
             >
               <span>📢</span>
-              <span>{isPosting ? 'Posting...' : 'Share on Square'}</span>
+              <span>Share on Square</span>
             </button>
             {postResult && (
               <span
@@ -175,6 +149,21 @@ export function SignalCard({ signal }: { signal: Signal & { emailed?: boolean } 
           ))}
         </ul>
       </div>
+
+      {/* Binance Square Posting Modal with Template Selector */}
+      <SquarePostModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        type="signal"
+        signal={signal}
+        initialImageBase64={chartSnapshot}
+        onPublished={(res) => {
+          setPostResult({
+            ok: res.ok,
+            message: res.contentId ? `Posted! (ID: ${res.contentId})` : res.message,
+          })
+        }}
+      />
     </section>
   )
 }

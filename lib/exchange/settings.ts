@@ -1,5 +1,6 @@
 import { config } from '@/lib/config'
 import { getSetting, setSetting } from '@/lib/db/client'
+import type { SupportedExchangeId } from '@/lib/exchange/broker'
 
 /**
  * Automatic-trading settings.
@@ -11,16 +12,22 @@ import { getSetting, setSetting } from '@/lib/db/client'
  * trading disabled, kill switch on standby, dry-run **on**, testnet **on**.
  */
 export type ExchangeSettings = {
+  /** Target spot exchange ('binance' | 'bybit' | 'okx' | 'bitget'). */
+  exchangeId?: SupportedExchangeId
   /** Master arm switch for automatic order placement. */
   enabled: boolean
   /** Immediate halt, checked before every order. */
   killSwitch: boolean
   /** Log the intended order instead of sending it. */
   dryRun: boolean
-  /** Binance Spot Testnet (fake funds) instead of mainnet. */
+  /** Spot Testnet / Sandbox (fake funds) instead of mainnet. */
   testnet: boolean
   apiKey: string
   secret: string
+  /** Optional API passphrase (required by OKX, optional for Bitget). */
+  password?: string
+  /** Broker / Referral partner ID for automated fee rebates (30%-40%). */
+  brokerId?: string
   /** Fixed notional per entry, in quote currency. */
   notionalUsd: number
   /** Hard cap — refuse any single order above this. */
@@ -38,6 +45,7 @@ export type ExchangeSettings = {
 
 /** What the browser may see: credentials become set/unset flags. */
 export type PublicExchangeSettings = {
+  exchangeId: SupportedExchangeId
   enabled: boolean
   killSwitch: boolean
   dryRun: boolean
@@ -50,6 +58,8 @@ export type PublicExchangeSettings = {
   reversalScalpMode: boolean
   apiKeySet: boolean
   secretSet: boolean
+  passwordSet: boolean
+  brokerId: string
   credentialSource: 'env' | 'fast-connect' | 'none'
   hasEnvCredentials: boolean
   keyMasked?: string
@@ -60,12 +70,15 @@ const SETTINGS_KEY = 'exchange'
 function envDefaults(): ExchangeSettings {
   const hasEnv = Boolean(config.exchange.apiKey && config.exchange.apiKey.trim() !== '')
   return {
+    exchangeId: config.exchange.exchangeId ?? 'binance',
     enabled: config.exchange.enabled,
     killSwitch: config.exchange.killSwitch,
     dryRun: config.exchange.dryRun,
     testnet: config.exchange.testnet,
     apiKey: config.exchange.apiKey,
     secret: config.exchange.secret,
+    password: config.exchange.password,
+    brokerId: config.exchange.brokerId ?? 'x-ETHBOT',
     notionalUsd: config.exchange.notionalUsd,
     maxNotionalUsd: config.exchange.maxNotionalUsd,
     dailyLossLimitUsd: config.exchange.dailyLossLimitUsd,
@@ -99,13 +112,22 @@ export function mergeStored(raw: unknown, base: ExchangeSettings): ExchangeSetti
   const secret = hasEnvKey ? base.secret : str(r.secret, '')
   const credentialSource = hasEnvKey ? 'env' : (apiKey ? 'fast-connect' : 'none')
 
+  const exCandidate = r.exchangeId as SupportedExchangeId | undefined
+  const exchangeId: SupportedExchangeId =
+    exCandidate && ['binance', 'bybit', 'okx', 'bitget'].includes(exCandidate)
+      ? exCandidate
+      : (base.exchangeId ?? 'binance')
+
   return {
+    exchangeId,
     enabled: bool(r.enabled, base.enabled),
     killSwitch: bool(r.killSwitch, base.killSwitch),
     dryRun: bool(r.dryRun, base.dryRun),
     testnet: bool(r.testnet, base.testnet),
     apiKey,
     secret,
+    password: typeof r.password === 'string' ? r.password : base.password,
+    brokerId: typeof r.brokerId === 'string' && r.brokerId.trim() !== '' ? r.brokerId.trim() : base.brokerId,
     notionalUsd: num(r.notionalUsd, base.notionalUsd),
     maxNotionalUsd: num(r.maxNotionalUsd, base.maxNotionalUsd),
     dailyLossLimitUsd: num(r.dailyLossLimitUsd, base.dailyLossLimitUsd),
@@ -151,6 +173,7 @@ export function publicExchangeSettings(
   const source = hasEnv ? 'env' : (settings.apiKey ? 'fast-connect' : 'none')
 
   return {
+    exchangeId: settings.exchangeId ?? 'binance',
     enabled: settings.enabled,
     killSwitch: settings.killSwitch,
     dryRun: settings.dryRun,
@@ -163,6 +186,8 @@ export function publicExchangeSettings(
     reversalScalpMode: settings.reversalScalpMode,
     apiKeySet: Boolean(settings.apiKey),
     secretSet: Boolean(settings.secret),
+    passwordSet: Boolean(settings.password && settings.password.trim() !== ''),
+    brokerId: settings.brokerId || 'x-ETHBOT',
     credentialSource: source,
     hasEnvCredentials: hasEnv,
     keyMasked: settings.apiKey ? `${settings.apiKey.slice(0, 4)}...${settings.apiKey.slice(-4)}` : undefined,

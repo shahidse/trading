@@ -95,6 +95,8 @@ type PublicSettings = {
     apiKeySet: boolean
     allowedTokens?: string[]
     maxDailyPostsPerToken?: number
+    defaultSignalTemplate?: string
+    defaultPredictionTemplate?: string
   }
 }
 
@@ -140,6 +142,8 @@ export default function SettingsPage() {
   const [squareKey, setSquareKey] = useState('')
   const [squareKeyTouched, setSquareKeyTouched] = useState(false)
   const [squareKeySet, setSquareKeySet] = useState(false)
+  const [squareSignalTemplate, setSquareSignalTemplate] = useState('detailed')
+  const [squarePredTemplate, setSquarePredTemplate] = useState('alpha')
 
   const apply = useCallback((settings: PublicSettings) => {
     setEmailEnabled(settings.email.enabled)
@@ -165,6 +169,8 @@ export default function SettingsPage() {
       setSquareKey('')
       setSquareKeyTouched(false)
       setSquareKeySet(settings.square.apiKeySet)
+      setSquareSignalTemplate(settings.square.defaultSignalTemplate ?? 'detailed')
+      setSquarePredTemplate(settings.square.defaultPredictionTemplate ?? 'alpha')
     }
   }, [])
 
@@ -215,6 +221,8 @@ export default function SettingsPage() {
                   mode: squareMode,
                   allowedTokens: squareTokens.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean),
                   maxDailyPostsPerToken: Math.max(1, Number(squareMaxPosts) || 2),
+                  defaultSignalTemplate: squareSignalTemplate,
+                  defaultPredictionTemplate: squarePredTemplate,
                   ...(squareKeyTouched ? { apiKey: squareKey } : {}),
                 },
               }
@@ -680,6 +688,39 @@ export default function SettingsPage() {
                 />
                 <span className="mt-1 block text-[11px] text-subtle">
                   Maximum automatic posts per token per 24h UTC window (anti-spam quota).
+                </span>
+              </label>
+
+              <label>
+                <span className={labelClass}>Default Signal Post Template</span>
+                <select
+                  value={squareSignalTemplate}
+                  onChange={(event) => setSquareSignalTemplate(event.target.value)}
+                  className={inputClass}
+                >
+                  <option value="detailed">Professional Analysis (Full breakdown & levels)</option>
+                  <option value="quick">Quick Scalp Alert (Fast & punchy)</option>
+                  <option value="confluence">Technical Confluence (Indicators & macro alignment)</option>
+                  <option value="discussion">Community Discussion (Interactive query)</option>
+                </select>
+                <span className="mt-1 block text-[11px] text-subtle">
+                  Template used for auto-published trade signals.
+                </span>
+              </label>
+
+              <label>
+                <span className={labelClass}>Default Prediction Post Template</span>
+                <select
+                  value={squarePredTemplate}
+                  onChange={(event) => setSquarePredTemplate(event.target.value)}
+                  className={inputClass}
+                >
+                  <option value="alpha">Top Gainer Alpha Call (Targets & validation triggers)</option>
+                  <option value="breakout">Breakout Squeeze (Compression & momentum)</option>
+                  <option value="conservative">Disciplined Swing (Capital preservation & 1-2% risk)</option>
+                </select>
+                <span className="mt-1 block text-[11px] text-subtle">
+                  Template used for auto-published gainer predictions.
                 </span>
               </label>
 

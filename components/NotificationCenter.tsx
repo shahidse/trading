@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { StoredAppNotification } from '@/lib/db/client'
+import type { StoredAppNotification } from '@/lib/db/schema'
 import { readJson } from '@/lib/utils'
 
 function timeAgo(timestamp: number): string {

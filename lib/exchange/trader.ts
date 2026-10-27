@@ -21,6 +21,7 @@ import {
   type ExchangeSettings,
 } from '@/lib/exchange/settings'
 import { notifyImportantEvent } from '@/lib/notify/events'
+import { getBrokerOrderParams } from '@/lib/exchange/broker'
 import type { TradeAction, TradeLevels } from '@/lib/types'
 
 /**
@@ -487,11 +488,14 @@ export async function executeTrade(
       })
     }
 
+    const brokerParams = getBrokerOrderParams(exchange.id, settings.brokerId)
     const order = await exchange.createOrder(
       intent.symbol,
       'market',
       intent.side.toLowerCase(),
       quantity,
+      undefined,
+      brokerParams,
     )
 
     const fillPrice = Number(order.average ?? order.price ?? marketPrice)

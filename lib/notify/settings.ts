@@ -30,6 +30,8 @@ export type BinanceSquareNotifySettings = {
   apiKey: string
   allowedTokens?: string[]
   maxDailyPostsPerToken?: number
+  defaultSignalTemplate?: string
+  defaultPredictionTemplate?: string
 }
 
 export type NotifySettings = {
@@ -48,6 +50,8 @@ export type PublicNotifySettings = {
     apiKeySet: boolean
     allowedTokens: string[]
     maxDailyPostsPerToken: number
+    defaultSignalTemplate?: string
+    defaultPredictionTemplate?: string
   }
 }
 
@@ -96,6 +100,8 @@ function envDefaults(): NotifySettings {
       apiKey: config.binanceSquare.apiKey,
       allowedTokens: config.binanceSquare.allowedTokens,
       maxDailyPostsPerToken: config.binanceSquare.maxDailyPostsPerToken,
+      defaultSignalTemplate: process.env.BINANCE_SQUARE_SIGNAL_TEMPLATE || 'detailed',
+      defaultPredictionTemplate: process.env.BINANCE_SQUARE_PREDICTION_TEMPLATE || 'alpha',
     },
   }
 }
@@ -145,6 +151,8 @@ function mergeStored(raw: unknown, base: NotifySettings): NotifySettings {
         typeof square.maxDailyPostsPerToken === 'number' && square.maxDailyPostsPerToken > 0
           ? square.maxDailyPostsPerToken
           : base.square.maxDailyPostsPerToken,
+      defaultSignalTemplate: str(square.defaultSignalTemplate, base.square.defaultSignalTemplate ?? 'detailed'),
+      defaultPredictionTemplate: str(square.defaultPredictionTemplate, base.square.defaultPredictionTemplate ?? 'alpha'),
     },
   }
 }
@@ -212,6 +220,8 @@ export function publicNotifySettings(
       apiKeySet: Boolean(settings.square.apiKey),
       allowedTokens: settings.square.allowedTokens ?? ['ETH', 'BTC', 'SOL'],
       maxDailyPostsPerToken: settings.square.maxDailyPostsPerToken ?? 2,
+      defaultSignalTemplate: settings.square.defaultSignalTemplate ?? 'detailed',
+      defaultPredictionTemplate: settings.square.defaultPredictionTemplate ?? 'alpha',
     },
   }
 }

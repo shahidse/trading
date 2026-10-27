@@ -2,6 +2,10 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import {
   formatSignalForSquare,
   formatPredictionForSquare,
+  formatChartForSquare,
+  SIGNAL_SQUARE_TEMPLATES,
+  PREDICTION_SQUARE_TEMPLATES,
+  CHART_SQUARE_TEMPLATES,
   isBinanceSquareConfigured,
   postToBinanceSquare,
   sendTestSquarePost,
@@ -155,6 +159,43 @@ describe('Binance Square Integration', () => {
       expect(text).toContain('Action: SELL')
       expect(text).toContain('Protective Stop: $3,100.00')
     })
+    it('formats a quick scalp alert when quick template is chosen', () => {
+      const text = formatSignalForSquare(mockSignal, 'quick')
+      expect(text).toContain('⚡ QUICK ALERT: ETH/USDT')
+      expect(text).toContain('Action: BUY 🟢')
+      expect(text).toContain('Entry: $3,200.00')
+      expect(text).toContain('Target: $3,360.00 (+5%)')
+      expect(text).toContain('Stop: $3,120.00 (-2.5%)')
+      expect(text).toContain('#CryptoAlert')
+    })
+
+    it('formats a deep technical confluence breakdown when confluence template is chosen', () => {
+      const signalWithMacro: Signal = {
+        ...mockSignal,
+        macroTrend: {
+          timeframe: '1h',
+          verdict: 'bullish',
+          supertrendDirection: 'bullish',
+          supertrendValue: 3100,
+          emaAlignment: 'bullish',
+          alignmentWithSignal: 'aligned',
+          detail: '1H EMA stack aligned',
+        },
+      }
+      const text = formatSignalForSquare(signalWithMacro, 'confluence')
+      expect(text).toContain('🔬 TECHNICAL CONFLUENCE: ETH/USDT')
+      expect(text).toContain('Confluence Verdict: STRONG AGREEMENT')
+      expect(text).toContain('ADX: 28.5')
+      expect(text).toContain('1H Macro Alignment: BULLISH (aligned)')
+      expect(text).toContain('#TechnicalAnalysis')
+    })
+
+    it('formats an interactive discussion post when discussion template is chosen', () => {
+      const text = formatSignalForSquare(mockSignal, 'discussion')
+      expect(text).toContain('💬 $ETH SETUP — What\'s your view?')
+      expect(text).toContain('Drop your thoughts below!')
+      expect(text).toContain('#CryptoCommunity')
+    })
   })
 
   describe('formatPredictionForSquare', () => {
@@ -169,6 +210,50 @@ describe('Binance Square Integration', () => {
       expect(text).not.toContain('Ecosystem Expansion & Breakout')
       expect(text).toContain('#Solana')
       expect(text).toContain('#SOL')
+    })
+
+    it('formats a breakout squeeze prediction when breakout template is chosen', () => {
+      const text = formatPredictionForSquare(mockPrediction, 'breakout')
+      expect(text).toContain('🚀 BREAKOUT SQUEEZE DETECTED: $SOL')
+      expect(text).toContain('Breakout Zone: $148.5 - $151')
+      expect(text).toContain('Target Expansion: $163.02 - $171.58')
+      expect(text).toContain('#CryptoBreakout')
+    })
+
+    it('formats a conservative swing prediction when conservative template is chosen', () => {
+      const text = formatPredictionForSquare(mockPrediction, 'conservative')
+      expect(text).toContain('🛡️ DISCIPLINED SWING SETUP: $SOL')
+      expect(text).toContain('Capital Preservation')
+      expect(text).toContain('Risk / Reward Ratio: 2.3:1')
+      expect(text).toContain('#RiskManagement')
+    })
+  })
+
+  describe('formatChartForSquare', () => {
+    it('formats a standard candlestick chart snapshot', () => {
+      const text = formatChartForSquare('ETH/USDT', '15m', 3200, 'standard')
+      expect(text).toContain('📊 ETH/USDT (15m) Live Candlestick Chart')
+      expect(text).toContain('Current Price: $3,200.00')
+      expect(text).toContain('#CryptoCharts')
+    })
+
+    it('formats a technical chart breakdown', () => {
+      const text = formatChartForSquare('ETH/USDT', '15m', 3200, 'technical')
+      expect(text).toContain('📈 TECHNICAL CHART BREAKDOWN: ETH/USDT (15m)')
+      expect(text).toContain('Current Price: $3,200.00')
+      expect(text).toContain('trendlines, EMAs, and momentum overlay')
+    })
+  })
+
+  describe('Square template lists', () => {
+    it('exposes valid template catalogs', () => {
+      expect(SIGNAL_SQUARE_TEMPLATES.length).toBeGreaterThanOrEqual(4)
+      expect(PREDICTION_SQUARE_TEMPLATES.length).toBeGreaterThanOrEqual(3)
+      expect(CHART_SQUARE_TEMPLATES.length).toBeGreaterThanOrEqual(2)
+      expect(SIGNAL_SQUARE_TEMPLATES.map((t) => t.id)).toContain('detailed')
+      expect(SIGNAL_SQUARE_TEMPLATES.map((t) => t.id)).toContain('quick')
+      expect(SIGNAL_SQUARE_TEMPLATES.map((t) => t.id)).toContain('confluence')
+      expect(SIGNAL_SQUARE_TEMPLATES.map((t) => t.id)).toContain('discussion')
     })
   })
 

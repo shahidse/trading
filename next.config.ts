@@ -4,7 +4,22 @@ const nextConfig: NextConfig = {
   // Native / heavy server-only modules must not be bundled by webpack.
   serverExternalPackages: ['better-sqlite3', 'ccxt'],
 
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        'node:fs': false,
+        path: false,
+        'node:path': false,
+        net: false,
+        'node:net': false,
+        tls: false,
+        'node:tls': false,
+        crypto: false,
+        'node:crypto': false,
+      }
+    }
     // The `wagmi/connectors` barrel eagerly imports the Base/Coinbase account
     // connectors, which depend on optional `@x402/*` packages that aren't
     // installed (there is no fine-grained subpath export to import instead).

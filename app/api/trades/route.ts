@@ -50,7 +50,8 @@ export async function GET(request: Request) {
     let exchangeError: string | null = null
 
     if (!settings.apiKey || !settings.secret) {
-      exchangeError = `Binance credentials missing (apiKey: ${settings.apiKey ? 'configured' : 'NOT FOUND'}, secret: ${settings.secret ? 'configured' : 'NOT FOUND'}). Check Netlify Functions environment variables.`
+      const exName = (settings.exchangeId ?? 'binance').toUpperCase()
+      exchangeError = `${exName} credentials missing (apiKey: ${settings.apiKey ? 'configured' : 'NOT FOUND'}, secret: ${settings.secret ? 'configured' : 'NOT FOUND'}). Configure them in /settings or environment variables.`
     } else {
       try {
         const exchange = await getTradingExchange()
@@ -84,6 +85,8 @@ export async function PUT(request: Request) {
   try {
     const patch = (await request.json()) as Partial<ExchangeSettings>
     saveExchangeSettings(patch)
+    const { resetTradingExchange } = await import('@/lib/exchange/client')
+    resetTradingExchange()
     return NextResponse.json({ settings: publicExchangeSettings() })
   } catch (error) {
     return NextResponse.json(

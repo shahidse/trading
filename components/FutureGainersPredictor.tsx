@@ -9,6 +9,7 @@ import type {
 } from '@/lib/data/predictions'
 import { formatUsd, formatPkr, DEFAULT_PKR_RATE } from '@/lib/currency'
 import { CardSkeleton } from '@/components/Loader'
+import { SquarePostModal } from '@/components/SquarePostModal'
 
 type SortOption = 'confidence' | 'upside' | 'riskReward'
 
@@ -36,46 +37,11 @@ export function FutureGainersPredictor({
   const [currency, setCurrency] = useState<'USD' | 'PKR'>('USD')
   const [pkrRate, setPkrRate] = useState<number>(DEFAULT_PKR_RATE)
   const [viewMode, setViewMode] = useState<'scroll' | 'expand'>('scroll')
-  const [sharingSymbol, setSharingSymbol] = useState<string | null>(null)
+  const [squareModalPred, setSquareModalPred] = useState<FutureCoinPrediction | null>(null)
   const [shareResult, setShareResult] = useState<{ symbol: string; ok: boolean; message: string } | null>(null)
 
-  const handleShareToSquare = async (pred: FutureCoinPrediction) => {
-    setSharingSymbol(pred.symbol)
-    setShareResult(null)
-    try {
-      const res = await fetch('/api/square/publish', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'prediction',
-          prediction: pred,
-        }),
-      })
-      const data = await res.json()
-      if (res.ok && data.success) {
-        setShareResult({
-          symbol: pred.symbol,
-          ok: true,
-          message: data.contentId
-            ? 'Posted to Square! Target milestone tracking armed.'
-            : 'Posted! Target milestone tracking armed.',
-        })
-      } else {
-        setShareResult({
-          symbol: pred.symbol,
-          ok: false,
-          message: data.error || 'Failed to post to Square',
-        })
-      }
-    } catch (err: unknown) {
-      setShareResult({
-        symbol: pred.symbol,
-        ok: false,
-        message: err instanceof Error ? err.message : 'Network error',
-      })
-    } finally {
-      setSharingSymbol(null)
-    }
+  const handleShareToSquare = (pred: FutureCoinPrediction) => {
+    setSquareModalPred(pred)
   }
 
   // Load user's currency preference
@@ -730,12 +696,11 @@ export function FutureGainersPredictor({
                       <button
                         type="button"
                         onClick={() => handleShareToSquare(pred)}
-                        disabled={sharingSymbol === pred.symbol}
-                        title="Publish this gainer prediction to Binance Square"
-                        className="flex items-center gap-1 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2.5 py-1.5 text-xs font-semibold text-amber-600 transition-all hover:bg-amber-500/20 active:scale-95 disabled:opacity-50 dark:text-amber-400"
+                        title="Choose template and publish this prediction to Binance Square"
+                        className="flex items-center gap-1 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2.5 py-1.5 text-xs font-semibold text-amber-600 transition-all hover:bg-amber-500/20 active:scale-95 dark:text-amber-400"
                       >
                         <span>📢</span>
-                        <span>{sharingSymbol === pred.symbol ? 'Sharing...' : 'Square'}</span>
+                        <span>Square</span>
                       </button>
                       <button
                         type="button"
@@ -798,6 +763,27 @@ export function FutureGainersPredictor({
           Systematic quantitative bounds. Always practice risk management and stop-loss discipline.
         </span>
       </div>
+
+      {/* Binance Square Posting Modal with Template Selector */}
+      {squareModalPred && (
+        <SquarePostModal
+          isOpen={Boolean(squareModalPred)}
+          onClose={() => setSquareModalPred(null)}
+          type="prediction"
+          prediction={squareModalPred}
+          onPublished={(res) => {
+            setShareResult({
+              symbol: squareModalPred.symbol,
+              ok: res.ok,
+              message: res.ok
+                ? res.contentId
+                  ? 'Posted to Square! Target milestone tracking armed.'
+                  : 'Posted! Target milestone tracking armed.'
+                : res.message,
+            })
+          }}
+        />
+      )}
     </section>
   )
 }

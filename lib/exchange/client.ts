@@ -1,41 +1,59 @@
-import { binance, type Exchange } from 'ccxt'
+import { binance, bybit, okx, bitget, type Exchange } from 'ccxt'
 import { getExchangeSettings } from '@/lib/exchange/settings'
+import { applyBrokerOptions, type SupportedExchangeId } from '@/lib/exchange/broker'
 
 /**
  * Authenticated ccxt client for order placement.
  *
- * Separate from the public market-data client in `lib/data/binance.ts`: this one
- * carries credentials and may point at the Spot Testnet, so it is cached per
- * environment and reset whenever the credentials change.
+ * Supports Binance, Bybit, OKX, and Bitget spot markets.
+ * Caches instance per exchange, environment (live/testnet), and credentials.
  */
+type ExchangeConstructor = new (config?: Record<string, unknown>) => Exchange
+
+const EXCHANGES: Record<SupportedExchangeId, ExchangeConstructor> = {
+  binance: binance as unknown as ExchangeConstructor,
+  bybit: bybit as unknown as ExchangeConstructor,
+  okx: okx as unknown as ExchangeConstructor,
+  bitget: bitget as unknown as ExchangeConstructor,
+}
+
 let cached: { key: string; exchange: Exchange } | null = null
 
 export async function getTradingExchange(): Promise<Exchange> {
   const settings = getExchangeSettings()
-  const cacheKey = `${settings.testnet ? 'testnet' : 'live'}:${settings.apiKey}`
+  const exchangeId = (settings.exchangeId ?? 'binance') as SupportedExchangeId
+  const cacheKey = `${exchangeId}:${settings.testnet ? 'testnet' : 'live'}:${settings.apiKey}:${settings.password ?? ''}`
 
   if (cached && cached.key === cacheKey) return cached.exchange
 
-  const exchange = new binance({
+  const ExchangeClass = EXCHANGES[exchangeId] ?? binance
+
+  const exchange = new ExchangeClass({
     enableRateLimit: true,
     apiKey: settings.apiKey,
     secret: settings.secret,
+    ...(settings.password ? { password: settings.password } : {}),
     options: {
       defaultType: 'spot',
-      fetchMarkets: ['spot'],
       adjustForTimeDifference: true,
       recvWindow: 60000,
       fetchCurrencies: false,
+      ...(exchangeId === 'binance' ? { fetchMarkets: ['spot'] } : {}),
     },
   })
+
+  // Apply broker/referral rebate tags (30%-40% fees back)
+  applyBrokerOptions(exchange, exchangeId, settings.brokerId)
 
   const proxy = process.env.BINANCE_PROXY_URL ?? process.env.HTTPS_PROXY ?? process.env.HTTP_PROXY
   if (proxy) {
     exchange.httpsProxy = proxy
   }
 
-  // Binance Spot Testnet — fake funds, real signed-API flow.
-  if (settings.testnet) exchange.setSandboxMode(true)
+  // Spot Testnet / Sandbox mode — fake funds, real signed-API flow.
+  if (settings.testnet) {
+    exchange.setSandboxMode(true)
+  }
 
   await exchange.loadMarkets()
 
@@ -44,7 +62,7 @@ export async function getTradingExchange(): Promise<Exchange> {
       await exchange.loadTimeDifference()
     }
   } catch (err) {
-    console.warn('Could not load Binance time difference:', err)
+    console.warn(`Could not load ${exchangeId} time difference:`, err)
   }
 
   cached = { key: cacheKey, exchange }
@@ -130,6 +148,12 @@ export async function assertWithdrawalsDisabled(exchange: Exchange): Promise<voi
   if (permissionsVerified) return
 
   const settings = getExchangeSettings()
+
+  // For non-Binance exchanges (Bybit, OKX, Bitget), skip Binance SAPI-specific endpoints
+  if (exchange.id !== 'binance') {
+    permissionsVerified = true
+    return
+  }
 
   // ccxt's generated method name for /sapi/v1/account/apiRestrictions varies by
   // version, so try the known spellings.

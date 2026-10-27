@@ -3,6 +3,11 @@ import {
   postToBinanceSquare,
   formatSignalForSquare,
   formatPredictionForSquare,
+  SIGNAL_SQUARE_TEMPLATES,
+  PREDICTION_SQUARE_TEMPLATES,
+  CHART_SQUARE_TEMPLATES,
+  type SignalSquareTemplateId,
+  type PredictionSquareTemplateId,
 } from '@/lib/notify/binance-square'
 import { getNotifySettings } from '@/lib/notify/settings'
 import { recordSquarePostedPrediction } from '@/lib/db/client'
@@ -12,10 +17,23 @@ import type { FutureCoinPrediction } from '@/lib/data/predictions'
 export const dynamic = 'force-dynamic'
 
 /**
+ * Returns available templates for Binance Square posting.
+ */
+export async function GET() {
+  return NextResponse.json({
+    templates: {
+      signal: SIGNAL_SQUARE_TEMPLATES,
+      prediction: PREDICTION_SQUARE_TEMPLATES,
+      chart: CHART_SQUARE_TEMPLATES,
+    },
+  })
+}
+
+/**
  * Endpoint to programmatically post a trade signal or multi-day coin prediction
  * to the user's Binance Square creator profile.
  *
- * Triggered manually via the Square button in the app.
+ * Triggered manually via the Square button or modal in the app.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -36,17 +54,25 @@ export async function POST(req: NextRequest) {
       signal?: Signal
       prediction?: FutureCoinPrediction
       content?: string
+      templateId?: string
       imageBase64?: string
     }
 
     let textToPublish = ''
 
-    if (body.type === 'signal' && body.signal) {
-      textToPublish = formatSignalForSquare(body.signal)
-    } else if (body.type === 'prediction' && body.prediction) {
-      textToPublish = formatPredictionForSquare(body.prediction)
-    } else if (body.content) {
+    if (body.content && body.content.trim().length > 0) {
+      // User explicitly customized or accepted the preview content
       textToPublish = body.content
+    } else if (body.type === 'signal' && body.signal) {
+      textToPublish = formatSignalForSquare(
+        body.signal,
+        (body.templateId as SignalSquareTemplateId) || 'detailed'
+      )
+    } else if (body.type === 'prediction' && body.prediction) {
+      textToPublish = formatPredictionForSquare(
+        body.prediction,
+        (body.templateId as PredictionSquareTemplateId) || 'alpha'
+      )
     } else {
       return NextResponse.json(
         { success: false, error: 'Missing signal, prediction, or content in request body' },

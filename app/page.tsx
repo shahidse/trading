@@ -25,7 +25,7 @@ import { FutureGainersPredictor } from '@/components/FutureGainersPredictor'
 import { SettingsButton } from '@/components/SettingsButton'
 import { useBinanceWebSocket } from '@/hooks/useBinanceWebSocket'
 import type { AssetBalance, LiveOrder } from '@/lib/exchange/client'
-import type { StoredTradeOrder } from '@/lib/db/client'
+import type { StoredTradeOrder } from '@/lib/db/schema'
 import { formatAge, formatPrice } from '@/lib/format'
 import { readJson } from '@/lib/utils'
 import { Spinner, ButtonSpinner, CardSkeleton } from '@/components/Loader'
@@ -67,6 +67,26 @@ export default function Page() {
   const { themeStyle, layoutType } = useTheme()
   const [selectedSymbol, setSelectedSymbol] = useState<string>('ETH/USDT')
   const [selectedTimeframe, setSelectedTimeframe] = useState<string>('15m')
+
+  // Restore active symbol and timeframe from URL query params or localStorage
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const urlParams = new URLSearchParams(window.location.search)
+    const urlSym = urlParams.get('symbol')
+    const urlTf = urlParams.get('timeframe')
+    const savedSym = localStorage.getItem('eth_signal_symbol')
+    const savedTf = localStorage.getItem('eth_signal_timeframe')
+
+    const effectiveSym = urlSym || savedSym
+    const effectiveTf = urlTf || savedTf
+
+    if (effectiveSym && effectiveSym !== 'ETH/USDT') {
+      setSelectedSymbol(effectiveSym)
+    }
+    if (effectiveTf && effectiveTf !== '15m') {
+      setSelectedTimeframe(effectiveTf)
+    }
+  }, [])
   const [signals, setSignals] = useState<StoredSignal[]>([])
   const [price, setPrice] = useState<PriceResponse | null>(null)
   const [tradesData, setTradesData] = useState<TradesResponse | null>(null)
@@ -126,11 +146,31 @@ export default function Page() {
 
   function handleSelectSymbol(sym: string) {
     setSelectedSymbol(sym)
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('eth_signal_symbol', sym)
+        const url = new URL(window.location.href)
+        url.searchParams.set('symbol', sym)
+        window.history.replaceState({}, '', url.toString())
+      } catch {
+        // Ignore storage quotas
+      }
+    }
     void load(sym, selectedTimeframe)
   }
 
   function handleSelectTimeframe(tf: string) {
     setSelectedTimeframe(tf)
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('eth_signal_timeframe', tf)
+        const url = new URL(window.location.href)
+        url.searchParams.set('timeframe', tf)
+        window.history.replaceState({}, '', url.toString())
+      } catch {
+        // Ignore storage quotas
+      }
+    }
     void load(selectedSymbol, tf)
   }
 
