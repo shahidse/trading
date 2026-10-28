@@ -30,3 +30,9 @@ typechain-types/
 
 #lock file
 package-lock.json
+
+# mobile binaries & builds
+*.apk
+*.aab
+*.ipa
+eth-signal-app.apk

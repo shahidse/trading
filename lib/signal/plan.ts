@@ -11,6 +11,7 @@ import type {
   TradePlan,
 } from '@/lib/types'
 import { round } from '@/lib/utils'
+import { getPriceDecimals } from '@/lib/format'
 
 /** Only BUY and SELL require you to do something right now. */
 export function isActionable(action: TradeAction): boolean {
@@ -147,12 +148,14 @@ function buildLevels(price: number, atrValue: number | null, timeframe = '15m'):
   const tp2Multiplier = isSwing ? 3.0 : 2.6
   const tp3Multiplier = isSwing ? 4.5 : 3.5
 
+  const dec = getPriceDecimals(price)
+
   const tp1Distance = stopDistance * tp1Multiplier
-  const tp1Price = round(price + tp1Distance, 2)
+  const tp1Price = round(price + tp1Distance, dec)
   const tp2Distance = stopDistance * tp2Multiplier
-  const tp2Price = round(price + tp2Distance, 2)
+  const tp2Price = round(price + tp2Distance, dec)
   const runnerDistance = stopDistance * tp3Multiplier
-  const runnerPrice = round(price + runnerDistance, 2)
+  const runnerPrice = round(price + runnerDistance, dec)
 
   const stagedTargets = [
     {
@@ -182,9 +185,9 @@ function buildLevels(price: number, atrValue: number | null, timeframe = '15m'):
   ]
 
   return {
-    entry: round(price, 2),
-    stopLoss: round(stopLoss, 2),
-    takeProfit: round(takeProfit, 2),
+    entry: round(price, dec),
+    stopLoss: round(stopLoss, dec),
+    takeProfit: round(takeProfit, dec),
     riskReward: round(rewardMultiple, 2),
     stopDistancePct: round((stopDistance / price) * 100, 2),
     targetDistancePct: round((rewardDistance / price) * 100, 2),
@@ -194,7 +197,8 @@ function buildLevels(price: number, atrValue: number | null, timeframe = '15m'):
 }
 
 function money(value: number): string {
-  return `$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  const d = getPriceDecimals(value)
+  return `$${value.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d })}`
 }
 
 export type TradePlanInput = {
@@ -250,14 +254,15 @@ function buildScalpLevels(
       ? Math.min(baseTargetPct, round(baseTargetPct * 0.85, 2))
       : baseTargetPct
 
-  const stopLoss = round(price * (1 - baseStopPct / 100), 2)
-  const takeProfit = round(price * (1 + targetDistancePct / 100), 2)
+  const dec = getPriceDecimals(price)
+  const stopLoss = round(price * (1 - baseStopPct / 100), dec)
+  const takeProfit = round(price * (1 + targetDistancePct / 100), dec)
   const riskReward = round(targetDistancePct / baseStopPct, 2)
 
   // Staged Scalp targets:
   // Tier 1: 70% at 75% of target -> ratchet to breakeven
   // Tier 2: 30% runner at 100% of target
-  const tp1Price = round(price * (1 + (targetDistancePct * 0.75) / 100), 2)
+  const tp1Price = round(price * (1 + (targetDistancePct * 0.75) / 100), dec)
   const stagedTargets = [
     {
       tier: 1,
@@ -278,7 +283,7 @@ function buildScalpLevels(
   ]
 
   return {
-    entry: round(price, 2),
+    entry: round(price, dec),
     stopLoss,
     takeProfit,
     riskReward,
@@ -311,15 +316,16 @@ export function buildTradePlan(input: TradePlanInput): TradePlan {
   } = input
   const atrValue = regime.atrValue
 
+  const dec = getPriceDecimals(price)
   const baseProtectiveStop =
     atrValue && atrValue > 0 && price > 0
-      ? round(price - atrValue * config.trade.stopAtrMultiple, 2)
+      ? round(price - atrValue * config.trade.stopAtrMultiple, dec)
       : null
 
   // If SuperTrend is bullish and sits beneath the current price, use it as dynamic trailing stop
   const supertrendStop =
     supertrend && supertrend.direction === 'bullish' && supertrend.value < price
-      ? round(supertrend.value, 2)
+      ? round(supertrend.value, dec)
       : null
 
   const protectiveStop =
@@ -359,7 +365,7 @@ export function buildTradePlan(input: TradePlanInput): TradePlan {
   const scalpTriggerReason = supertrendFlip
     ? 'SuperTrend bullish flip (fresh momentum)'
     : supertrendSupport
-      ? `SuperTrend support bounce ($${supertrend?.value})`
+      ? `SuperTrend support bounce (${money(supertrend?.value ?? 0)})`
       : hasBullishPattern
         ? `Bullish pattern (${patternNames.join(', ') || 'reversal candle'})`
         : (isOversold ? `RSI oversold bounce (${rsiValue})` : 'Bullish candle momentum')

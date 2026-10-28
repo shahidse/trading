@@ -30,7 +30,7 @@ export function HotCoinsRadar({ activeSymbol, onSelectSymbol }: HotCoinsRadarPro
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'breakout' | 'hot' | 'pre-pump' | 'pullback' | 'gainers'>('breakout')
   const [filterCategory, setFilterCategory] = useState<string>('All')
-  const [expanded, setExpanded] = useState(false)
+  const [viewMode, setViewMode] = useState<'scroll' | 'expand'>('scroll')
 
   async function loadScanner() {
     try {
@@ -140,7 +140,18 @@ export function HotCoinsRadar({ activeSymbol, onSelectSymbol }: HotCoinsRadarPro
       {/* Category filter pills */}
       <div className="mt-3 flex items-center gap-1.5 overflow-x-auto pb-1.5 text-xs fancy-scrollbar-subtle">
         <span className="text-[11px] font-semibold text-subtle mr-1 shrink-0">Sector:</span>
-        {['All', 'Meme', 'Fan Token', 'AI / Data', 'Layer 1', 'DeFi', 'Layer 2'].map((cat) => (
+        {[
+          'All',
+          'Major',
+          'Layer 1',
+          'Layer 2',
+          'DeFi',
+          'Meme',
+          'AI / Data',
+          'Infrastructure',
+          'bStock',
+          'Fan Token',
+        ].map((cat) => (
           <button
             key={cat}
             type="button"
@@ -156,10 +167,55 @@ export function HotCoinsRadar({ activeSymbol, onSelectSymbol }: HotCoinsRadarPro
         ))}
       </div>
 
-      {/* Coin Grid Container with fancy-scrollbar when expanded */}
+      {/* View Mode & Setup Count Toolbar */}
+      {!loading && filteredCoins.length > 0 && (
+        <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 border-t border-line/60 pt-2.5 text-xs text-subtle px-1">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-ink">
+              Breakout Setups ({filteredCoins.length} {filteredCoins.length === 1 ? 'coin' : 'coins'})
+            </span>
+            <span className="hidden sm:inline text-[11px] text-muted">
+              • {viewMode === 'scroll' ? 'Contained fancy scroller active' : 'Full height expanded view'}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1 rounded-xl border border-line bg-surface-2 p-0.5">
+            <button
+              type="button"
+              onClick={() => setViewMode('scroll')}
+              title="Compact scrollable container (prevents endless page stretching)"
+              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+                viewMode === 'scroll'
+                  ? 'bg-accent text-white shadow-xs'
+                  : 'text-subtle hover:text-ink'
+              }`}
+            >
+              <span>↕️</span>
+              <span className="hidden sm:inline">Scroller</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('expand')}
+              title="Expand all cards to full height"
+              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+                viewMode === 'expand'
+                  ? 'bg-accent text-white shadow-xs'
+                  : 'text-subtle hover:text-ink'
+              }`}
+            >
+              <span>⤢</span>
+              <span className="hidden sm:inline">Expand All</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Coin Grid Container with fancy-scrollbar in scroll mode */}
       <div
-        className={`mt-4 transition-all duration-300 ${
-          expanded ? 'max-h-[640px] overflow-y-auto fancy-scrollbar pr-2 p-1 rounded-2xl border border-line-soft bg-surface-2/30 shadow-inner' : ''
+        className={`mt-3.5 transition-all duration-300 ${
+          viewMode === 'scroll'
+            ? 'max-h-[660px] xl:max-h-[740px] overflow-y-auto fancy-scrollbar pr-2 pb-2 rounded-2xl border border-line-soft bg-surface-2/20 p-2 shadow-inner'
+            : ''
         }`}
       >
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
@@ -189,7 +245,7 @@ export function HotCoinsRadar({ activeSymbol, onSelectSymbol }: HotCoinsRadarPro
             </button>
           </div>
         ) : (
-          filteredCoins.slice(0, expanded ? 36 : 12).map((coin, index) => {
+          filteredCoins.map((coin, index) => {
             const isSelected = activeSymbol === coin.symbol
             const isPump = coin.change24h >= 0
             const isTopPick = index === 0
@@ -405,14 +461,18 @@ export function HotCoinsRadar({ activeSymbol, onSelectSymbol }: HotCoinsRadarPro
         )}
         </div>
       </div>
-      {filteredCoins.length > 12 && (
+      {filteredCoins.length > 6 && (
         <div className="flex justify-center pt-3 border-t border-line/40 mt-3">
           <button
             type="button"
-            onClick={() => setExpanded(!expanded)}
-            className="inline-flex items-center gap-2 rounded-2xl border border-line bg-surface-2 px-5 py-2.5 text-xs font-bold text-ink hover:border-accent hover:text-accent transition shadow-xs cursor-pointer"
+            onClick={() => setViewMode(viewMode === 'scroll' ? 'expand' : 'scroll')}
+            className="inline-flex items-center gap-2 rounded-2xl border border-line bg-surface-2 px-5 py-2 text-xs font-bold text-ink hover:border-accent hover:text-accent transition shadow-xs cursor-pointer"
           >
-            <span>{expanded ? '▲ Collapse Watchlist' : `▼ Show All (${filteredCoins.length}) Breakout Setups`}</span>
+            <span>
+              {viewMode === 'scroll'
+                ? `⤢ Expand to Full Grid (${filteredCoins.length} Setups)`
+                : '↕️ Switch to Compact Scroller'}
+            </span>
           </button>
         </div>
       )}

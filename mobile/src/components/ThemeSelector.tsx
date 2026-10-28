@@ -3,23 +3,34 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch } from 're
 import {
   useTheme,
   THEME_STYLES,
+  LIGHT_MODES,
   ThemeStyle,
   LayoutDensity,
   ChartCandles,
   RefreshInterval,
 } from '../theme'
 
-export const ThemeSelector: React.FC = () => {
+export interface ThemeSelectorProps {
+  onClose?: () => void
+}
+
+export const ThemeSelector: React.FC<ThemeSelectorProps> = ({ onClose }) => {
   const {
     themeStyle,
     colorMode,
+    activeLightMode,
     colors,
+    currency,
+    pkrRate,
     layoutDensity,
     chartCandles,
     refreshInterval,
     showIndicators,
     setThemeStyle,
+    setColorMode,
     toggleColorMode,
+    cycleLightMode,
+    setCurrency,
     setLayoutDensity,
     setChartCandles,
     setRefreshInterval,
@@ -52,74 +63,213 @@ export const ThemeSelector: React.FC = () => {
         },
       ]}
     >
-      {/* Archetype & Color Mode */}
+      {/* Top Header Row with Close if available */}
       <View style={styles.topRow}>
         <View style={styles.labelCol}>
-          <Text style={[styles.title, { color: colors.text }]}>DESIGN ARCHETYPE & THEME</Text>
+          <Text style={[styles.title, { color: colors.text }]}>THEME & DISPLAY CONTROLS</Text>
           <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-            {THEME_STYLES.find((t) => t.id === themeStyle)?.label} · {colorMode.toUpperCase()}
+            {THEME_STYLES.find((t) => t.id === themeStyle)?.label} · {colorMode.toUpperCase()} · {currency}
           </Text>
         </View>
 
-        <TouchableOpacity
-          onPress={toggleColorMode}
-          activeOpacity={0.8}
-          style={[
-            styles.modeToggle,
-            {
-              backgroundColor: colors.surface2,
-              borderColor: colors.border,
-              borderWidth: colors.borderWidth,
-              borderRadius: colors.borderRadius,
-            },
-          ]}
-        >
-          <Text style={styles.modeIcon}>{colorMode === 'dark' ? '🌙' : '☀️'}</Text>
-          <Text style={[styles.modeText, { color: colors.text }]}>
-            {colorMode === 'dark' ? 'Dark' : 'Light'}
-          </Text>
-        </TouchableOpacity>
+        {onClose && (
+          <TouchableOpacity
+            onPress={onClose}
+            style={[
+              styles.closeBtn,
+              {
+                backgroundColor: colors.surface2,
+                borderColor: colors.borderSubtle,
+                borderWidth: colors.borderWidth,
+                borderRadius: colors.borderRadiusSm,
+              },
+            ]}
+          >
+            <Text style={[styles.closeBtnText, { color: colors.text }]}>✕ Done</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
-      {/* 4 Archetype Selectors */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollList}
-      >
-        {THEME_STYLES.map((t) => {
-          const isSelected = t.id === themeStyle
-          return (
-            <TouchableOpacity
-              key={t.id}
-              activeOpacity={0.8}
-              onPress={() => setThemeStyle(t.id)}
-              style={[
-                styles.themeTab,
-                {
-                  borderRadius: colors.borderRadius,
-                  borderWidth: colors.borderWidth,
-                  borderColor: isSelected ? colors.primary : colors.borderSubtle,
-                  backgroundColor: isSelected ? colors.primaryLight : colors.surface2,
-                },
-              ]}
-            >
-              <Text style={styles.tabIcon}>{t.icon}</Text>
-              <Text
+      {/* ALL 8 AMBIENT ROOM LIGHTING SETUPS (Synchronized with Web App) */}
+      <View style={[styles.settingSection, { borderTopColor: colors.borderSubtle }]}>
+        <View style={styles.modeSectionHeader}>
+          <Text style={[styles.sectionHeading, { color: colors.textSubtle }]}>
+            AMBIENT ROOM LIGHTING (8 SETUPS)
+          </Text>
+          <TouchableOpacity onPress={cycleLightMode}>
+            <Text style={[styles.activeModePill, { color: colors.primary, backgroundColor: colors.primaryLight }]}>
+              {activeLightMode.icon} {activeLightMode.label} · ↻ Cycle
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.lightingGrid}>
+          {LIGHT_MODES.map((mode) => {
+            const isSelected = mode.id === colorMode
+            return (
+              <TouchableOpacity
+                key={mode.id}
+                activeOpacity={0.8}
+                onPress={() => setColorMode(mode.id)}
                 style={[
-                  styles.tabLabel,
+                  styles.lightingCard,
                   {
-                    color: isSelected ? colors.primary : colors.textMuted,
-                    fontWeight: isSelected ? '800' : '600',
+                    backgroundColor: isSelected ? colors.primaryLight : colors.surface2,
+                    borderColor: isSelected ? colors.primary : colors.borderSubtle,
+                    borderWidth: isSelected ? 2 : colors.borderWidth,
+                    borderRadius: colors.borderRadius,
                   },
                 ]}
               >
-                {t.label}
-              </Text>
-            </TouchableOpacity>
-          )
-        })}
-      </ScrollView>
+                <View style={styles.modeCardTop}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <View
+                      style={[
+                        styles.previewDot,
+                        {
+                          backgroundColor: mode.bgPreview,
+                          borderColor: isSelected ? colors.primary : colors.border,
+                        },
+                      ]}
+                    />
+                    <Text style={styles.modeCardIcon}>{mode.icon}</Text>
+                  </View>
+                  {isSelected && (
+                    <View style={[styles.checkedBadge, { backgroundColor: colors.primary }]}>
+                      <Text style={styles.checkedText}>✓ ACTIVE</Text>
+                    </View>
+                  )}
+                </View>
+
+                <Text
+                  style={[
+                    styles.modeCardTitle,
+                    {
+                      color: isSelected ? colors.primary : colors.text,
+                      fontWeight: isSelected ? '800' : '700',
+                    },
+                  ]}
+                >
+                  {mode.label}
+                </Text>
+                <Text style={[styles.cardAmbientTitle, { color: colors.textSubtle }]}>
+                  {mode.ambientTitle}
+                </Text>
+                <Text
+                  style={[styles.modeCardDesc, { color: colors.textMuted }]}
+                  numberOfLines={2}
+                >
+                  {mode.desc}
+                </Text>
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+      </View>
+
+      {/* CURRENCY VALUATION: USD vs PKR */}
+      <View style={[styles.settingSection, { borderTopColor: colors.borderSubtle }]}>
+        <View style={styles.modeSectionHeader}>
+          <Text style={[styles.sectionHeading, { color: colors.textSubtle }]}>
+            CURRENCY VALUATION
+          </Text>
+          <Text style={[styles.currencyRateNote, { color: colors.textSubtle }]}>
+            1 USD ≈ ₨ {pkrRate.toFixed(2)} PKR
+          </Text>
+        </View>
+        <View style={styles.optionRow}>
+          <TouchableOpacity
+            onPress={() => setCurrency('USD')}
+            style={[
+              styles.segmentBtn,
+              {
+                backgroundColor: currency === 'USD' ? colors.primaryLight : colors.surface2,
+                borderColor: currency === 'USD' ? colors.primary : colors.borderSubtle,
+                borderWidth: colors.borderWidth,
+                borderRadius: colors.borderRadiusSm,
+              },
+            ]}
+          >
+            <Text style={styles.segmentIcon}>💵</Text>
+            <Text
+              style={[
+                styles.segmentText,
+                { color: currency === 'USD' ? colors.primary : colors.textMuted, fontWeight: currency === 'USD' ? '800' : '600' },
+              ]}
+            >
+              USD ($)
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setCurrency('PKR')}
+            style={[
+              styles.segmentBtn,
+              {
+                backgroundColor: currency === 'PKR' ? colors.primaryLight : colors.surface2,
+                borderColor: currency === 'PKR' ? colors.primary : colors.borderSubtle,
+                borderWidth: colors.borderWidth,
+                borderRadius: colors.borderRadiusSm,
+              },
+            ]}
+          >
+            <Text style={styles.segmentIcon}>🇵🇰</Text>
+            <Text
+              style={[
+                styles.segmentText,
+                { color: currency === 'PKR' ? colors.primary : colors.textMuted, fontWeight: currency === 'PKR' ? '800' : '600' },
+              ]}
+            >
+              PKR (₨)
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* 4 Archetype Selectors */}
+      <View style={[styles.settingSection, { borderTopColor: colors.borderSubtle }]}>
+        <Text style={[styles.sectionHeading, { color: colors.textSubtle }]}>
+          DESIGN ARCHETYPES (ADAPTS TO {colorMode.toUpperCase()} MODE)
+        </Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.scrollList}
+        >
+          {THEME_STYLES.map((t) => {
+            const isSelected = t.id === themeStyle
+            return (
+              <TouchableOpacity
+                key={t.id}
+                activeOpacity={0.8}
+                onPress={() => setThemeStyle(t.id)}
+                style={[
+                  styles.themeTab,
+                  {
+                    borderRadius: colors.borderRadius,
+                    borderWidth: colors.borderWidth,
+                    borderColor: isSelected ? colors.primary : colors.borderSubtle,
+                    backgroundColor: isSelected ? colors.primaryLight : colors.surface2,
+                  },
+                ]}
+              >
+                <Text style={styles.tabIcon}>{t.icon}</Text>
+                <Text
+                  style={[
+                    styles.tabLabel,
+                    {
+                      color: isSelected ? colors.primary : colors.textMuted,
+                      fontWeight: isSelected ? '800' : '600',
+                    },
+                  ]}
+                >
+                  {t.label}
+                </Text>
+              </TouchableOpacity>
+            )
+          })}
+        </ScrollView>
+      </View>
 
       {/* Layout Density */}
       <View style={[styles.settingSection, { borderTopColor: colors.borderSubtle }]}>
@@ -348,5 +498,86 @@ const styles = StyleSheet.create({
     fontSize: 10,
     marginTop: 2,
     lineHeight: 14,
+  },
+  closeBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  closeBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  modeSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  activeModePill: {
+    fontSize: 10,
+    fontWeight: '700',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  currencyRateNote: {
+    fontSize: 10,
+  },
+  modeCardRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  modeCard: {
+    flex: 1,
+    padding: 10,
+  },
+  modeCardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  modeCardIcon: {
+    fontSize: 18,
+  },
+  checkedBadge: {
+    paddingHorizontal: 5,
+    paddingVertical: 1.5,
+    borderRadius: 4,
+  },
+  checkedText: {
+    color: '#ffffff',
+    fontSize: 8,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  modeCardTitle: {
+    fontSize: 12,
+    marginBottom: 3,
+  },
+  modeCardDesc: {
+    fontSize: 9.5,
+    lineHeight: 13,
+  },
+  lightingGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  lightingCard: {
+    width: '48.5%',
+    padding: 10,
+  },
+  previewDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 1.5,
+  },
+  cardAmbientTitle: {
+    fontSize: 9.5,
+    fontWeight: '600',
+    marginBottom: 2,
   },
 })

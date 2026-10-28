@@ -4,6 +4,7 @@ import {
   Text,
   TouchableOpacity,
   FlatList,
+  ScrollView,
   StyleSheet,
   ActivityIndicator,
 } from 'react-native'
@@ -29,7 +30,7 @@ export const HotCoinsRadar: React.FC<Props> = ({ activeSymbol, onSelectSymbol })
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'breakout' | 'hot' | 'pre-pump' | 'gainers'>('breakout')
   const [filterCategory, setFilterCategory] = useState<string>('All')
-  const [expanded, setExpanded] = useState(false)
+  const [viewMode, setViewMode] = useState<'scroll' | 'expand'>('scroll')
 
   async function loadScanner() {
     try {
@@ -81,6 +82,17 @@ export const HotCoinsRadar: React.FC<Props> = ({ activeSymbol, onSelectSymbol })
     : [...categoryPool].sort((a: ScannedHotCoin, b: ScannedHotCoin) => b.change24h - a.change24h)
 
   const filteredCoins = currentList
+
+  const CardListWrapper = viewMode === 'scroll' ? ScrollView : View
+  const wrapperProps =
+    viewMode === 'scroll'
+      ? {
+          style: { maxHeight: 540 },
+          nestedScrollEnabled: true,
+          showsVerticalScrollIndicator: true,
+          contentContainerStyle: { paddingRight: 2 },
+        }
+      : {}
 
   return (
     <View
@@ -150,7 +162,18 @@ export const HotCoinsRadar: React.FC<Props> = ({ activeSymbol, onSelectSymbol })
         <FlatList
           horizontal
           showsHorizontalScrollIndicator={false}
-          data={['All', 'Meme', 'Fan Token', 'AI / Data', 'Layer 1', 'DeFi', 'Layer 2']}
+          data={[
+            'All',
+            'Major',
+            'Layer 1',
+            'Layer 2',
+            'DeFi',
+            'Meme',
+            'AI / Data',
+            'Infrastructure',
+            'bStock',
+            'Fan Token',
+          ]}
           keyExtractor={(item) => item}
           contentContainerStyle={styles.categoryPillsContent}
           renderItem={({ item }) => {
@@ -185,6 +208,39 @@ export const HotCoinsRadar: React.FC<Props> = ({ activeSymbol, onSelectSymbol })
         />
       </View>
 
+      {/* View Mode & Setup Count Toolbar */}
+      {!loading && filteredCoins.length > 0 && (
+        <View style={styles.viewModeRow}>
+          <Text style={[styles.setupCountText, { color: colors.textSubtle }]}>
+            Breakout Setups ({filteredCoins.length}) • {viewMode === 'scroll' ? 'Scroller active' : 'Full view'}
+          </Text>
+          <View style={[styles.viewModeToggle, { backgroundColor: colors.surface2, borderColor: colors.borderSubtle }]}>
+            <TouchableOpacity
+              onPress={() => setViewMode('scroll')}
+              style={[
+                styles.viewModeBtn,
+                { backgroundColor: viewMode === 'scroll' ? colors.primary : 'transparent' },
+              ]}
+            >
+              <Text style={[styles.viewModeBtnText, { color: viewMode === 'scroll' ? '#ffffff' : colors.textSubtle }]}>
+                ↕️ Scroll
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setViewMode('expand')}
+              style={[
+                styles.viewModeBtn,
+                { backgroundColor: viewMode === 'expand' ? colors.primary : 'transparent' },
+              ]}
+            >
+              <Text style={[styles.viewModeBtnText, { color: viewMode === 'expand' ? '#ffffff' : colors.textSubtle }]}>
+                ⤢ Expand
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {/* List */}
       {loading && !data ? (
         <View style={styles.loadingContainer}>
@@ -201,13 +257,14 @@ export const HotCoinsRadar: React.FC<Props> = ({ activeSymbol, onSelectSymbol })
         </View>
       ) : (
         <View style={styles.cardsContainer}>
-          {filteredCoins.slice(0, expanded ? 24 : 8).map((coin, index) => {
-            const isSelected = activeSymbol === coin.symbol
-            const isPositive = coin.change24h >= 0
-            const isTopPick = index === 0
+          <CardListWrapper {...(wrapperProps as any)}>
+            {filteredCoins.map((coin, index) => {
+              const isSelected = activeSymbol === coin.symbol
+              const isPositive = coin.change24h >= 0
+              const isTopPick = index === 0
 
-            return (
-              <View
+              return (
+                <View
                 key={coin.symbol}
                 style={[
                   styles.card,
@@ -504,9 +561,11 @@ export const HotCoinsRadar: React.FC<Props> = ({ activeSymbol, onSelectSymbol })
               </View>
             )
           })}
-          {filteredCoins.length > 8 && (
+          </CardListWrapper>
+
+          {filteredCoins.length > 4 && (
             <TouchableOpacity
-              onPress={() => setExpanded(!expanded)}
+              onPress={() => setViewMode(viewMode === 'scroll' ? 'expand' : 'scroll')}
               style={[
                 styles.expandBtn,
                 {
@@ -518,7 +577,9 @@ export const HotCoinsRadar: React.FC<Props> = ({ activeSymbol, onSelectSymbol })
               ]}
             >
               <Text style={[styles.expandBtnText, { color: colors.text }]}>
-                {expanded ? '▲ Collapse Watchlist' : `▼ Show All (${filteredCoins.length}) Breakout Setups`}
+                {viewMode === 'scroll'
+                  ? `⤢ Expand to Full List (${filteredCoins.length} Setups)`
+                  : '↕️ Switch to Compact Scroller'}
               </Text>
             </TouchableOpacity>
           )}
@@ -798,6 +859,33 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   pumpProfitValue: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  viewModeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 6,
+    marginBottom: 8,
+    paddingHorizontal: 2,
+  },
+  setupCountText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  viewModeToggle: {
+    flexDirection: 'row',
+    borderRadius: 8,
+    borderWidth: 1,
+    padding: 2,
+  },
+  viewModeBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  viewModeBtnText: {
     fontSize: 10,
     fontWeight: '700',
   },

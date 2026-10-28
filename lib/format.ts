@@ -1,10 +1,19 @@
-/** Display helpers safe for both server and client components. */
+/** Determine suitable decimal precision based on price magnitude (e.g. BTC=2, DOGE=4, PEPE=8). */
+export function getPriceDecimals(price: number | null | undefined): number {
+  if (price == null || !Number.isFinite(price) || price === 0) return 2
+  const abs = Math.abs(price)
+  if (abs >= 1) return 2
+  if (abs >= 0.01) return 4
+  if (abs >= 0.0001) return 6
+  return 8
+}
 
-export function formatPrice(value: number | null | undefined, decimals = 2): string {
+export function formatPrice(value: number | null | undefined, decimals?: number): string {
   if (value == null || !Number.isFinite(value)) return '—'
+  const d = decimals !== undefined ? decimals : getPriceDecimals(value)
   return `$${value.toLocaleString('en-US', {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
+    minimumFractionDigits: d,
+    maximumFractionDigits: d,
   })}`
 }
 

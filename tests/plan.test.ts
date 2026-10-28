@@ -380,4 +380,53 @@ describe('shouldAlert', () => {
     expect(shouldAlert('BUY', 'BUY')).toBe(false)
     expect(shouldAlert('STAY_OUT', 'STAY_OUT')).toBe(false)
   })
+
+  it('generates distinct, non-identical entry, stop loss, and take profit for DOGE (~$0.08)', () => {
+    const plan = buildTradePlan({
+      direction: 'LONG',
+      price: 0.08453,
+      score: 45,
+      regime: {
+        adx: 18,
+        regime: 'ranging',
+        direction: 'bullish',
+        atrPct: 0.35,
+        atrValue: 0.0003,
+        volatilityRatio: 0.8,
+        thresholdMultiplier: 1,
+        tilt: 'mean-reversion',
+        detail: 'Ranging',
+      },
+      confluence: {
+        bullish: 5,
+        bearish: 1,
+        agreeing: 5,
+        conflicting: 1,
+        multiplier: 1.15,
+        verdict: 'strong-agreement',
+        detail: 'Strong bullish confluence',
+      },
+      trend: { verdict: 'up', evidence: ['SuperTrend support bounce'] },
+      reversalScalpMode: true,
+      timeframe: '15m',
+    })
+
+    expect(plan.levels).not.toBeNull()
+    const { entry, stopLoss, takeProfit } = plan.levels!
+
+    // Verify they are NOT all equal to 0.08
+    expect(entry).not.toBe(stopLoss)
+    expect(entry).not.toBe(takeProfit)
+    expect(stopLoss).toBeLessThan(entry)
+    expect(takeProfit).toBeGreaterThan(entry)
+
+    // Verify proper decimal places
+    expect(entry).toBe(0.0845)
+    expect(stopLoss).toBeLessThan(0.0845)
+    expect(takeProfit).toBeGreaterThan(0.0845)
+
+    // Headline must reflect distinct prices, not identical $0.08
+    expect(plan.headline).not.toContain('stop $0.08 · target $0.08')
+  })
 })
+

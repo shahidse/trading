@@ -3,7 +3,7 @@ export type CoinInfo = {
   base: string
   quote: string
   name: string
-  category: 'Major' | 'Layer 1' | 'Layer 2' | 'DeFi' | 'Meme' | 'AI / Data' | 'Infrastructure' | 'Fan Token'
+  category: 'Major' | 'Layer 1' | 'Layer 2' | 'DeFi' | 'Meme' | 'AI / Data' | 'Infrastructure' | 'Fan Token' | 'bStock'
   default?: boolean
 }
 
@@ -42,6 +42,10 @@ export const TOP_COINS: CoinInfo[] = [
   { symbol: 'TRX/USDT', base: 'TRX', quote: 'USDT', name: 'TRON', category: 'Layer 1' },
   { symbol: 'KAS/USDT', base: 'KAS', quote: 'USDT', name: 'Kaspa', category: 'Layer 1' },
   { symbol: 'RONIN/USDT', base: 'RONIN', quote: 'USDT', name: 'Ronin Network', category: 'Layer 1' },
+  { symbol: 'XPL/USDT', base: 'XPL', quote: 'USDT', name: 'Plasma', category: 'Layer 1' },
+  { symbol: 'ARK/USDT', base: 'ARK', quote: 'USDT', name: 'Ark', category: 'Layer 1' },
+  { symbol: 'PARTI/USDT', base: 'PARTI', quote: 'USDT', name: 'Particle Network', category: 'Layer 1' },
+  { symbol: 'ACE/USDT', base: 'ACE', quote: 'USDT', name: 'Fusionist', category: 'Layer 1' },
 
   // --- Hot Memecoins & Breakout Cults ---
   { symbol: 'PENGU/USDT', base: 'PENGU', quote: 'USDT', name: 'Pudgy Penguins', category: 'Meme' },
@@ -90,6 +94,7 @@ export const TOP_COINS: CoinInfo[] = [
   { symbol: 'AKT/USDT', base: 'AKT', quote: 'USDT', name: 'Akash Network', category: 'AI / Data' },
   { symbol: 'GALA/USDT', base: 'GALA', quote: 'USDT', name: 'Gala Games', category: 'AI / Data' },
   { symbol: 'IMX/USDT', base: 'IMX', quote: 'USDT', name: 'Immutable X', category: 'AI / Data' },
+  { symbol: 'CGPT/USDT', base: 'CGPT', quote: 'USDT', name: 'ChainGPT', category: 'AI / Data' },
 
   // --- Layer 2s & Modular ---
   { symbol: 'ARB/USDT', base: 'ARB', quote: 'USDT', name: 'Arbitrum', category: 'Layer 2' },
@@ -99,6 +104,8 @@ export const TOP_COINS: CoinInfo[] = [
   { symbol: 'MANTA/USDT', base: 'MANTA', quote: 'USDT', name: 'Manta Network', category: 'Layer 2' },
   { symbol: 'ZRO/USDT', base: 'ZRO', quote: 'USDT', name: 'LayerZero', category: 'Layer 2' },
   { symbol: 'BLUR/USDT', base: 'BLUR', quote: 'USDT', name: 'Blur', category: 'Layer 2' },
+  { symbol: 'MEGA/USDT', base: 'MEGA', quote: 'USDT', name: 'MegaETH', category: 'Layer 2' },
+  { symbol: 'PLUME/USDT', base: 'PLUME', quote: 'USDT', name: 'Plume Network', category: 'Layer 2' },
 
   // --- High-Beta DeFi & DEX ---
   { symbol: 'THE/USDT', base: 'THE', quote: 'USDT', name: 'THENA', category: 'DeFi' },
@@ -124,6 +131,11 @@ export const TOP_COINS: CoinInfo[] = [
   { symbol: 'HUMA/USDT', base: 'HUMA', quote: 'USDT', name: 'Huma Finance', category: 'DeFi' },
   { symbol: 'SPK/USDT', base: 'SPK', quote: 'USDT', name: 'Spark Protocol', category: 'DeFi' },
   { symbol: 'RESOLV/USDT', base: 'RESOLV', quote: 'USDT', name: 'Resolv Protocol', category: 'DeFi' },
+  { symbol: 'BB/USDT', base: 'BB', quote: 'USDT', name: 'BounceBit', category: 'DeFi' },
+  { symbol: 'WOO/USDT', base: 'WOO', quote: 'USDT', name: 'WOO Network', category: 'DeFi' },
+  { symbol: 'HOME/USDT', base: 'HOME', quote: 'USDT', name: 'Defi App', category: 'DeFi' },
+  { symbol: 'DODO/USDT', base: 'DODO', quote: 'USDT', name: 'DODO', category: 'DeFi' },
+  { symbol: 'MORPHO/USDT', base: 'MORPHO', quote: 'USDT', name: 'Morpho', category: 'DeFi' },
 
   // --- Real World Assets (RWA) & Storage & Infrastructure ---
   { symbol: 'ONDO/USDT', base: 'ONDO', quote: 'USDT', name: 'Ondo Finance', category: 'Infrastructure' },
@@ -133,6 +145,10 @@ export const TOP_COINS: CoinInfo[] = [
   { symbol: 'KERNEL/USDT', base: 'KERNEL', quote: 'USDT', name: 'Kernel Protocol', category: 'Infrastructure' },
   { symbol: 'OPEN/USDT', base: 'OPEN', quote: 'USDT', name: 'Open Loot', category: 'Infrastructure' },
   { symbol: 'PROVE/USDT', base: 'PROVE', quote: 'USDT', name: 'Succinct Prove', category: 'Infrastructure' },
+  { symbol: 'AT/USDT', base: 'AT', quote: 'USDT', name: 'APRO Oracle', category: 'Infrastructure' },
+  { symbol: 'FLUX/USDT', base: 'FLUX', quote: 'USDT', name: 'Flux', category: 'Infrastructure' },
+  { symbol: 'NXPC/USDT', base: 'NXPC', quote: 'USDT', name: 'Nexpace', category: 'Infrastructure' },
+  { symbol: 'SIGN/USDT', base: 'SIGN', quote: 'USDT', name: 'Sign Protocol', category: 'Infrastructure' },
 
   // --- Emerging Breakouts, AI & Memes ---
   { symbol: 'INIT/USDT', base: 'INIT', quote: 'USDT', name: 'Initia', category: 'Layer 1' },
@@ -171,6 +187,16 @@ export const TOP_COINS: CoinInfo[] = [
   { symbol: 'XLM/USDT', base: 'XLM', quote: 'USDT', name: 'Stellar', category: 'Layer 1' },
   { symbol: 'DASH/USDT', base: 'DASH', quote: 'USDT', name: 'Dash', category: 'Layer 1' },
   { symbol: 'QNT/USDT', base: 'QNT', quote: 'USDT', name: 'Quant Network', category: 'Infrastructure' },
+
+  // --- Binance Tokenized bStocks & Equities ---
+  { symbol: 'LITEB/USDT', base: 'LITEB', quote: 'USDT', name: 'Lumentum Tokenized bStock', category: 'bStock' },
+  { symbol: 'WENB/USDT', base: 'WENB', quote: 'USDT', name: "Wendy's Tokenized bStock", category: 'bStock' },
+  { symbol: 'SNXXB/USDT', base: 'SNXXB', quote: 'USDT', name: 'Tradr 2X Long SNDK bStock', category: 'bStock' },
+  { symbol: 'AAOIB/USDT', base: 'AAOIB', quote: 'USDT', name: 'Applied Optoelectronics bStock', category: 'bStock' },
+  { symbol: 'AXTIB/USDT', base: 'AXTIB', quote: 'USDT', name: 'AXT Inc Tokenized bStock', category: 'bStock' },
+  { symbol: 'SHAZB/USDT', base: 'SHAZB', quote: 'USDT', name: 'SharonAI Tokenized bStock', category: 'bStock' },
+  { symbol: 'STXB/USDT', base: 'STXB', quote: 'USDT', name: 'Seagate Tokenized bStock', category: 'bStock' },
+  { symbol: 'MUUB/USDT', base: 'MUUB', quote: 'USDT', name: 'Direxion MU Bull 2X bStock', category: 'bStock' },
 ]
 
 export const SYMBOL_ALIASES: Record<string, string> = {
@@ -182,6 +208,21 @@ export const SYMBOL_ALIASES: Record<string, string> = {
   'BUBBLE/USDT': 'BMT/USDT',
   'BMT': 'BMT/USDT',
   'BMTUSDT': 'BMT/USDT',
+  'PLUM/USDT': 'PLUME/USDT',
+  'PLUM': 'PLUME/USDT',
+  'PLUMUSDT': 'PLUME/USDT',
+  'PLUME': 'PLUME/USDT',
+  'PLUMEUSDT': 'PLUME/USDT',
+  'SEAGATE/USDT': 'STXB/USDT',
+  'WENDYS/USDT': 'WENB/USDT',
+  'LUMENTUM/USDT': 'LITEB/USDT',
+  'APRO/USDT': 'AT/USDT',
+  'FUSIONIST/USDT': 'ACE/USDT',
+  'BOUNCEBIT/USDT': 'BB/USDT',
+  'PLASMA/USDT': 'XPL/USDT',
+  'CHAINGPT/USDT': 'CGPT/USDT',
+  'PARTICLE/USDT': 'PARTI/USDT',
+  'MEGAETH/USDT': 'MEGA/USDT',
 }
 
 export function normalizeSymbol(symbol: string): string {

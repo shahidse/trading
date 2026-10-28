@@ -33,9 +33,30 @@ import { ThemeSelector } from './src/components/ThemeSelector'
 import { CoinSelectorModal } from './src/components/CoinSelectorModal'
 import { HotCoinsRadar } from './src/components/HotCoinsRadar'
 import { FutureGainersPredictor } from './src/components/FutureGainersPredictor'
+import { VenueSelector } from './src/components/VenueSelector'
+import { WalletAssetsCard } from './src/components/WalletAssetsCard'
+import { OrderBookWidget } from './src/components/OrderBookWidget'
+import {
+  AmbientLightSelector,
+  AmbientLightModal,
+  AmbientLightMenuButton,
+} from './src/components/AmbientLightSelector'
 
 function MainScreen() {
-  const { colors, colorMode, themeStyle, refreshInterval, showIndicators } = useTheme()
+  const {
+    colors,
+    colorMode,
+    activeLightMode,
+    isLightTone,
+    themeStyle,
+    currency,
+    pkrRate,
+    refreshInterval,
+    showIndicators,
+    toggleColorMode,
+    cycleLightMode,
+    toggleCurrency,
+  } = useTheme()
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
@@ -49,11 +70,13 @@ function MainScreen() {
   const [tradingState, setTradingState] = useState<TradingStateResponse | null>(null)
   const [lastUpdated, setLastUpdated] = useState<number>(Date.now())
   const [showSettings, setShowSettings] = useState(false)
+  const [showThemeModal, setShowThemeModal] = useState(false)
+  const [showLightingModal, setShowLightingModal] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   // Active tab for Neofuturistic tabbed cockpit
   const [activeTab, setActiveTab] = useState<
-    'alpha' | 'radar' | 'predictions' | 'chart' | 'indicators' | 'guards' | 'orders'
+    'alpha' | 'radar' | 'predictions' | 'chart' | 'depth' | 'wallet' | 'venue' | 'indicators' | 'guards' | 'orders'
   >('alpha')
 
   const loadData = useCallback(async () => {
@@ -134,7 +157,7 @@ function MainScreen() {
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bg }]}>
       <StatusBar
-        barStyle={colorMode === 'dark' ? 'light-content' : 'dark-content'}
+        barStyle={isLightTone ? 'dark-content' : 'light-content'}
       />
 
       {/* Top Header */}
@@ -187,8 +210,48 @@ function MainScreen() {
             onPress={() => setShowCoinSelector(true)}
           >
             <Text style={[styles.coinSelectorText, { color: colors.primary }]}>
-              {selectedSymbol} <Text style={{ color: colors.textSubtle }}>▼</Text>
+              {selectedSymbol.split('/')[0]} <Text style={{ color: colors.textSubtle }}>▼</Text>
             </Text>
+          </TouchableOpacity>
+
+          {/* Quick Currency Toggle: USD 💵 vs PKR 🇵🇰 */}
+          <TouchableOpacity
+            style={[
+              styles.headerActionBtn,
+              {
+                backgroundColor: colors.surface2,
+                borderColor: colors.border,
+                borderWidth: colors.borderWidth,
+                borderRadius: colors.borderRadiusSm,
+              },
+            ]}
+            onPress={toggleCurrency}
+          >
+            <Text style={[styles.headerActionText, { color: colors.primary }]}>
+              {currency === 'USD' ? '💵' : '🇵🇰'}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Ambient Lighting Menu (8 Setups) with 1-Tap Dropdown & Long-Press Cycle */}
+          <AmbientLightMenuButton
+            onPress={() => setShowLightingModal(true)}
+            onLongPress={cycleLightMode}
+          />
+
+          {/* Dedicated Theme Modal Button */}
+          <TouchableOpacity
+            style={[
+              styles.headerActionBtn,
+              {
+                backgroundColor: colors.surface2,
+                borderColor: colors.border,
+                borderWidth: colors.borderWidth,
+                borderRadius: colors.borderRadiusSm,
+              },
+            ]}
+            onPress={() => setShowThemeModal(true)}
+          >
+            <Text style={[styles.headerActionText, { color: colors.text }]}>🎨</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -203,7 +266,7 @@ function MainScreen() {
             ]}
             onPress={() => setShowSettings(true)}
           >
-            <Text style={[styles.settingsBtnText, { color: colors.text }]}>⚙ Config</Text>
+            <Text style={[styles.settingsBtnText, { color: colors.text }]}>⚙</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -254,6 +317,28 @@ function MainScreen() {
             </TouchableOpacity>
           )
         })}
+      </View>
+
+      {/* Horizontal 1-Tap Ambient Lighting Switcher Bar (All 8 Setups) */}
+      <View
+        style={[
+          styles.lightingBar,
+          {
+            backgroundColor: colors.surface,
+            borderBottomColor: colors.borderSubtle,
+            borderBottomWidth: colors.borderWidth,
+          },
+        ]}
+      >
+        <View style={styles.lightingBarHeader}>
+          <Text style={[styles.lightingBarTitle, { color: colors.textSubtle }]}>
+            AMBIENT ROOM LIGHTING (8 SETUPS)
+          </Text>
+          <TouchableOpacity onPress={cycleLightMode}>
+            <Text style={[styles.lightingBarCycle, { color: colors.primary }]}>↻ Cycle</Text>
+          </TouchableOpacity>
+        </View>
+        <AmbientLightSelector layout="chips" />
       </View>
 
       {/* Main Content Area */}
@@ -338,6 +423,18 @@ function MainScreen() {
               </TouchableOpacity>
             </View>
 
+            {/* Execution Venue Switcher */}
+            <VenueSelector />
+
+            {/* Spot Wallet Assets & Valuation */}
+            <WalletAssetsCard
+              balances={tradingState?.liveBalances?.balances}
+              testnet={tradingState?.settings?.testnet}
+              ethPrice={priceData?.price}
+              onRefresh={loadData}
+              exchangeError={tradingState?.exchangeError}
+            />
+
             {/* Hot Coins & Breakout Radar */}
             <HotCoinsRadar
               activeSymbol={selectedSymbol}
@@ -349,6 +446,9 @@ function MainScreen() {
               activeSymbol={selectedSymbol}
               onSelectSymbol={(sym) => setSelectedSymbol(sym)}
             />
+
+            {/* Live Order Book Depth */}
+            <OrderBookWidget symbol={selectedSymbol} />
 
             {/* Candlestick Chart High Priority */}
             {chartData && (
@@ -409,7 +509,7 @@ function MainScreen() {
 
             {/* Interactive Segments Bar */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.segmentBar}>
-              {(['alpha', 'radar', 'predictions', 'chart', 'indicators', 'guards', 'orders'] as const).map((tab) => {
+              {(['alpha', 'radar', 'predictions', 'chart', 'depth', 'wallet', 'venue', 'indicators', 'guards', 'orders'] as const).map((tab) => {
                 const active = activeTab === tab
                 return (
                   <TouchableOpacity
@@ -426,7 +526,15 @@ function MainScreen() {
                     ]}
                   >
                     <Text style={[styles.segmentTabText, { color: active ? colors.primary : colors.textMuted, fontWeight: active ? '800' : '600' }]}>
-                      {tab === 'predictions' ? '🔮 PREDICTOR' : tab.toUpperCase()}
+                      {tab === 'predictions'
+                        ? '🔮 PREDICTOR'
+                        : tab === 'depth'
+                        ? '📖 DEPTH'
+                        : tab === 'wallet'
+                        ? '💰 ASSETS'
+                        : tab === 'venue'
+                        ? '⚡ VENUE'
+                        : tab.toUpperCase()}
                     </Text>
                   </TouchableOpacity>
                 )
@@ -461,6 +569,21 @@ function MainScreen() {
                 symbol={selectedSymbol}
                 timeframe={selectedTimeframe}
               />
+            )}
+            {activeTab === 'depth' && (
+              <OrderBookWidget symbol={selectedSymbol} />
+            )}
+            {activeTab === 'wallet' && (
+              <WalletAssetsCard
+                balances={tradingState?.liveBalances?.balances}
+                testnet={tradingState?.settings?.testnet}
+                ethPrice={priceData?.price}
+                onRefresh={loadData}
+                exchangeError={tradingState?.exchangeError}
+              />
+            )}
+            {activeTab === 'venue' && (
+              <VenueSelector />
             )}
             {activeTab === 'indicators' && latestSignal && (
               <IndicatorList indicators={latestSignal.indicators || []} />
@@ -510,6 +633,18 @@ function MainScreen() {
               </View>
             ) : null}
 
+            {/* Execution Venue Switcher */}
+            <VenueSelector />
+
+            {/* Spot Wallet Assets */}
+            <WalletAssetsCard
+              balances={tradingState?.liveBalances?.balances}
+              testnet={tradingState?.settings?.testnet}
+              ethPrice={priceData?.price}
+              onRefresh={loadData}
+              exchangeError={tradingState?.exchangeError}
+            />
+
             {/* Hot Coins Radar */}
             <HotCoinsRadar
               activeSymbol={selectedSymbol}
@@ -521,6 +656,9 @@ function MainScreen() {
               activeSymbol={selectedSymbol}
               onSelectSymbol={(sym) => setSelectedSymbol(sym)}
             />
+
+            {/* Live Order Book Depth */}
+            <OrderBookWidget symbol={selectedSymbol} />
 
             {/* Candlestick Chart */}
             {chartData && (
@@ -579,6 +717,18 @@ function MainScreen() {
               </TouchableOpacity>
             </View>
 
+            {/* Execution Venue Switcher */}
+            <VenueSelector />
+
+            {/* Spot Wallet Assets */}
+            <WalletAssetsCard
+              balances={tradingState?.liveBalances?.balances}
+              testnet={tradingState?.settings?.testnet}
+              ethPrice={priceData?.price}
+              onRefresh={loadData}
+              exchangeError={tradingState?.exchangeError}
+            />
+
             {/* Hot Coins Radar */}
             <HotCoinsRadar
               activeSymbol={selectedSymbol}
@@ -590,6 +740,9 @@ function MainScreen() {
               activeSymbol={selectedSymbol}
               onSelectSymbol={(sym) => setSelectedSymbol(sym)}
             />
+
+            {/* Live Order Book Depth */}
+            <OrderBookWidget symbol={selectedSymbol} />
 
             {/* Chart with thick brutal border */}
             {chartData && (
@@ -618,6 +771,26 @@ function MainScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* Ambient Lighting 8-Setup Modal */}
+      <AmbientLightModal
+        visible={showLightingModal}
+        onClose={() => setShowLightingModal(false)}
+      />
+
+      {/* Theme Selector Modal */}
+      <Modal
+        visible={showThemeModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowThemeModal(false)}
+      >
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
+          <ScrollView contentContainerStyle={{ padding: 14 }}>
+            <ThemeSelector onClose={() => setShowThemeModal(false)} />
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
 
       {/* Settings Modal */}
       <Modal
@@ -664,7 +837,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
   },
   logoTitle: {
     fontSize: 15,
@@ -677,14 +850,42 @@ const styles = StyleSheet.create({
   navActions: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
   },
   coinSelectorBtn: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 7,
     paddingVertical: 5,
-    marginRight: 6,
   },
   coinSelectorText: {
     fontSize: 11,
+    fontWeight: '800',
+  },
+  headerActionBtn: {
+    paddingHorizontal: 7,
+    paddingVertical: 5,
+  },
+  headerActionText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  lightingBar: {
+    paddingHorizontal: 12,
+    paddingTop: 6,
+    paddingBottom: 8,
+  },
+  lightingBarHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  lightingBarTitle: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+  },
+  lightingBarCycle: {
+    fontSize: 10,
     fontWeight: '800',
   },
   timeframeBar: {
@@ -704,7 +905,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   settingsBtn: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingVertical: 5,
   },
   settingsBtnText: {

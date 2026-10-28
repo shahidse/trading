@@ -119,7 +119,7 @@ export function TradePlanCard({ plan }: { plan: TradePlan }) {
                 </span>
                 {plan.levels.breakevenPrice && (
                   <span className="rounded bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                    🛡️ Ratchet to Breakeven at ${plan.levels.breakevenPrice}
+                    🛡️ Ratchet to Breakeven at {formatPrice(plan.levels.breakevenPrice)}
                   </span>
                 )}
               </div>
@@ -142,7 +142,7 @@ export function TradePlanCard({ plan }: { plan: TradePlan }) {
                       </p>
                     </div>
                     <div className="text-right">
-                      <span className="font-semibold text-up">${t.price}</span>
+                      <span className="font-semibold text-up">{formatPrice(t.price)}</span>
                       <p className="text-[10px] text-muted">+{t.distancePct}% ({t.riskReward}R)</p>
                     </div>
                   </div>

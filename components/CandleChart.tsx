@@ -21,6 +21,7 @@ import { SquarePostModal } from '@/components/SquarePostModal'
 import type { Theme } from '@/lib/theme'
 import type { ChartPayload, LinePoint } from '@/lib/types'
 import { readJson } from '@/lib/utils'
+import { getPriceDecimals } from '@/lib/format'
 
 /** Theme-specific colours for the canvas chart (lightweight-charts can't read CSS vars). */
 type Palette = {
@@ -276,12 +277,21 @@ export function CandleChart({
     const main = createChart(mainEl, baseOptions(mainEl, initialHeight, palette))
     mainRef.current = main
 
+    const lastCandle = series.candles[series.candles.length - 1]
+    const precision = getPriceDecimals(lastCandle?.close ?? 100)
+    const minMove = 1 / 10 ** precision
+
     const candle = main.addCandlestickSeries({
       upColor: palette.up,
       downColor: palette.down,
       borderVisible: false,
       wickUpColor: palette.up,
       wickDownColor: palette.down,
+      priceFormat: {
+        type: 'price',
+        precision,
+        minMove,
+      },
     })
     candle.setData(
       series.candles.map((c) => ({

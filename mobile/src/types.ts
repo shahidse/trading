@@ -252,7 +252,7 @@ export type CoinInfo = {
   base: string
   quote: string
   name: string
-  category: 'Major' | 'Layer 1' | 'Layer 2' | 'DeFi' | 'Meme' | 'AI / Data' | 'Infrastructure' | 'Fan Token'
+  category: 'Major' | 'Layer 1' | 'Layer 2' | 'DeFi' | 'Meme' | 'AI / Data' | 'Infrastructure' | 'Fan Token' | 'bStock'
   price?: number | null
   change24h?: number | null
 }
@@ -374,4 +374,23 @@ export type PredictionsPayload = {
     metAt?: number | null
   }>
 }
+
+export type ExecutionVenue = 'binance' | 'hyperliquid' | 'solana'
+
+export type OrderBookLevel = {
+  price: number
+  quantity: number
+  total?: number
+}
+
+export type OrderBookDepth = {
+  symbol: string
+  bids: OrderBookLevel[]
+  asks: OrderBookLevel[]
+  spread: number
+  spreadPercent: number
+  midPrice: number
+  lastUpdated: number
+}
+
 

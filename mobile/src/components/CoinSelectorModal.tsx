@@ -20,7 +20,18 @@ interface Props {
   onSelectCoin: (symbol: string) => void
 }
 
-const CATEGORIES = ['All', 'Meme', 'Fan Token', 'AI / Data', 'Layer 1', 'DeFi', 'Layer 2']
+const CATEGORIES = [
+  'All',
+  'Major',
+  'Layer 1',
+  'Layer 2',
+  'DeFi',
+  'Meme',
+  'AI / Data',
+  'Infrastructure',
+  'bStock',
+  'Fan Token',
+]
 
 export const CoinSelectorModal: React.FC<Props> = ({
   visible,

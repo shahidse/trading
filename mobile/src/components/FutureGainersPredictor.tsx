@@ -24,10 +24,11 @@ interface Props {
 }
 
 export const FutureGainersPredictor: React.FC<Props> = ({ activeSymbol, onSelectSymbol }) => {
-  const { colors } = useTheme()
+  const { colors, currency, pkrRate } = useTheme()
   const [data, setData] = useState<PredictionsPayload | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [viewMode, setViewMode] = useState<'scroll' | 'expand'>('scroll')
   const [selectedHorizon, setSelectedHorizon] = useState<FutureGainHorizon | 'ALL'>('ALL')
   const [selectedCatalyst, setSelectedCatalyst] = useState<PredictionCatalyst | 'ALL'>('ALL')
   const [searchQuery, setSearchQuery] = useState('')
@@ -175,7 +176,7 @@ export const FutureGainersPredictor: React.FC<Props> = ({ activeSymbol, onSelect
                 +{data.topPicks.best24h.predictedGainPctMin}% ~ +{data.topPicks.best24h.predictedGainPctMax}%
               </Text>
               <Text style={[styles.pickTarget, { color: colors.textSubtle }]}>
-                Tgt: {formatPrice(data.topPicks.best24h.targetPriceLow)}
+                Tgt: {formatPrice(data.topPicks.best24h.targetPriceLow, undefined, currency, pkrRate)}
               </Text>
             </TouchableOpacity>
           )}
@@ -201,7 +202,7 @@ export const FutureGainersPredictor: React.FC<Props> = ({ activeSymbol, onSelect
                 +{data.topPicks.best3Days.predictedGainPctMin}% ~ +{data.topPicks.best3Days.predictedGainPctMax}%
               </Text>
               <Text style={[styles.pickTarget, { color: colors.textSubtle }]}>
-                Tgt: {formatPrice(data.topPicks.best3Days.targetPriceLow)}
+                Tgt: {formatPrice(data.topPicks.best3Days.targetPriceLow, undefined, currency, pkrRate)}
               </Text>
             </TouchableOpacity>
           )}
@@ -227,7 +228,7 @@ export const FutureGainersPredictor: React.FC<Props> = ({ activeSymbol, onSelect
                 +{data.topPicks.best7Days.predictedGainPctMin}% ~ +{data.topPicks.best7Days.predictedGainPctMax}%
               </Text>
               <Text style={[styles.pickTarget, { color: colors.textSubtle }]}>
-                Tgt: {formatPrice(data.topPicks.best7Days.targetPriceLow)}
+                Tgt: {formatPrice(data.topPicks.best7Days.targetPriceLow, undefined, currency, pkrRate)}
               </Text>
             </TouchableOpacity>
           )}
@@ -354,150 +355,185 @@ export const FutureGainersPredictor: React.FC<Props> = ({ activeSymbol, onSelect
         </View>
       )}
 
+      {/* View Mode & Setup Count Toolbar */}
+      {!loading && filteredPredictions.length > 0 && (
+        <View style={styles.viewModeRow}>
+          <Text style={[styles.setupCountText, { color: colors.textSubtle }]}>
+            AI Pump Predictions ({filteredPredictions.length}) • {viewMode === 'scroll' ? 'Scroller active' : 'Full view'}
+          </Text>
+          <View style={[styles.viewModeToggle, { backgroundColor: colors.surface2, borderColor: colors.borderSubtle }]}>
+            <TouchableOpacity
+              onPress={() => setViewMode('scroll')}
+              style={[
+                styles.viewModeBtn,
+                { backgroundColor: viewMode === 'scroll' ? colors.primary : 'transparent' },
+              ]}
+            >
+              <Text style={[styles.viewModeBtnText, { color: viewMode === 'scroll' ? '#ffffff' : colors.textSubtle }]}>
+                ↕️ Scroll
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setViewMode('expand')}
+              style={[
+                styles.viewModeBtn,
+                { backgroundColor: viewMode === 'expand' ? colors.primary : 'transparent' },
+              ]}
+            >
+              <Text style={[styles.viewModeBtnText, { color: viewMode === 'expand' ? '#ffffff' : colors.textSubtle }]}>
+                ⤢ Expand
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {/* Predictions Card List */}
       {!loading && (
         <View style={styles.listContainer}>
-          {filteredPredictions.map((pred) => {
-            const isPosting = postingSymbol === pred.symbol
-            const isSelected = activeSymbol === pred.symbol
+          <CardListWrapper isScroll={viewMode === 'scroll'}>
+            {filteredPredictions.map((pred) => {
+              const isPosting = postingSymbol === pred.symbol
+              const isSelected = activeSymbol === pred.symbol
 
-            return (
-              <View
-                key={`${pred.symbol}-${pred.horizon}`}
-                style={[
-                  styles.predCard,
-                  {
-                    backgroundColor: colors.surface2,
-                    borderColor: isSelected ? colors.primary : colors.borderSubtle,
-                    borderWidth: colors.borderWidth,
-                    borderRadius: colors.borderRadius,
-                  },
-                ]}
-              >
-                {/* Card Top Row */}
-                <View style={styles.cardHeader}>
-                  <View style={{ flex: 1 }}>
-                    <View style={styles.symbolRow}>
-                      <Text style={[styles.symbolText, { color: colors.text }]}>{pred.base}</Text>
-                      <View
-                        style={[
-                          styles.horizonTag,
-                          {
-                            backgroundColor: colors.primaryLight,
-                            borderColor: colors.primary,
-                            borderWidth: colors.borderWidth,
-                            borderRadius: colors.borderRadiusSm,
-                          },
-                        ]}
-                      >
-                        <Text style={[styles.horizonTagText, { color: colors.primary }]}>
-                          {pred.horizonLabel}
-                        </Text>
+              return (
+                <View
+                  key={`${pred.symbol}-${pred.horizon}`}
+                  style={[
+                    styles.predCard,
+                    {
+                      backgroundColor: colors.surface2,
+                      borderColor: isSelected ? colors.primary : colors.borderSubtle,
+                      borderWidth: colors.borderWidth,
+                      borderRadius: colors.borderRadius,
+                    },
+                  ]}
+                >
+                  {/* Card Top Row */}
+                  <View style={styles.cardHeader}>
+                    <View style={{ flex: 1 }}>
+                      <View style={styles.symbolRow}>
+                        <Text style={[styles.symbolText, { color: colors.text }]}>{pred.base}</Text>
+                        <View
+                          style={[
+                            styles.horizonTag,
+                            {
+                              backgroundColor: colors.primaryLight,
+                              borderColor: colors.primary,
+                              borderWidth: colors.borderWidth,
+                              borderRadius: colors.borderRadiusSm,
+                            },
+                          ]}
+                        >
+                          <Text style={[styles.horizonTagText, { color: colors.primary }]}>
+                            {pred.horizonLabel}
+                          </Text>
+                        </View>
+                        <View
+                          style={[
+                            styles.confTag,
+                            {
+                              backgroundColor: colors.bullishBg,
+                              borderColor: colors.bullishBorder,
+                              borderWidth: colors.borderWidth,
+                              borderRadius: colors.borderRadiusSm,
+                            },
+                          ]}
+                        >
+                          <Text style={[styles.confTagText, { color: colors.bullish }]}>
+                            {pred.confidenceScore}% Conf
+                          </Text>
+                        </View>
                       </View>
-                      <View
-                        style={[
-                          styles.confTag,
-                          {
-                            backgroundColor: colors.bullishBg,
-                            borderColor: colors.bullishBorder,
-                            borderWidth: colors.borderWidth,
-                            borderRadius: colors.borderRadiusSm,
-                          },
-                        ]}
-                      >
-                        <Text style={[styles.confTagText, { color: colors.bullish }]}>
-                          {pred.confidenceScore}% Conf
-                        </Text>
-                      </View>
+                      <Text style={[styles.nameText, { color: colors.textSubtle }]}>{pred.name}</Text>
                     </View>
-                    <Text style={[styles.nameText, { color: colors.textSubtle }]}>{pred.name}</Text>
-                  </View>
 
-                  <View style={styles.upsideBox}>
-                    <Text style={[styles.upsideText, { color: colors.bullish }]}>
-                      +{pred.predictedGainPctMin}% ~ +{pred.predictedGainPctMax}%
-                    </Text>
-                    <Text style={[styles.upsideLabel, { color: colors.textSubtle }]}>Projected Gain</Text>
-                  </View>
-                </View>
-
-                {/* Key Price Levels */}
-                <View style={[styles.levelsGrid, { borderTopColor: colors.borderSubtle }]}>
-                  <View style={styles.levelCol}>
-                    <Text style={[styles.levelHead, { color: colors.textSubtle }]}>Price</Text>
-                    <Text style={[styles.levelVal, { color: colors.text }]}>
-                      {formatPrice(pred.currentPrice)}
-                    </Text>
-                  </View>
-                  <View style={styles.levelCol}>
-                    <Text style={[styles.levelHead, { color: colors.textSubtle }]}>Target Range</Text>
-                    <Text style={[styles.levelVal, { color: colors.bullish }]}>
-                      {formatPrice(pred.targetPriceLow)} - {formatPrice(pred.targetPriceHigh)}
-                    </Text>
-                  </View>
-                  <View style={styles.levelCol}>
-                    <Text style={[styles.levelHead, { color: colors.textSubtle }]}>Stop Loss</Text>
-                    <Text style={[styles.levelVal, { color: colors.bearish }]}>
-                      {formatPrice(pred.stopLossPrice)} (-{pred.stopLossPct}%)
-                    </Text>
-                  </View>
-                  <View style={styles.levelCol}>
-                    <Text style={[styles.levelHead, { color: colors.textSubtle }]}>R:R</Text>
-                    <Text style={[styles.levelVal, { color: colors.text }]}>
-                      1 : {pred.riskRewardRatio}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Thesis & Triggers */}
-                <Text style={[styles.thesisText, { color: colors.textMuted }]} numberOfLines={2}>
-                  {pred.thesis}
-                </Text>
-
-                {/* Action Buttons Row */}
-                <View style={styles.actionRow}>
-                  <TouchableOpacity
-                    onPress={() => onSelectSymbol?.(pred.symbol)}
-                    style={[
-                      styles.chartBtn,
-                      {
-                        backgroundColor: colors.surface3,
-                        borderColor: colors.borderSubtle,
-                        borderWidth: colors.borderWidth,
-                        borderRadius: colors.borderRadiusSm,
-                      },
-                    ]}
-                  >
-                    <Text style={[styles.chartBtnText, { color: colors.text }]}>
-                      📈 View {pred.base} Chart
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={() => handleShareToSquare(pred)}
-                    disabled={isPosting}
-                    style={[
-                      styles.squareBtn,
-                      {
-                        backgroundColor: colors.warningBg || '#f59e0b15',
-                        borderColor: colors.warning || '#f59e0b',
-                        borderWidth: colors.borderWidth,
-                        borderRadius: colors.borderRadiusSm,
-                      },
-                    ]}
-                  >
-                    {isPosting ? (
-                      <ActivityIndicator size="small" color={colors.warning} />
-                    ) : (
-                      <Text style={[styles.squareBtnText, { color: colors.warning }]}>
-                        📢 Share to Square
+                    <View style={styles.upsideBox}>
+                      <Text style={[styles.upsideText, { color: colors.bullish }]}>
+                        +{pred.predictedGainPctMin}% ~ +{pred.predictedGainPctMax}%
                       </Text>
-                    )}
-                  </TouchableOpacity>
+                      <Text style={[styles.upsideLabel, { color: colors.textSubtle }]}>Projected Gain</Text>
+                    </View>
+                  </View>
+
+                  {/* Key Price Levels */}
+                  <View style={[styles.levelsGrid, { borderTopColor: colors.borderSubtle }]}>
+                    <View style={styles.levelCol}>
+                      <Text style={[styles.levelHead, { color: colors.textSubtle }]}>Price</Text>
+                      <Text style={[styles.levelVal, { color: colors.text }]}>
+                        {formatPrice(pred.currentPrice, undefined, currency, pkrRate)}
+                      </Text>
+                    </View>
+                    <View style={styles.levelCol}>
+                      <Text style={[styles.levelHead, { color: colors.textSubtle }]}>Target Range</Text>
+                      <Text style={[styles.levelVal, { color: colors.bullish }]}>
+                        {formatPrice(pred.targetPriceLow, undefined, currency, pkrRate)} - {formatPrice(pred.targetPriceHigh, undefined, currency, pkrRate)}
+                      </Text>
+                    </View>
+                    <View style={styles.levelCol}>
+                      <Text style={[styles.levelHead, { color: colors.textSubtle }]}>Stop Loss</Text>
+                      <Text style={[styles.levelVal, { color: colors.bearish }]}>
+                        {formatPrice(pred.stopLossPrice, undefined, currency, pkrRate)} (-{pred.stopLossPct}%)
+                      </Text>
+                    </View>
+                    <View style={styles.levelCol}>
+                      <Text style={[styles.levelHead, { color: colors.textSubtle }]}>R:R</Text>
+                      <Text style={[styles.levelVal, { color: colors.text }]}>
+                        1 : {pred.riskRewardRatio}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Thesis & Triggers */}
+                  <Text style={[styles.thesisText, { color: colors.textMuted }]} numberOfLines={2}>
+                    {pred.thesis}
+                  </Text>
+
+                  {/* Action Buttons Row */}
+                  <View style={styles.actionRow}>
+                    <TouchableOpacity
+                      onPress={() => onSelectSymbol?.(pred.symbol)}
+                      style={[
+                        styles.chartBtn,
+                        {
+                          backgroundColor: colors.surface3,
+                          borderColor: colors.borderSubtle,
+                          borderWidth: colors.borderWidth,
+                          borderRadius: colors.borderRadiusSm,
+                        },
+                      ]}
+                    >
+                      <Text style={[styles.chartBtnText, { color: colors.text }]}>
+                        📈 View {pred.base} Chart
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={() => handleShareToSquare(pred)}
+                      disabled={isPosting}
+                      style={[
+                        styles.squareBtn,
+                        {
+                          backgroundColor: colors.warningBg || '#f59e0b15',
+                          borderColor: colors.warning || '#f59e0b',
+                          borderWidth: colors.borderWidth,
+                          borderRadius: colors.borderRadiusSm,
+                        },
+                      ]}
+                    >
+                      {isPosting ? (
+                        <ActivityIndicator size="small" color={colors.warning} />
+                      ) : (
+                        <Text style={[styles.squareBtnText, { color: colors.warning }]}>
+                          📢 Share to Square
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
-            )
-          })}
+              )
+            })}
+          </CardListWrapper>
 
           {filteredPredictions.length === 0 && (
             <View style={styles.emptyBox}>
@@ -510,6 +546,25 @@ export const FutureGainersPredictor: React.FC<Props> = ({ activeSymbol, onSelect
       )}
     </View>
   )
+}
+
+const CardListWrapper: React.FC<{ isScroll: boolean; children: React.ReactNode }> = ({
+  isScroll,
+  children,
+}) => {
+  if (isScroll) {
+    return (
+      <ScrollView
+        nestedScrollEnabled
+        style={styles.scroller}
+        contentContainerStyle={styles.scrollerContent}
+        showsVerticalScrollIndicator={true}
+      >
+        {children}
+      </ScrollView>
+    )
+  }
+  return <View style={styles.expandWrapper}>{children}</View>
 }
 
 const styles = StyleSheet.create({
@@ -718,5 +773,41 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 12,
+  },
+  viewModeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+    paddingHorizontal: 2,
+  },
+  setupCountText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  viewModeToggle: {
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 2,
+    gap: 2,
+  },
+  viewModeBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  viewModeBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  scroller: {
+    maxHeight: 460,
+  },
+  scrollerContent: {
+    paddingBottom: 6,
+  },
+  expandWrapper: {
+    width: '100%',
   },
 })

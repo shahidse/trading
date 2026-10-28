@@ -19,7 +19,18 @@ const QUICK_COINS = [
   'XRP/USDT',
 ]
 
-const CATEGORIES = ['All', 'Major', 'Layer 1', 'Meme', 'Fan Token', 'AI / Data', 'Layer 2', 'DeFi'] as const
+const CATEGORIES = [
+  'All',
+  'Major',
+  'Layer 1',
+  'Layer 2',
+  'DeFi',
+  'Meme',
+  'AI / Data',
+  'Infrastructure',
+  'bStock',
+  'Fan Token',
+] as const
 
 export function CoinSelector({ activeSymbol, onSelectSymbol }: CoinSelectorProps) {
   const [modalOpen, setModalOpen] = useState(false)
@@ -154,7 +165,7 @@ export function CoinSelector({ activeSymbol, onSelectSymbol }: CoinSelectorProps
               <div>
                 <h3 className="text-base font-bold text-ink">Select Coin to Trade</h3>
                 <p className="text-xs text-muted">
-                  Top 50 high-liquidity crypto markets · Default: Ethereum (ETH/USDT)
+                  Top liquid crypto & tokenized bStock markets · Default: Ethereum (ETH/USDT)
                 </p>
               </div>
               <button

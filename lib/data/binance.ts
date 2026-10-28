@@ -1,8 +1,7 @@
-import { binance, type Exchange, type OHLCV } from 'ccxt'
+import { binance, type Exchange, type OHLCV, kraken } from 'ccxt'
 import { config } from '@/lib/config'
 import type { Candle } from '@/lib/types'
-
-import { kraken } from 'ccxt'
+import { normalizeSymbol } from '@/lib/constants/coins'
 
 let client: Exchange | null = null
 let fallbackExchange: Exchange | null = null
@@ -72,11 +71,12 @@ export async function fetchCandles(
   timeframe: string = config.timeframe,
   limit: number = config.candleLimit,
 ): Promise<Candle[]> {
+  const normSymbol = normalizeSymbol(symbol)
   try {
     const exchange = getClient()
 
     if (limit <= MAX_PER_REQUEST) {
-      return toCandles(await exchange.fetchOHLCV(symbol, timeframe, undefined, limit))
+      return toCandles(await exchange.fetchOHLCV(normSymbol, timeframe, undefined, limit))
     }
 
     const step = timeframeMs(exchange, timeframe)
@@ -84,7 +84,7 @@ export async function fetchCandles(
     let since = Date.now() - limit * step
 
     while (collected.size < limit) {
-      const batch: OHLCV[] = await exchange.fetchOHLCV(symbol, timeframe, since, MAX_PER_REQUEST)
+      const batch: OHLCV[] = await exchange.fetchOHLCV(normSymbol, timeframe, since, MAX_PER_REQUEST)
       if (batch.length === 0) break
 
       for (const row of batch) collected.set(Number(row[0]), row)
@@ -105,7 +105,7 @@ export async function fetchCandles(
     if (isGeoBlocked(error)) {
       console.warn('Binance geo-restricted (451). Falling back to Kraken market data...')
       const fallback = getFallbackExchange()
-      const candles = await fallback.fetchOHLCV(symbol, timeframe, undefined, Math.min(limit, 720))
+      const candles = await fallback.fetchOHLCV(normSymbol, timeframe, undefined, Math.min(limit, 720))
       return toCandles(candles)
     }
     throw error
@@ -114,9 +114,10 @@ export async function fetchCandles(
 
 /** Latest traded price for the configured market. */
 export async function fetchLastPrice(symbol: string = config.symbol): Promise<number> {
+  const normSymbol = normalizeSymbol(symbol)
   try {
     const exchange = getClient()
-    const ticker = await exchange.fetchTicker(symbol)
+    const ticker = await exchange.fetchTicker(normSymbol)
     const price = ticker.last ?? ticker.close
 
     if (typeof price !== 'number' || !Number.isFinite(price)) {
@@ -127,7 +128,7 @@ export async function fetchLastPrice(symbol: string = config.symbol): Promise<nu
     if (isGeoBlocked(error)) {
       console.warn('Binance geo-restricted (451). Falling back to Kraken ticker...')
       const fallback = getFallbackExchange()
-      const ticker = await fallback.fetchTicker(symbol)
+      const ticker = await fallback.fetchTicker(normSymbol)
       const price = ticker.last ?? ticker.close
       if (typeof price !== 'number' || !Number.isFinite(price)) {
         throw new Error(`No price available for ${symbol} on fallback exchange`)
@@ -155,9 +156,10 @@ export async function fetchOrderBook(
   symbol: string = config.symbol,
   limit = 15,
 ): Promise<OrderBookSnapshot> {
+  const normSymbol = normalizeSymbol(symbol)
   try {
     const exchange = getClient()
-    const book = await exchange.fetchOrderBook(symbol, limit)
+    const book = await exchange.fetchOrderBook(normSymbol, limit)
 
     const bids: OrderBookEntry[] = (book.bids || []).slice(0, limit).map(([p, q]) => ({
       price: Number(p),
@@ -226,16 +228,17 @@ export type MiniTicker = {
 /** Fetch multiple coin tickers in batch. */
 export async function fetchMultipleTickers(symbols: string[]): Promise<Record<string, MiniTicker>> {
   const exchange = getClient()
+  const normalizedSymbols = symbols.map((s) => normalizeSymbol(s))
   try {
     let raw: Record<string, any>
     try {
-      raw = await exchange.fetchTickers(symbols)
+      raw = await exchange.fetchTickers(normalizedSymbols)
     } catch {
       // If a BadSymbol error happened or markets weren't loaded, load markets and filter
       try {
         await exchange.loadMarkets()
         const markets = exchange.markets ?? {}
-        const validSymbols = symbols.filter((s) => s in markets)
+        const validSymbols = normalizedSymbols.filter((s) => s in markets)
         raw = validSymbols.length > 0 ? await exchange.fetchTickers(validSymbols) : await exchange.fetchTickers()
       } catch {
         raw = await exchange.fetchTickers()
